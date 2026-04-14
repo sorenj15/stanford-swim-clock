@@ -52,8 +52,8 @@ body {
   align-items: center; justify-content: center;
   padding: 10px 8px 6px;
 }
-.team-home { background: linear-gradient(180deg, #1a0808 0%, #0d0505 100%); }
-.team-away { background: linear-gradient(180deg, #0d0808 0%, #0d0505 100%); }
+.team-home { background: linear-gradient(180deg, #1a1218 0%, #0d0505 100%); }
+.team-away { background: linear-gradient(180deg, #0d0d0d 0%, #0d0505 100%); }
 
 .team-name {
   font-size: 1.8rem; font-weight: 900;
@@ -61,7 +61,7 @@ body {
   cursor: pointer;
 }
 .team-home .team-name { color: #fff; }
-.team-away .team-name { color: #ccc; }
+.team-away .team-name { color: #888; }
 .team-name:hover { text-decoration: underline; text-decoration-color: #8C1515; }
 
 .team-name-input {
@@ -89,8 +89,9 @@ body {
   font-size: 7rem; font-weight: 900;
   line-height: 1; font-variant-numeric: tabular-nums;
   min-width: 120px; text-align: center;
-  color: #fff;
 }
+.team-home .score { color: #fff; }
+.team-away .score { color: #888; }
 .score-div {
   width: 3px; background: #2a0a0a; flex-shrink: 0;
 }
@@ -332,7 +333,7 @@ body {
 
   <div class="score-row">
     <div class="team team-home">
-      <div class="team-name" id="homeName" onclick="editName('home')">STANFORD</div>
+      <div class="team-name" id="homeName" onclick="editName('home')">WHITE</div>
       <div class="score-wrap">
         <button class="score-btn" onclick="cmd('score',{t:'home',d:-1})">−</button>
         <div class="score" id="homeScore">0</div>
@@ -341,7 +342,7 @@ body {
     </div>
     <div class="score-div"></div>
     <div class="team team-away">
-      <div class="team-name" id="awayName" onclick="editName('away')">VISITOR</div>
+      <div class="team-name" id="awayName" onclick="editName('away')">BLACK</div>
       <div class="score-wrap">
         <button class="score-btn" onclick="cmd('score',{t:'away',d:-1})">−</button>
         <div class="score" id="awayScore">0</div>
@@ -402,7 +403,7 @@ body {
     <div class="ctrl-section-title">Clock</div>
     <div class="ctrl-grid g3">
       <div class="rb rb-start" id="rbStartStop" onclick="cmd('toggle')">▶ START</div>
-      <div class="rb rb-reset" onclick="cmd('resetGame')">↺ RESET</div>
+      <div class="rb rb-shot" onclick="cmd('shot30')">↺ RESET</div>
       <div class="rb rb-horn" onclick="cmd('horn')">📯 HORN</div>
     </div>
   </div>
@@ -417,7 +418,7 @@ body {
   </div>
 
   <div class="ctrl-section">
-    <div class="ctrl-section-title">Score — Home</div>
+    <div class="ctrl-section-title">Score — White</div>
     <div class="ctrl-grid g2">
       <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:1})">+ GOAL</div>
       <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:-1})">− UNDO</div>
@@ -425,7 +426,7 @@ body {
   </div>
 
   <div class="ctrl-section">
-    <div class="ctrl-section-title">Score — Away</div>
+    <div class="ctrl-section-title">Score — Black</div>
     <div class="ctrl-grid g2">
       <div class="rb rb-score-a" onclick="cmd('score',{t:'away',d:1})">+ GOAL</div>
       <div class="rb rb-score-a" onclick="cmd('score',{t:'away',d:-1})">− UNDO</div>
@@ -451,9 +452,10 @@ body {
 
   <div class="ctrl-section">
     <div class="ctrl-section-title">Manage</div>
-    <div class="ctrl-grid g2">
+    <div class="ctrl-grid g3">
       <div class="rb rb-poss" onclick="cmd('swapPoss')">⇄ POSS</div>
       <div class="rb rb-poss" onclick="cmd('clearExcl')">✕ CLR EXCL</div>
+      <div class="rb rb-reset" onclick="cmd('resetGame')">↺ RESET ALL</div>
     </div>
   </div>
 </div>
@@ -714,8 +716,7 @@ function handleCmd(action, data) {
       // Hide/show game clock elements
       document.getElementById('gameClock').style.display = shotOnly ? 'none' : '';
       document.querySelector('.gc-lbl').style.display = shotOnly ? 'none' : '';
-      // Hide/show score row and quarter bar
-      document.querySelector('.score-row').style.display = shotOnly ? 'none' : '';
+      // Hide quarter bar only
       document.querySelector('.qtr-bar').style.display = shotOnly ? 'none' : '';
       // Hide shot clock label since it's the only clock now
       document.querySelector('.sc-lbl').style.display = shotOnly ? 'none' : '';
