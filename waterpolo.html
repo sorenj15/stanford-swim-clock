@@ -362,7 +362,6 @@ body {
     </div>
   </div>
 
-  <div class="excl-row" id="exclRow"></div>
 
   <div class="display-strip" id="displayStrip">
     <span class="strip-info">Remote control ▸</span>
@@ -410,11 +409,10 @@ body {
 
   <div class="ctrl-section">
     <div class="ctrl-section-title">Shot Clock</div>
-    <div class="ctrl-grid g4">
+    <div class="ctrl-grid g3">
       <div class="rb rb-shot" onclick="cmd('shot30')">↺ 30</div>
       <div class="rb rb-shot" onclick="cmd('shot20')">↺ 20</div>
       <div class="rb rb-mode" onclick="cmd('toggleMode')">SHOT ONLY<span class="rb-sub">toggle</span></div>
-      <div class="rb rb-horn" onclick="cmd('horn')">📯 HORN</div>
     </div>
   </div>
 
@@ -435,11 +433,10 @@ body {
   </div>
 
   <div class="ctrl-section">
-    <div class="ctrl-section-title">Exclusions & Quarter</div>
-    <div class="ctrl-grid g3">
-      <div class="rb rb-excl-h" onclick="cmd('excl',{t:'home'})">🏠 EXCL</div>
-      <div class="rb rb-excl-a" onclick="cmd('excl',{t:'away'})">👤 EXCL</div>
+    <div class="ctrl-section-title">Quarter</div>
+    <div class="ctrl-grid g2">
       <div class="rb rb-qtr" onclick="cmd('nextQtr')">▶ NEXT QTR</div>
+      <div class="rb rb-horn" onclick="cmd('horn')">📯 HORN</div>
     </div>
   </div>
 
@@ -453,9 +450,8 @@ body {
 
   <div class="ctrl-section">
     <div class="ctrl-section-title">Manage</div>
-    <div class="ctrl-grid g3">
+    <div class="ctrl-grid g2">
       <div class="rb rb-poss" onclick="cmd('swapPoss')">⇄ POSS</div>
-      <div class="rb rb-poss" onclick="cmd('clearExcl')">✕ CLR EXCL</div>
       <div class="rb rb-reset" onclick="cmd('resetGame')">↺ RESET ALL</div>
     </div>
   </div>
@@ -962,8 +958,6 @@ document.addEventListener('keydown', function(e) {
     case 'ArrowDown': e.preventDefault(); cmd('score',{t:'home',d:-1}); break;
     case 'ArrowRight':e.preventDefault(); cmd('score',{t:'away',d:1}); break;
     case 'ArrowLeft': e.preventDefault(); cmd('score',{t:'away',d:-1}); break;
-    case 'Digit1':    cmd('excl',{t:'home'}); break;
-    case 'Digit2':    cmd('excl',{t:'away'}); break;
     case 'KeyQ':      cmd('nextQtr'); break;
     case 'KeyP':      cmd('swapPoss'); break;
     case 'KeyM':      cmd('toggleMode'); break;
