@@ -443,8 +443,8 @@ body {
   <div class="ctrl-section">
     <div class="ctrl-section-title">Set Time</div>
     <div class="ctrl-grid g2">
-      <div class="rb rb-time" onclick="cmd('editGame')">SET GAME<span class="rb-sub">tap to edit</span></div>
-      <div class="rb rb-time" onclick="cmd('editShot')">SET SHOT<span class="rb-sub">tap to edit</span></div>
+      <div class="rb rb-time" onclick="openTimeEdit('game')">SET GAME<span class="rb-sub">tap to edit</span></div>
+      <div class="rb rb-time" onclick="openTimeEdit('shot')">SET SHOT<span class="rb-sub">tap to edit</span></div>
     </div>
   </div>
 
@@ -541,8 +541,11 @@ function sendState() {
 }
 
 // Controller receives state
+var _lastRemoteState = { gameTime: 8*60*1000, shotTime: 30*1000 };
+
 function applyState(s) {
   if (!IS_CONTROL) return;
+  _lastRemoteState = s;
   document.getElementById('csGame').textContent = fmtClock(s.gameTime);
   document.getElementById('csShot').textContent = Math.ceil(s.shotTime / 1000);
   document.getElementById('csQtr').textContent = 'Q' + (s.quarter + 1);
@@ -846,9 +849,15 @@ function removeExcl(id) {
 var _teTarget = 'game'; // 'game' or 'shot'
 
 function openTimeEdit(target) {
-  if (running) _stop();
+  if (!IS_CONTROL && running) _stop();
+  if (IS_CONTROL) cmd('stop'); // stop the clock while editing
   _teTarget = target;
-  var ms = target === 'game' ? gameTime : shotTime;
+  var ms;
+  if (IS_CONTROL) {
+    ms = target === 'game' ? _lastRemoteState.gameTime : _lastRemoteState.shotTime;
+  } else {
+    ms = target === 'game' ? gameTime : shotTime;
+  }
   var totalSec = Math.ceil(ms / 1000);
   document.getElementById('teTitle').textContent = target === 'game' ? 'Set Game Clock' : 'Set Shot Clock';
   document.getElementById('teMin').value = Math.floor(totalSec / 60);
@@ -862,17 +871,21 @@ function saveTimeEdit() {
   var m = parseInt(document.getElementById('teMin').value) || 0;
   var s = parseInt(document.getElementById('teSec').value) || 0;
   var ms = (m * 60 + Math.min(s, 59)) * 1000;
-  if (_teTarget === 'game') {
-    gameTime = ms;
-    // Also update CFG so next quarter uses this length
-    CFG.qtrLen = ms;
+  if (IS_CONTROL) {
+    // Send the time value to the display
+    cmd(_teTarget === 'game' ? 'setGame' : 'setShot', {ms: ms});
   } else {
-    shotTime = ms;
-    CFG.shotLen = ms;
+    if (_teTarget === 'game') {
+      gameTime = ms;
+      CFG.qtrLen = ms;
+    } else {
+      shotTime = ms;
+      CFG.shotLen = ms;
+    }
+    renderDisplay();
+    sendState();
   }
   closeTimeEdit();
-  renderDisplay();
-  sendState();
 }
 
 function closeTimeEdit() {
