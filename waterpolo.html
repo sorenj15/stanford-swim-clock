@@ -860,7 +860,9 @@ function renderQtr() {
 
 function renderExcl() {
   if (IS_CONTROL) return;
-  document.getElementById('exclRow').innerHTML = exclusions.map(function(e) {
+  var el = document.getElementById('exclRow');
+  if (!el) return;
+  el.innerHTML = exclusions.map(function(e) {
     var s = Math.ceil(e.remaining / 1000);
     var cls = e.team === 'home' ? 'ex-home' : 'ex-away';
     return '<div class="excl-tag '+cls+'" onclick="removeExcl('+e.id+')">'+
