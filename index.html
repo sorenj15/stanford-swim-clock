@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Stanford Swim Clocks</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0d0505;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  min-height: 100vh;
+}
+
+/* ═══ VIEWS ═══ */
+#setupView, #clockView { display: none; }
+#setupView.active { display: flex; flex-direction: column; }
+#clockView.active  { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+/* ═══ SETUP ═══ */
+#setupView {
+  padding: 20px 16px 40px;
+  gap: 14px;
+  max-width: 860px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.setup-hdr { text-align: center; padding: 8px 0; }
+.setup-hdr h1 {
+  font-size: 1.5rem; font-weight: 900;
+  letter-spacing: 0.1em; text-transform: uppercase; color: #c0392b;
+}
+.setup-hdr .sub { font-size: 0.75rem; color: #7a3030; margin-top: 4px; }
+
+.card {
+  background: #1b0b0b;
+  border-radius: 12px;
+  border: 1px solid #2e1010;
+  overflow: hidden;
+}
+.card-lbl {
+  display: block; padding: 11px 14px 5px;
+  font-size: 0.68rem; font-weight: 700;
+  color: #c0392b; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.card-body { padding: 0 14px 14px; }
+
+textarea#setInput {
+  width: 100%; min-height: 240px;
+  background: transparent; border: none; outline: none;
+  color: #ccd; font-family: 'SF Mono', 'Courier New', monospace;
+  font-size: 0.82rem; line-height: 1.65; resize: vertical; padding: 4px 0 0;
+}
+textarea#setInput::placeholder { color: #5a2020; }
+
+.tier-row {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+}
+.tier-row:last-child { margin-bottom: 0; }
+.tdot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.tdot.t1 { background: #2ecc71; }
+.tdot.t2 { background: #3498db; }
+.tdot.t3 { background: #e74c3c; }
+.tier-row input {
+  flex: 1; min-width: 0;
+  background: #110606; border: 1px solid #2e1010; border-radius: 6px;
+  padding: 7px 10px; color: #ccd; font-size: 0.78rem; outline: none;
+}
+.tier-row input:focus { border-color: #c0392b; }
+.tier-row label { font-size: 0.68rem; color: #c0392b; white-space: nowrap; width: 100px; flex-shrink: 0; }
+.tier-row .css-inp {
+  width: 70px; flex: none;
+  text-align: center; font-family: 'SF Mono', monospace;
+}
+.css-unit { font-size: 0.65rem; color: #5a2020; flex-shrink: 0; }
+
+/* Tier count toggle */
+.tc-btns { display: flex; gap: 6px; }
+.tc-btn {
+  width: 36px; height: 30px;
+  background: #110606; border: 1px solid #2e1010;
+  border-radius: 6px; color: #7a3030; font-size: 0.85rem;
+  font-weight: 700; cursor: pointer; transition: all .15s;
+}
+.tc-btn.active { background: #8C1515; border-color: #c0392b; color: #fff; }
+
+/* Range edit popup */
+#rangePopup {
+  display: none; position: fixed;
+  background: #1b0b0b; border: 1px solid #3a1515;
+  border-radius: 10px; padding: 14px 16px;
+  z-index: 9999; box-shadow: 0 8px 32px rgba(0,0,0,.8);
+  min-width: 200px;
+}
+#rangePopup.open { display: block; }
+#rangePopup h4 {
+  font-size: 0.65rem; font-weight: 700; color: #c0392b;
+  text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px;
+}
+.rp-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.rp-row label { font-size: 0.65rem; color: #a06060; width: 28px; flex-shrink: 0; }
+.rp-inp {
+  width: 70px; background: #110606; border: 1px solid #2e1010;
+  border-radius: 5px; padding: 5px 8px; color: #ccd;
+  font-family: 'SF Mono', monospace; font-size: 0.82rem; outline: none;
+  text-align: center;
+}
+.rp-inp:focus { border-color: #c0392b; }
+.rp-btns { display: flex; gap: 6px; margin-top: 10px; }
+.rp-save { flex: 1; padding: 6px; background: #8C1515; color: #fff; border: none; border-radius: 6px; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+.rp-cancel { padding: 6px 10px; background: #180a0a; color: #a06060; border: 1px solid #2e1010; border-radius: 6px; font-size: 0.8rem; cursor: pointer; }
+.rp-reset { padding: 6px 10px; background: #180a0a; color: #8b3030; border: 1px solid #2a1212; border-radius: 6px; font-size: 0.75rem; cursor: pointer; }
+.edit-range-btn {
+  background: none; border: none; cursor: pointer;
+  color: #6a2020; font-size: 0.7rem; padding: 0 4px;
+  vertical-align: middle; line-height: 1;
+  transition: color .15s;
+}
+.edit-range-btn:hover { color: #c0392b; }
+
+.launch-btn {
+  align-self: center;
+  padding: 14px 48px; background: #8C1515; color: #fff;
+  border: none; border-radius: 10px; font-size: 1.05rem;
+  font-weight: 800; letter-spacing: 0.06em; cursor: pointer;
+  text-transform: uppercase; transition: filter .15s, transform .1s;
+}
+.launch-btn:hover { filter: brightness(1.18); }
+.launch-btn:active { transform: scale(0.96); }
+
+.example-link {
+  text-align: center; font-size: 0.7rem; color: #5a2020; cursor: pointer; margin-top: -4px;
+}
+.example-link:hover { color: #c0392b; }
+
+/* ═══ CLOCK VIEW ═══ */
+
+/* Tab bar */
+.top-bar {
+  display: flex; align-items: stretch; flex-shrink: 0;
+  background: #0d0404; border-bottom: 2px solid #1a0808;
+}
+.sec-tab {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 7px 4px; cursor: pointer;
+  border-right: 1px solid #1a0808;
+  user-select: none; transition: background .2s;
+  min-width: 0;
+}
+.sec-tab:last-child { border-right: none; }
+.sec-tab .tt { font-size: 0.65rem; font-weight: 700; color: #9a4040; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.sec-tab .ts { font-size: 0.5rem; color: #7a3030; font-weight: 600; margin-top: 1px; }
+.sec-tab.s-active { background: #1a0a0a; border-bottom: 3px solid #8C1515; }
+.sec-tab.s-active .tt { color: #fff; }
+.sec-tab.s-active .ts { color: #c0392b; }
+.sec-tab.s-done { background: #0d0404; }
+.sec-tab.s-done .tt { color: #2a7a48; text-decoration: line-through; }
+.sec-tab.s-done .ts { color: #2ecc71; }
+
+/* Hero: current set overview */
+.hero {
+  flex-shrink: 0;
+  background: #180a0a;
+  border-bottom: 2px solid #2e1010;
+  padding: 10px 16px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.hero-title {
+  font-size: 1.15rem; font-weight: 900;
+  letter-spacing: 0.04em; color: #fff; margin-bottom: 4px;
+  display: inline-block;
+}
+.hero-sub { font-size: 0.75rem; color: #c0392b; margin-left: 8px; }
+.hero-items { margin-top: 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.hi { font-size: 1.1rem; padding: 4px 10px; border-radius: 5px; color: #d4b0b0; display: inline-block; transition: all .2s; }
+.hi.done  { color: #3a9060; text-decoration: line-through; font-size: 0.95rem; }
+.hi.cur   { color: #fff; background: rgba(25,111,61,0.4); border: 1px solid rgba(46,204,113,0.6); font-weight: 800; font-size: 1.35rem; }
+.hi.plain { color: #c08080; }
+.hero-rest { font-size: 0.85rem; color: #e8b830; margin-left: 6px; font-weight: 600; }
+.hero-eq   { font-size: 0.8rem; color: #a06060; margin-left: 4px; font-style: italic; }
+.hero-items-wrap { font-size: 1.1rem; color: #d4b0b0; line-height: 2.1; white-space: pre-wrap; }
+
+/* Vertical set list for ready/break states */
+.set-list { display: flex; flex-direction: column; gap: 6px; align-items: center; width: 100%; }
+.set-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; border-radius: 8px; width: 95%; max-width: 400px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
+  transition: all .2s;
+}
+.set-row.sr-cur {
+  background: rgba(25,111,61,0.35); border: 1px solid rgba(46,204,113,0.5);
+  transform: scale(1.04);
+}
+.set-row.sr-done { opacity: 0.4; text-decoration: line-through; }
+.sr-num { font-size: 1.6rem; color: #e8b830; font-weight: 800; min-width: 44px; text-align: right; flex-shrink: 0; padding-right: 4px; }
+.sr-dist { font-size: 1.8rem; font-weight: 800; color: #fff; flex: 1; }
+.sr-laps { font-size: 1.3rem; color: #e8b830; font-weight: 700; }
+.sr-target { font-family: 'SF Mono',monospace; font-size: 1.1rem; color: #2ecc71; font-weight: 700; }
+
+/* Clocks area */
+.clocks-area {
+  flex: 1; display: flex; flex-direction: row; overflow: hidden; min-height: 0;
+}
+.clock-col {
+  flex: 1; display: flex; flex-direction: column;
+  border-right: 1px solid #1a0808; overflow: hidden; min-width: 0;
+}
+.clock-col:last-child { border-right: none; }
+
+.tier-hdr { padding: 10px 8px 8px; text-align: center; flex-shrink: 0; }
+.tier-name { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.03em; }
+.tier-names { font-size: 0.65rem; color: rgba(255,255,255,0.65); margin-top: 3px; line-height: 1.4; }
+.t1 .tier-hdr { background: #163d28; }
+.t2 .tier-hdr { background: #112850; }
+.t3 .tier-hdr { background: #3a0f0f; }
+
+.cbody {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 8px 6px; gap: 4px;
+  transition: background .35s; min-height: 0; overflow: hidden;
+}
+
+/* clock states */
+.cbody.st   { background: #0d0505; }
+.cbody.rd   { background: #0d0505; }
+.cbody.sw0  { background: #120808; }
+.cbody.swg  { background: #041a0a; }
+.cbody.swr  { background: #1a0404; }
+.cbody.rs   { background: #0d0505; }
+.cbody.brk  { background: #141000; }
+.cbody.dn   { background: #0a0404; }
+.cbody.pd   { background: #0d0505; }
+
+.standby-msg {
+  font-size: 1.3rem; font-weight: 800;
+  color: #6a2020; letter-spacing: 0.12em; text-transform: uppercase;
+  text-align: center; line-height: 1.6;
+}
+.standby-msg span { display: block; font-size: 0.65rem; color: #7a3030; font-weight: 400; margin-top: 3px; letter-spacing: 0.05em; }
+
+.c-rep-lbl { font-size: 0.55rem; color: #a06060; text-transform: uppercase; letter-spacing: 0.1em; }
+.c-rep-num { color: #c0392b; font-weight: 700; }
+
+.c-dist {
+  font-size: 2.4rem; font-weight: 900; color: #fff;
+  line-height: 1; text-align: center; letter-spacing: -0.02em;
+}
+.c-zone { font-size: 0.58rem; color: #a06060; text-align: center; }
+
+.c-time {
+  font-family: 'SF Mono', 'Courier New', monospace;
+  font-size: 5.5rem; font-weight: 700;
+  letter-spacing: -0.02em; line-height: 1;
+  color: #aabbcc; font-variant-numeric: tabular-nums;
+}
+.c-time.tg { color: #2ecc71; }
+.c-time.tr { color: #e74c3c; }
+.c-time.tb { color: #c0392b; }
+.c-time.ty { color: #e8c000; }
+.c-time.tw { color: #ccd; }
+
+.c-badge {
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; padding: 3px 10px; border-radius: 20px;
+  background: rgba(255,255,255,0.08); color: #c08080;
+}
+.c-badge.bg { background: #196f3d; color: #fff; }
+.c-badge.br { background: #8b1212; color: #faa; }
+.c-badge.bb { background: #3a0a0a; color: #c0392b; }
+.c-badge.by { background: #2c2000; color: #e8c000; }
+
+
+.c-target {
+  font-family: 'SF Mono', monospace;
+  font-size: 0.65rem; color: #8a3030; text-align: center;
+}
+.c-target b { color: #2ecc71; font-size: 1.6rem; font-weight: 800; letter-spacing: -0.01em; display: block; line-height: 1.1; margin-top: 1px; }
+.c-target b.red { color: #e74c3c; font-size: 1.6rem; font-weight: 800; letter-spacing: -0.01em; display: block; line-height: 1.1; }
+
+.c-dots { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; max-width: 90%; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: #2a0a0a; }
+.dot.dd { background: #196f3d; }
+.dot.dc { background: #fff; box-shadow: 0 0 5px rgba(255,255,255,.5); }
+.dot.dm { background: #8b1212; }
+
+.c-laps { font-size: 1rem; font-weight: 800; color: #e8b830; text-align: center; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 2px; }
+.c-next { font-size: 0.62rem; color: #8a3030; text-align: center; }
+.c-next b { color: #ccd; }
+.c-next-lbl { font-size: 0.5rem; color: #8a3030; text-transform: uppercase; letter-spacing: 0.14em; text-align: center; margin-top: 4px; }
+.c-next-dist { font-size: 2rem; font-weight: 900; color: #fff; line-height: 1; text-align: center; letter-spacing: -0.02em; }
+.c-next-target { font-family: 'SF Mono', monospace; font-size: 0.72rem; color: #8a3030; text-align: center; margin-top: 1px; }
+.c-next-target b { color: #2ecc71; font-weight: 700; }
+
+.go-banner {
+  font-size: 1.3rem; font-weight: 900; color: #2ecc71;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  animation: pulse .75s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* Bottom controls */
+.bottom-bar {
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px; padding: 8px 12px; flex-shrink: 0;
+  background: #0a0404; border-top: 2px solid #1a0808;
+}
+.btn {
+  padding: 9px 20px; border: none; border-radius: 8px;
+  font-size: 0.85rem; font-weight: 700; cursor: pointer;
+  letter-spacing: 0.04em; transition: transform .1s, filter .15s;
+  white-space: nowrap;
+}
+.btn:hover { filter: brightness(1.12); }
+.btn:active { transform: scale(0.95); }
+.btn:disabled { opacity: 0.3; cursor: default; }
+.btn-green  { background: #196f3d; color: #fff; }
+.btn-orange { background: #b36200; color: #fff; }
+.btn-red    { background: #8b1212; color: #fff; }
+.btn-blue   { background: #134070; color: #9cc; }
+.btn-gray   { background: #180a0a; color: #7a3030; border: 1px solid #2e1010; }
+.btn-yellow { background: #3a2c00; color: #e8c000; border: 1px solid #5a4400; }
+
+.back-link {
+  font-size: 0.6rem; color: #8a3030; cursor: pointer; padding: 4px 8px;
+}
+.back-link:hover { color: #c0392b; }
+
+/* paused overlay badge */
+.paused-tag {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: #b36200;
+  padding: 2px 8px; border: 1px solid #3a2600; border-radius: 4px;
+}
+
+/* Per-tier controls */
+.tier-btns {
+  display: flex; gap: 5px; justify-content: center; align-items: center;
+  padding: 4px 8px; flex-shrink: 0;
+  border-bottom: 1px solid #1a0808;
+  min-height: 28px;
+}
+.tier-btn {
+  padding: 3px 10px; border: none; border-radius: 4px;
+  font-size: 0.62rem; font-weight: 700; cursor: pointer;
+  letter-spacing: 0.05em; transition: filter .12s;
+  white-space: nowrap;
+}
+.tier-btn:hover { filter: brightness(1.2); }
+.tier-btn.tb-pause  { background: #3a1200; color: #e8b830; border: 1px solid #5a2800; }
+.tier-btn.tb-resume { background: #196f3d; color: #fff; }
+.tier-btn.tb-reset  { background: #180a0a; color: #8a3030; border: 1px solid #2e1010; }
+
+/* section-advancing flash */
+@keyframes sectionFlash { 0%{opacity:1} 50%{opacity:.5} 100%{opacity:1} }
+.section-flash { animation: sectionFlash .4s ease 2; }
+</style>
+</head>
+<body>
+
+<!-- ═══ SETUP VIEW ═══ -->
+<div id="setupView" class="active">
+  <div class="setup-hdr">
+    <h1>Stanford Swim</h1>
+    <div class="sub">Paste your swim set — warm-up, main, pull, cool-down. All parsed automatically.</div>
+  </div>
+
+  <div class="card">
+    <label class="card-lbl" for="setInput">Swim Set</label>
+    <div class="card-body">
+      <textarea id="setInput" placeholder="WARM-UP&#10;108m free (3 laps)&#10;72m kick (2 laps)&#10;108m choice&#10;4x36 build to Z3, :10 rest&#10;&#10;MAIN SET — Zone 3&#10;:20 rest between reps&#10;108-72-36-72-108-72-36-72-108&#10;&#10;PULL SET — Zone 2&#10;paddles + pull buoy, :20 rest&#10;4x216&#10;&#10;COOL-DOWN&#10;108m back&#10;108m easy free"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <label class="card-lbl">Tier Names</label>
+    <div class="card-body" style="padding-top:10px">
+      <div class="tier-row">
+        <div class="tdot t1"></div>
+        <label>Tier 1 — Green</label>
+        <input id="t1names" value="Ohl* · Krilanovich · West · Oerlemans · De Vecchis · Mathiopoulos">
+      </div>
+      <div class="tier-row">
+        <div class="tdot t2"></div>
+        <label>Tier 2 — Blue</label>
+        <input id="t2names" value="Leonardi · Balogh · Forer · Schneider">
+      </div>
+      <div class="tier-row">
+        <div class="tdot t3"></div>
+        <label>Tier 3 — Red</label>
+        <input id="t3names" value="Caras · Arakelian · Mnatsakanian · Zervoudakis">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label class="card-lbl">Number of Tiers</label>
+    <div class="card-body" style="padding-top:10px">
+      <div class="tier-row">
+        <div class="tc-btns">
+          <button class="tc-btn" id="tc1" onclick="setTierCount(1)">1</button>
+          <button class="tc-btn" id="tc2" onclick="setTierCount(2)">2</button>
+          <button class="tc-btn active" id="tc3" onclick="setTierCount(3)">3</button>
+        </div>
+        <span style="font-size:0.68rem;color:#446;margin-left:10px">Unused tier columns are hidden in the clock view</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label class="card-lbl">Pool Length</label>
+    <div class="card-body" style="padding-top:10px">
+      <div class="tier-row">
+        <label style="width:auto">Pool length</label>
+        <input class="css-inp" id="poolLen" type="number" min="20" max="50" step="1" value="36">
+        <span class="css-unit">meters per lap</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label class="card-lbl">CSS / FTP (sec per 100m) — adjusts all interval targets</label>
+    <div class="card-body" style="padding-top:10px">
+      <div class="tier-row">
+        <div class="tdot t1"></div>
+        <label>Tier 1 CSS</label>
+        <input class="css-inp" id="css0" type="number" min="40" max="120" step="0.5" value="66">
+        <span class="css-unit">sec / 100m</span>
+      </div>
+      <div class="tier-row">
+        <div class="tdot t2"></div>
+        <label>Tier 2 CSS</label>
+        <input class="css-inp" id="css1" type="number" min="40" max="120" step="0.5" value="68">
+        <span class="css-unit">sec / 100m</span>
+      </div>
+      <div class="tier-row">
+        <div class="tdot t3"></div>
+        <label>Tier 3 CSS</label>
+        <input class="css-inp" id="css2" type="number" min="40" max="120" step="0.5" value="71">
+        <span class="css-unit">sec / 100m</span>
+      </div>
+    </div>
+  </div>
+
+  <button class="launch-btn" onclick="launch()">▶ Launch Clocks</button>
+  <div class="example-link" onclick="loadExample()">Load today's set as example</div>
+</div>
+
+<!-- ═══ CLOCK VIEW ═══ -->
+<div id="clockView">
+  <div class="top-bar" id="topBar"></div>
+  <div class="hero" id="hero"></div>
+  <div class="clocks-area">
+    <div class="clock-col t1">
+      <div class="tier-hdr">
+        <div class="tier-name" id="tn0">1</div>
+        <div class="tier-names" id="tns0"></div>
+      </div>
+      <div class="tier-btns" id="tb0"></div>
+      <div class="cbody st" id="cb0"><div class="standby-msg">READY<span>press launch</span></div></div>
+    </div>
+    <div class="clock-col t2">
+      <div class="tier-hdr">
+        <div class="tier-name" id="tn1">2</div>
+        <div class="tier-names" id="tns1"></div>
+      </div>
+      <div class="tier-btns" id="tb1"></div>
+      <div class="cbody st" id="cb1"><div class="standby-msg">READY<span>press launch</span></div></div>
+    </div>
+    <div class="clock-col t3">
+      <div class="tier-hdr">
+        <div class="tier-name" id="tn2">3</div>
+        <div class="tier-names" id="tns2"></div>
+      </div>
+      <div class="tier-btns" id="tb2"></div>
+      <div class="cbody st" id="cb2"><div class="standby-msg">READY<span>press launch</span></div></div>
+    </div>
+  </div>
+  <div class="bottom-bar" id="bottomBar"></div>
+</div>
+
+<!-- Range edit popup -->
+<div id="rangePopup">
+  <h4>Edit Target Range</h4>
+  <div class="rp-row"><label>From</label><input class="rp-inp" id="rpLo" placeholder="1:11"></div>
+  <div class="rp-row"><label>To</label><input class="rp-inp" id="rpHi" placeholder="1:19"></div>
+  <div class="rp-btns">
+    <button class="rp-save" onclick="saveRange()">✓ Save</button>
+    <button class="rp-reset" onclick="resetRange()">Reset</button>
+    <button class="rp-cancel" onclick="closeRangePopup()">✕</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── Audio ────────────────────────────────────────────────────────────────────
+var _audioCtx = null;
+function getAudio() {
+  try {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (_audioCtx.state === 'suspended') _audioCtx.resume();
+    return _audioCtx;
+  } catch(e) { return null; }
+}
+function _whistleBlast(startT, dur, ctx) {
+  // Filtered noise + sine = realistic pea whistle timbre
+  var bufLen = Math.ceil(ctx.sampleRate * (dur + 0.15));
+  var noiseBuf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+  var nd = noiseBuf.getChannelData(0);
+  for (var i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+
+  var noise = ctx.createBufferSource();
+  noise.buffer = noiseBuf;
+
+  // Narrow bandpass around whistle freq — gives "hissy air" quality
+  var bpf = ctx.createBiquadFilter();
+  bpf.type = 'bandpass';
+  bpf.frequency.value = 2450;
+  bpf.Q.value = 22;
+
+  // Sine tone underneath for pitch clarity
+  var osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.value = 2450;
+
+  // Pea flutter: ~28 Hz tremolo
+  var lfo = ctx.createOscillator();
+  lfo.type = 'sine';
+  lfo.frequency.value = 28;
+  var lfoDepth = ctx.createGain();
+  lfoDepth.gain.value = 0.12;
+
+  var noiseGain = ctx.createGain();
+  noiseGain.gain.value = 0.55;
+  var oscGain = ctx.createGain();
+  oscGain.gain.value = 0.38;
+  var env = ctx.createGain();
+
+  noise.connect(bpf); bpf.connect(noiseGain); noiseGain.connect(env);
+  osc.connect(oscGain); oscGain.connect(env);
+  env.connect(ctx.destination);
+  lfo.connect(lfoDepth); lfoDepth.connect(env.gain);
+
+  var end = startT + dur;
+  env.gain.setValueAtTime(0, startT);
+  env.gain.linearRampToValueAtTime(0.75, startT + 0.022);
+  env.gain.setValueAtTime(0.75, end - 0.07);
+  env.gain.linearRampToValueAtTime(0, end + 0.02);
+
+  lfo.start(startT);   lfo.stop(end + 0.05);
+  osc.start(startT);   osc.stop(end + 0.05);
+  noise.start(startT); noise.stop(end + 0.05);
+}
+// Per-tier GO whistle: ti=0 short, ti=1 medium, ti=2 long
+var _GO_DURS = [0.30, 0.60, 0.95];
+function beepGo(ti) {
+  var ctx = getAudio(); if (!ctx) return;
+  var dur = (ti !== undefined) ? _GO_DURS[ti] : 0.60;
+  _whistleBlast(ctx.currentTime, dur, ctx);
+}
+// Two short blasts for section transition
+function beepSection() {
+  var ctx = getAudio(); if (!ctx) return;
+  var t = ctx.currentTime;
+  _whistleBlast(t,        0.42, ctx);
+  _whistleBlast(t + 0.58, 0.42, ctx);
+}
+
+// ── Pace table (base CSS: T1=66, T2=68, T3=71 sec/100m) ────────────────────
+var BASE_CSS = [66, 68, 71];
+var USER_CSS = [66, 68, 71];
+var EXT = 3; // extend green window upper end by this many seconds
+var POOL_LEN = 36; // pool length in meters (used to calculate laps)
+var rangeOverrides = {}; // key: "ti:zKey:dist" → [lo, hi] in seconds
+
+var RAW = {
+  tier1: {
+    z2:{ 25:[15,16], 36:[23,24], 50:[32,34], 72:[51,52], 75:[53,55], 100:[70,73], 108:[77,80], 144:[104,107], 150:[108,112], 180:[132,136], 200:[146,151], 216:[159,164], 250:[185,191], 252:[188,194], 288:[217,223], 300:[226,233], 324:[246,254], 360:[276,285], 400:[307,317], 432:[338,348], 500:[423,436], 540:[425,438] },
+    z3:{ 25:[14,15], 36:[21,22], 50:[29,31], 72:[46,48], 75:[48,50], 100:[64,67], 108:[71,73], 144:[96,99], 150:[100,103], 180:[121,125], 200:[134,138], 216:[147,152], 250:[171,176], 252:[174,179], 288:[201,207], 300:[209,216], 324:[228,235], 360:[256,264], 400:[284,293], 432:[314,323], 500:[390,402], 540:[395,407] },
+    z4:{ 25:[13,14], 36:[20,20], 50:[27,29], 72:[44,45], 75:[46,47], 100:[61,63], 108:[67,69], 144:[91,94], 150:[95,98], 180:[115,118], 200:[127,131], 216:[139,144], 250:[163,168], 252:[164,169], 288:[190,196], 300:[198,204], 324:[216,223], 360:[243,250], 400:[270,278], 432:[296,305], 500:[371,382], 540:[371,383] },
+    z5:{ 25:[12,13], 36:[18,19], 50:[25,27], 72:[40,42], 75:[42,44], 100:[56,58], 108:[62,64], 144:[84,86], 150:[88,90], 180:[106,109], 200:[117,121], 216:[129,133], 250:[150,155], 252:[152,157], 288:[175,181], 300:[183,189], 324:[199,205], 360:[223,230], 400:[248,256], 432:[272,280], 500:[341,352], 540:[341,352] },
+  },
+  tier2: {
+    z2:{ 25:[16,17], 36:[24,24], 50:[33,35], 72:[52,54], 75:[54,56], 100:[72,75], 108:[80,83], 144:[108,111], 150:[112,116], 180:[136,141], 200:[151,156], 216:[165,170], 250:[192,198], 252:[195,201], 288:[225,232], 300:[234,241], 324:[255,263], 360:[287,295], 400:[319,329], 432:[350,361], 500:[439,452], 540:[441,454] },
+    z3:{ 25:[15,15], 36:[22,22], 50:[30,32], 72:[48,49], 75:[50,52], 100:[67,69], 108:[74,76], 144:[100,103], 150:[104,107], 180:[126,130], 200:[139,144], 216:[153,158], 250:[178,184], 252:[180,186], 288:[208,215], 300:[217,224], 324:[237,244], 360:[266,274], 400:[296,305], 432:[325,335], 500:[407,419], 540:[410,422] },
+    z4:{ 25:[14,14], 36:[21,21], 50:[28,30], 72:[45,47], 75:[47,49], 100:[63,65], 108:[70,72], 144:[94,97], 150:[98,101], 180:[119,123], 200:[132,136], 216:[145,149], 250:[168,173], 252:[171,176], 288:[197,203], 300:[205,211], 324:[224,231], 360:[252,259], 400:[280,289], 432:[307,316], 500:[384,395], 540:[385,397] },
+    z5:{ 25:[13,13], 36:[19,20], 50:[26,28], 72:[42,43], 75:[44,45], 100:[58,60], 108:[64,66], 144:[87,89], 150:[91,93], 180:[110,113], 200:[122,126], 216:[133,137], 250:[155,160], 252:[158,162], 288:[182,188], 300:[190,196], 324:[206,213], 360:[231,238], 400:[257,265], 432:[282,290], 500:[353,364], 540:[354,365] },
+  },
+  tier3: {
+    z2:{ 25:[17,17], 36:[25,25], 50:[35,36], 72:[54,56], 75:[56,58], 100:[75,78], 108:[83,86], 144:[112,115], 150:[116,120], 180:[141,146], 200:[157,162], 216:[171,176], 250:[200,206], 252:[202,208], 288:[233,240], 300:[243,250], 324:[265,273], 360:[297,306], 400:[331,341], 432:[363,374], 500:[455,468], 540:[457,471] },
+    z3:{ 25:[15,16], 36:[23,23], 50:[31,33], 72:[50,51], 75:[52,54], 100:[69,72], 108:[77,79], 144:[103,106], 150:[108,111], 180:[131,135], 200:[145,150], 216:[158,163], 250:[185,190], 252:[187,192], 288:[216,222], 300:[225,232], 324:[245,252], 360:[275,283], 400:[306,315], 432:[337,347], 500:[422,434], 540:[424,437] },
+    z4:{ 25:[14,15], 36:[21,22], 50:[30,31], 72:[47,49], 75:[49,51], 100:[66,68], 108:[72,75], 144:[98,101], 150:[102,105], 180:[123,127], 200:[137,141], 216:[150,154], 250:[175,180], 252:[177,182], 288:[204,210], 300:[213,219], 324:[232,239], 360:[261,268], 400:[290,299], 432:[318,327], 500:[398,410], 540:[399,411] },
+    z5:{ 25:[13,14], 36:[20,20], 50:[27,29], 72:[43,45], 75:[45,47], 100:[61,63], 108:[67,69], 144:[90,93], 150:[94,97], 180:[114,117], 200:[126,130], 216:[138,142], 250:[161,166], 252:[163,168], 288:[188,194], 300:[196,202], 324:[213,220], 360:[239,246], 400:[266,274], 432:[292,301], 500:[366,377], 540:[367,378] },
+  },
+};
+var TKEYS = ['tier1','tier2','tier3'];
+var TIER_COUNT = 3; // how many columns to show
+
+function setTierCount(n) {
+  TIER_COUNT = n;
+  [1,2,3].forEach(function(i){
+    document.getElementById('tc'+i).classList.toggle('active', i===n);
+  });
+}
+
+// ── Range popup ──────────────────────────────────────────────────────────────
+var _rpState = null; // {ti, zKey, dist}
+
+function openRangePopup(ti, zKey, dist, anchorEl) {
+  _rpState = {ti:ti, zKey:zKey, dist:dist};
+  var pace = getPace(ti, zKey, dist);
+  document.getElementById('rpLo').value = fmtS(pace[0]);
+  document.getElementById('rpHi').value = fmtS(pace[1]);
+  var popup = document.getElementById('rangePopup');
+  popup.classList.add('open');
+  // Position near anchor or center of screen
+  var rect = anchorEl ? anchorEl.getBoundingClientRect() : null;
+  if (rect) {
+    popup.style.top  = Math.min(rect.bottom + 8, window.innerHeight - 160) + 'px';
+    popup.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - 220)) + 'px';
+  } else {
+    popup.style.top  = '50%'; popup.style.left = '50%';
+    popup.style.transform = 'translate(-50%,-50%)';
+  }
+}
+
+function parseTimeInput(val) {
+  val = val.trim();
+  var m = val.match(/^(\d+):(\d{2})$/);
+  if (m) return parseInt(m[1])*60 + parseInt(m[2]);
+  m = val.match(/^(\d+)\.(\d+)$/);
+  if (m) return parseFloat(val);
+  return parseFloat(val) || null;
+}
+
+function saveRange() {
+  if (!_rpState) return;
+  var lo = parseTimeInput(document.getElementById('rpLo').value);
+  var hi = parseTimeInput(document.getElementById('rpHi').value);
+  if (!lo || !hi || lo >= hi) { alert('Invalid times — enter as M:SS (e.g. 1:11)'); return; }
+  var key = _rpState.ti + ':' + _rpState.zKey + ':' + _rpState.dist;
+  rangeOverrides[key] = [lo, hi];
+  closeRangePopup();
+  renderClocks();
+}
+
+function resetRange() {
+  if (!_rpState) return;
+  var key = _rpState.ti + ':' + _rpState.zKey + ':' + _rpState.dist;
+  delete rangeOverrides[key];
+  // Refresh inputs to show default
+  var pace = getPace(_rpState.ti, _rpState.zKey, _rpState.dist);
+  document.getElementById('rpLo').value = fmtS(pace[0]);
+  document.getElementById('rpHi').value = fmtS(pace[1]);
+}
+
+function closeRangePopup() {
+  document.getElementById('rangePopup').classList.remove('open');
+  _rpState = null;
+}
+
+// Close popup when clicking outside
+document.addEventListener('click', function(e){
+  var popup = document.getElementById('rangePopup');
+  if (popup.classList.contains('open') && !popup.contains(e.target) && !e.target.classList.contains('edit-range-btn')) {
+    closeRangePopup();
+  }
+});
+
+function getPace(ti, zKey, dist) {
+  // Check manual overrides first
+  var oKey = ti + ':' + zKey + ':' + dist;
+  if (rangeOverrides[oKey]) return rangeOverrides[oKey].slice();
+
+  var tbl = RAW[TKEYS[ti]][zKey] || {};
+  var scale = USER_CSS[ti] / BASE_CSS[ti];
+  var lo, hi;
+  if (tbl[dist]) {
+    lo = tbl[dist][0]; hi = tbl[dist][1] + EXT;
+  } else {
+    // linear interpolation between nearest distances
+    var keys = Object.keys(tbl).map(Number).sort(function(a,b){return a-b;});
+    if (!keys.length) return [30,45];
+    if (dist <= keys[0]) {
+      var r0 = dist/keys[0];
+      lo = tbl[keys[0]][0]*r0; hi = (tbl[keys[0]][1]+EXT)*r0;
+    } else if (dist >= keys[keys.length-1]) {
+      var rN = dist/keys[keys.length-1];
+      lo = tbl[keys[keys.length-1]][0]*rN; hi = (tbl[keys[keys.length-1]][1]+EXT)*rN;
+    } else {
+      for (var i=0;i<keys.length-1;i++) {
+        if (dist>=keys[i]&&dist<=keys[i+1]) {
+          var f=(dist-keys[i])/(keys[i+1]-keys[i]);
+          lo=tbl[keys[i]][0]+f*(tbl[keys[i+1]][0]-tbl[keys[i]][0]);
+          hi=tbl[keys[i]][1]+f*(tbl[keys[i+1]][1]-tbl[keys[i]][1])+EXT;
+          break;
+        }
+      }
+    }
+  }
+  return [Math.round(lo*scale), Math.round(hi*scale)];
+}
+
+// ── Parser ──────────────────────────────────────────────────────────────────
+function cleanLine(l) {
+  return l
+    .replace(/\*\([^)]*\)\*/g, '')      // strip *(italic notes)* before star removal
+    .replace(/\*\*/g, '')               // strip **bold**
+    .replace(/\*/g, '')                 // strip *italic*
+    .replace(/[^\x20-\x7E]/g, ' ')     // strip non-ASCII (em-dash, emoji, arrows)
+    .replace(/\/\s*\d+\s*laps?/gi, '') // strip "/ 6 laps" lap notations
+    .replace(/^\s*[-—·•>]+\s*/, '')    // strip leading bullets / dashes
+    .replace(/\s{2,}/g, ' ')           // collapse multiple spaces
+    .trim();
+}
+
+function detectZone(line, def) {
+  // Handles: "@ Zone 4", "@Z4", "Zone 4", "z4", "Z4"
+  var m = line.match(/@\s*[Zz]one\s*(\d)/)
+           || line.match(/@\s*[Zz](\d)\b/)
+           || line.match(/[Zz]one\s*(\d)/)
+           || line.match(/\b[Zz](\d)\b/);
+  return m ? 'z' + m[1] : def;
+}
+
+function parseSet(text) {
+  var lines = text.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  var secs = [], cur = null;
+
+  // Process a line of content (reps / items / rest) into current section.
+  // Auto-splits into a new timed section when a zone change is detected.
+  function processContent(line) {
+    if (!line) return;
+    if (!cur) { cur = mkUntimed('warmup','Warm-up','','Warm-up','badge-warmup'); secs.push(cur); }
+
+    // Rest between reps (e.g. ":45 rest", ":20r")
+    var rm = line.match(/:(\d+)\s*r(?:est)?/i);
+
+    // Zone detection for auto-splitting timed sections
+    if (cur.timed) {
+      var lineZone = detectZone(line, null);
+      if (lineZone && lineZone !== cur.zKey) {
+        // Zone changed — start a new timed sub-section
+        var zNum = lineZone.slice(1);
+        var newRest = rm ? parseInt(rm[1]) : cur.restBetween;
+        cur = mkTimed('main', 'Main Set — Zone ' + zNum, '', lineZone, newRest, cur.restAfterSec, cur.restAfterLabel);
+        secs.push(cur);
+        rm = null; // already consumed into new section
+      }
+    }
+
+    // Between-rounds rest: ":30 between rounds"
+    var btw = line.match(/:(\d+)\s*between\s*rounds?/i);
+    if (btw && cur && cur.timed) { cur.roundBreakRest = parseInt(btw[1]); return; }
+
+    // Apply rest to current section
+    if (rm && cur.timed) { cur.restBetween = parseInt(rm[1]); }
+    var rm2 = line.match(/(\d+):(\d+)\s*rest/i);
+    if (rm2 && cur.timed) { cur.restAfterSec = parseInt(rm2[1])*60+parseInt(rm2[2]); cur.restAfterLabel=rm2[1]+':'+rm2[2]; }
+
+    // Equipment
+    if (line.match(/paddle|buoy|fins|snorkel|band/i) && cur.timed) {
+      cur.equipment = line.replace(/,?\s*:?\d+\s*r(?:est)?.*$/i,'').replace(/@.*$/i,'').trim();
+      if (!line.match(/\d+\s*[xX×]\s*\d+/) && !line.match(/^\d+/)) return;
+    }
+
+    // Dash-list: 108-72-36-72-108
+    var dm = line.match(/^(\d+(?:-\d+)+)/);
+    if (dm && cur.timed) {
+      dm[1].split('-').forEach(function(d){ var n=parseInt(d); if(n>=10) cur.reps.push({dist:n,laps:Math.max(1,Math.round(n/POOL_LEN))}); });
+      return;
+    }
+
+    // NxDist: "4x80", "3 x 100", "4×216"
+    var xm = line.match(/(\d+)\s*[xX×]\s*(\d+)/);
+    if (xm && cur.timed) {
+      var cnt=parseInt(xm[1]), d2=parseInt(xm[2]);
+      for (var j=0;j<cnt;j++) cur.reps.push({dist:d2, laps:Math.max(1,Math.round(d2/POOL_LEN))});
+      return;
+    }
+
+    // Single distance: "108m (3 laps) free", "100 back"
+    var sm = line.match(/^(\d+)/);
+    if (sm && parseInt(sm[1]) >= 10) {
+      var ds = parseInt(sm[1]);
+      if (cur.timed) cur.reps.push({dist:ds, laps:Math.max(1,Math.round(ds/POOL_LEN))});
+      else cur.items.push(line);
+      return;
+    }
+
+    // Anything else goes to items for untimed sections
+    if (!cur.timed && line.length > 1) cur.items.push(line);
+  }
+
+  for (var i = 0; i < lines.length; i++) {
+    var raw = lines[i], line = cleanLine(raw), up = line.toUpperCase();
+    if (!line) continue;
+
+    // ── Standalone "Rest: time" lines between sections ───────────────────────
+    // e.g. "**Rest:** 1:00" or "Rest: :30"
+    var restLine = line.match(/^rest\s*:?\s+(\d+):(\d{2})/i) || line.match(/^rest\s*:?\s+:(\d+)/i);
+    if (restLine) {
+      if (cur) {
+        var rSec = restLine[2] !== undefined
+          ? parseInt(restLine[1])*60 + parseInt(restLine[2])
+          : parseInt(restLine[1]);
+        cur.restAfterSec = rSec;
+      }
+      continue;
+    }
+
+    // ── WARM-UP header ──────────────────────────────────────────────────────
+    if (up.match(/\bWARM.?UP\b|^WU\b/)) {
+      cur = mkUntimed('warmup','Warm-up','','Warm-up','badge-warmup');
+      secs.push(cur);
+      // Handle same-line items: "Warm-up: 100 free, 100 back"
+      var afterWU = line.replace(/warm.?up\s*:?\s*/i,'').trim();
+      if (afterWU) afterWU.split(',').forEach(function(it){ var t=it.trim(); if(t) cur.items.push(t); });
+      continue;
+    }
+
+    // ── "Main:" label prefix — treat as rep line, NOT a new section ─────────
+    // e.g. "Main: 4x80 @ Zone 4" or "Main: 3x100"
+    var isMainLabel = /^main\s*:/i.test(line) && /\d/.test(line);
+    if (isMainLabel) {
+      var repPart = line.replace(/^main\s*:\s*/i,'').trim();
+      // If no timed section exists yet, create a default main section
+      if (!cur || !cur.timed) {
+        var zl = detectZone(repPart, 'z3');
+        cur = mkTimed('main','Main Set — Zone '+zl.slice(1),'',zl,20,90,'1:30');
+        secs.push(cur);
+      }
+      processContent(repPart);
+      continue;
+    }
+
+    // ── MAIN SET section header ──────────────────────────────────────────────
+    // "MAIN SET", "MAIN LADDER", or transition lines containing "MAIN SET"
+    // but NOT "Main: Nx..." (handled above)
+    var isMainHeader = up.match(/MAIN\s+SET|MAIN\s+LADDER/)
+      || (up.indexOf('MAIN') >= 0 && up.match(/ZONE|LADDER/) && !isMainLabel)
+      || (up.indexOf('MAIN') >= 0 && up.match(/\bZ[2-5]\b/) && !isMainLabel);
+    if (isMainHeader) {
+      var z = detectZone(line,'z3');
+      var rndM = line.match(/\((\d+)\s*rounds?\)/i);
+      var rndN = rndM ? parseInt(rndM[1]) : 1;
+      var mainTitle = 'Main Set'+(rndN>1?' ×'+rndN:'')+' — Zone '+z.slice(1);
+      cur = mkTimed('main',mainTitle,'',z,20,90,'1:30');
+      cur.rounds = rndN;
+      secs.push(cur);
+      continue;
+    }
+
+    // ── PULL SET header ──────────────────────────────────────────────────────
+    if (up.indexOf('PULL') >= 0 && !up.match(/^\d/)) {
+      var zp = detectZone(line,'z2');
+      cur = mkTimed('pull','Pull Set — Zone '+zp.slice(1),'paddles + pull buoy',zp,20,30,':30');
+      cur.equipment = 'paddles + pull buoy';
+      secs.push(cur);
+      continue;
+    }
+
+    // ── COOL-DOWN header ─────────────────────────────────────────────────────
+    if (up.match(/\bCOOL.?DOWN\b|^CD\b/)) {
+      cur = mkUntimed('cooldown','Cool-down','','Cool-down','badge-cooldown');
+      secs.push(cur);
+      continue;
+    }
+
+    // ── Content line (reps, items, rest info) ─────────────────────────────────
+    processContent(line);
+  }
+
+  // Expand rounds: multiply reps by round count, mark round breaks
+  secs.forEach(function(s) {
+    if (!s.timed || s.rounds <= 1 || !s.reps.length) return;
+    var base = s.reps.slice();
+    var allReps = [];
+    for (var r = 0; r < s.rounds; r++) {
+      for (var k = 0; k < base.length; k++) {
+        allReps.push({
+          dist: base[k].dist,
+          laps: base[k].laps,
+          roundEnd: (k === base.length-1 && r < s.rounds-1)
+        });
+      }
+    }
+    s.reps = allReps;
+  });
+
+  // Remove timed sections that ended up with no reps (phantom sections)
+  secs = secs.filter(function(s){ return !s.timed || s.reps.length > 0; });
+  return secs.length ? secs : [mkTimed('main','Main Set','','z3',20,0,'')];
+}
+function mkUntimed(id,title,sub,badge,badgeCls) {
+  return {id:id,timed:false,title:title,sub:sub,badge:badge,badgeCls:badgeCls,items:[]};
+}
+function mkTimed(id,title,sub,zKey,restBetween,restAfterSec,restAfterLabel) {
+  return {id:id,timed:true,title:title,sub:sub,badge:'Zone '+zKey.slice(1),
+    badgeCls:'badge-z'+zKey.slice(1),zKey:zKey,
+    restBetween:restBetween,restAfterSec:restAfterSec,restAfterLabel:restAfterLabel,
+    rounds:1,roundBreakRest:0,reps:[]};
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+var SECS = [];
+var secIdx = 0;
+var TS = [0,1,2].map(function(){
+  return {ri:0,phase:'ready',elapsed:0,restDur:0,swimRes:null,results:[]};
+});
+var running = false, paused = false, lastTs = null, raf = null;
+var GRACE = 0; // ms after hi before auto-advance (0 = immediate)
+
+function mkState(si) { return {si:si||0,ri:0,phase:'ready',elapsed:0,restDur:0,swimRes:null,results:[],paused:false}; }
+
+// ── Launch ───────────────────────────────────────────────────────────────────
+function launch() {
+  var txt = document.getElementById('setInput').value.trim();
+  if (!txt) { alert('Paste a swim set first!'); return; }
+
+  USER_CSS[0] = parseFloat(document.getElementById('css0').value)||66;
+  USER_CSS[1] = parseFloat(document.getElementById('css1').value)||68;
+  USER_CSS[2] = parseFloat(document.getElementById('css2').value)||71;
+  POOL_LEN = parseFloat(document.getElementById('poolLen').value)||36;
+
+  SECS = parseSet(txt);
+  secIdx = 0;
+
+  document.getElementById('tn0').textContent = '1';
+  document.getElementById('tn1').textContent = '2';
+  document.getElementById('tn2').textContent = '3';
+  document.getElementById('tns0').textContent = document.getElementById('t1names').value;
+  document.getElementById('tns1').textContent = document.getElementById('t2names').value;
+  document.getElementById('tns2').textContent = document.getElementById('t3names').value;
+
+  rangeOverrides = {};
+
+  document.getElementById('setupView').classList.remove('active');
+  document.getElementById('clockView').classList.add('active');
+
+  // Apply tier count — hide unused clock columns
+  document.querySelectorAll('.clock-col').forEach(function(col, i){
+    col.style.display = i < TIER_COUNT ? '' : 'none';
+  });
+
+  TS = [mkState(secIdx),mkState(secIdx),mkState(secIdx)];
+  running = false; paused = false;
+  renderAll();
+}
+
+function goBack() {
+  stopLoop();
+  document.getElementById('clockView').classList.remove('active');
+  document.getElementById('setupView').classList.add('active');
+}
+
+function loadExample() {
+  document.getElementById('setInput').value =
+"WARM-UP\n108m free (3 laps)\n72m kick (2 laps)\n108m choice\n4x36 build to Z3, :10 rest\n\nMAIN SET — Zone 3\n:20 rest between reps\n108-72-36-72-108-72-36-72-108\n\nPULL SET — Zone 2\npaddles + pull buoy, :20 rest\n4x216\n\nCOOL-DOWN\n108m back\n108m easy free";
+}
+
+// ── Timer control ─────────────────────────────────────────────────────────────
+function startTimers() {
+  if (running) return;
+  running = true; paused = false;
+  TS.forEach(function(s){ if (s.phase==='ready') { s.phase='countdown'; s.elapsed=0; s.countdownDur=10000; } });
+  lastTs = null;
+  raf = requestAnimationFrame(loop);
+  renderAll();
+}
+
+function pauseTimers() {
+  if (!running) return;
+  running = false; paused = true;
+  TS.forEach(function(s){ s.paused = true; });
+  stopLoop();
+  renderAll();
+}
+
+function resumeTimers() {
+  if (running) return;
+  running = true; paused = false;
+  TS.forEach(function(s){ s.paused = false; });
+  lastTs = null;
+  raf = requestAnimationFrame(loop);
+  renderAll();
+}
+
+function resetTimers() {
+  stopLoop();
+  TS = [mkState(secIdx),mkState(secIdx),mkState(secIdx)];
+  running = false; paused = false;
+  renderAll();
+}
+
+// ── Per-tier controls ────────────────────────────────────────────────────────
+function pauseTier(ti) {
+  TS[ti].paused = true;
+  // If all active tiers are now paused or done, stop the RAF to save resources
+  var anyActive = TS.some(function(s,i){ return i<TIER_COUNT && !s.paused && s.phase!=='done' && s.phase!=='ready'; });
+  if (!anyActive) { running=false; if(raf){cancelAnimationFrame(raf);raf=null;} }
+  paused = TS.slice(0,TIER_COUNT).every(function(s){ return s.paused || s.phase==='done' || s.phase==='ready'; });
+  renderClocks();
+  renderControls();
+}
+
+function resumeTier(ti) {
+  TS[ti].paused = false;
+  paused = TS.slice(0,TIER_COUNT).every(function(s){ return s.paused || s.phase==='done' || s.phase==='ready'; });
+  if (!running) {
+    running = true; lastTs = null;
+    raf = requestAnimationFrame(loop);
+  }
+  renderClocks();
+  renderControls();
+}
+
+function resetTier(ti) {
+  var curSi = TS[ti].si;
+  TS[ti] = mkState(curSi);
+  // Drop into swim immediately if other tiers are mid-set
+  if (running || TS.some(function(s,i){ return i!==ti && (s.phase==='swim'||s.phase==='rest'); })) {
+    TS[ti].phase = 'swim';
+    if (!running) { running=true; lastTs=null; raf=requestAnimationFrame(loop); }
+  }
+  renderClocks();
+  renderControls();
+  renderHero();
+}
+
+function skipRep() {
+  TS.forEach(function(s){
+    var sec = SECS[s.si];
+    if (!sec||!sec.timed) return;
+    if (s.phase==='swim'||s.phase==='rest') {
+      s.results[s.ri] = 'skip';
+      s.ri++;
+      if (s.ri>=sec.reps.length) {
+        s.phase = sec.restAfterSec>0 ? 'brk' : 'done';
+        s.restDur = sec.restAfterSec*1000;
+        s.elapsed = 0;
+      } else {
+        s.phase='swim'; s.elapsed=0; s.swimRes=null;
+      }
+    }
+  });
+  renderAll();
+}
+
+function goNextSection() {
+  if (secIdx<SECS.length-1) {
+    stopLoop();
+    secIdx++;
+    TS = [mkState(secIdx),mkState(secIdx),mkState(secIdx)];
+    running = false; paused = false;
+    renderAll();
+  }
+}
+
+function jumpSection(si) {
+  if (si===secIdx) return;
+  stopLoop();
+  secIdx=si;
+  TS=[mkState(si),mkState(si),mkState(si)];
+  running=false; paused=false;
+  renderAll();
+}
+
+function stopLoop() {
+  running=false;
+  if (raf) { cancelAnimationFrame(raf); raf=null; }
+}
+
+// ── Loop ─────────────────────────────────────────────────────────────────────
+function loop(ts) {
+  if (!running) return;
+  if (lastTs!==null) {
+    var dt = ts-lastTs;
+    // Each tier steps through its own current section independently
+    TS.forEach(function(s,ti){
+      if (ti>=TIER_COUNT) return;
+      var sec = SECS[s.si];
+      if (sec&&sec.timed) step(s,ti,sec,dt);
+    });
+  }
+  lastTs=ts;
+  // Global secIdx follows Tier 0 for hero/tabs display
+  secIdx = TS[0].si;
+  renderClocks();
+  renderHero();
+  if (TS.slice(0,TIER_COUNT).every(function(s){return s.phase==='done';})) {
+    running=false; renderControls(); return;
+  }
+  raf=requestAnimationFrame(loop);
+}
+
+function beepTick() {
+  var ctx = getAudio(); if (!ctx) return;
+  var t = ctx.currentTime;
+  var osc = ctx.createOscillator();
+  osc.type = 'sine'; osc.frequency.value = 880;
+  var g = ctx.createGain();
+  g.gain.setValueAtTime(0.3, t);
+  g.gain.linearRampToValueAtTime(0, t + 0.08);
+  osc.connect(g); g.connect(ctx.destination);
+  osc.start(t); osc.stop(t + 0.1);
+}
+
+function step(s, ti, sec, dt) {
+  if (s.phase==='done' || s.paused) return;
+  if (s.phase==='countdown') {
+    var prevSec = Math.ceil((s.countdownDur - s.elapsed) / 1000);
+    s.elapsed += dt;
+    var curSec = Math.ceil((s.countdownDur - s.elapsed) / 1000);
+    if (curSec < prevSec && curSec > 0) beepTick();
+    if (s.elapsed >= s.countdownDur) {
+      s.phase = 'swim'; s.elapsed = 0; s.swimRes = null;
+      beepGo(ti);
+    }
+    return;
+  }
+  s.elapsed+=dt;
+  var elS=s.elapsed/1000;
+  var rep=sec.reps[Math.min(s.ri,sec.reps.length-1)];
+  var pace=getPace(ti,sec.zKey,rep.dist);
+  var lo=pace[0],hi=pace[1];
+
+  if (s.phase==='swim') {
+    if (elS>lo && !s.swimRes) s.swimRes='ok';
+    if (elS>hi) s.swimRes='miss';
+    if (elS >= hi+GRACE/1000) {
+      s.results[s.ri]=s.swimRes||'miss';
+      s.ri++;
+      s.elapsed=0; s.swimRes=null;
+      if (s.ri>=sec.reps.length) {
+        s.phase=sec.restAfterSec>0?'brk':'done';
+        s.restDur=sec.restAfterSec*1000;
+      } else {
+        var prevRep=sec.reps[s.ri-1];
+        var restSecs=(prevRep&&prevRep.roundEnd&&sec.roundBreakRest>0)?sec.roundBreakRest:sec.restBetween;
+        s.phase='rest'; s.restDur=restSecs*1000;
+      }
+    }
+  } else if (s.phase==='rest') {
+    if (s.elapsed>=s.restDur) {
+      s.elapsed=0; s.swimRes=null; s.phase='swim';
+      beepGo(ti);
+    }
+  } else if (s.phase==='brk') {
+    if (s.elapsed>=s.restDur) {
+      // Find next timed section for this tier independently
+      var nextSi = s.si+1;
+      while (nextSi<SECS.length && !SECS[nextSi].timed) nextSi++;
+      if (nextSi<SECS.length) {
+        s.si=nextSi; s.ri=0; s.elapsed=0; s.swimRes=null; s.results=[];
+        s.restDur=SECS[nextSi].restBetween*1000;
+        s.phase='swim';
+        beepGo(ti); // whistle when this tier starts the next set
+      } else {
+        s.phase='done';
+      }
+    }
+  }
+}
+
+// ── Render all ────────────────────────────────────────────────────────────────
+function renderAll() { renderTabs(); renderHero(); renderControls(); renderClocks(); }
+
+function renderTabs() {
+  document.getElementById('topBar').innerHTML = SECS.map(function(sec,si){
+    var cls='', st='upcoming';
+    if(si<secIdx){cls='s-done';st='done';}
+    else if(si===secIdx){cls='s-active';st='now';}
+    var short=sec.title.replace(/ [-—].*/,'').replace('Warm-up','WU').replace('Cool-down','CD');
+    return '<div class="sec-tab '+cls+'" onclick="jumpSection('+si+')"><div class="tt">'+short+'</div><div class="ts">'+st+'</div></div>';
+  }).join('');
+}
+
+function renderHero() {
+  var sec=SECS[secIdx]; if(!sec) return;
+  var el=document.getElementById('hero');
+  var sub='';
+  if (sec.timed) {
+    var ri=TS[0].ri, ph=TS[0].phase;
+    var items=sec.reps.map(function(r,i){
+      var label='<small style="display:block;font-size:0.7em;font-weight:700;color:#e8b830;letter-spacing:0.06em">'+r.laps+' laps</small>'+r.dist+'m';
+      var isDone=(i<ri)||(ph==='done'||ph==='brk');
+      var isCur=(i===ri&&ph!=='brk'&&ph!=='done');
+      var cls=isDone?'done':isCur?'cur':'plain';
+      return '<span class="hi '+cls+'">'+label+'</span>';
+    }).join('');
+    var restNote=sec.restBetween?'<span class="hero-rest">:'+pad(sec.restBetween)+' rest</span>':'';
+    var eq=sec.equipment?'<span class="hero-eq">'+sec.equipment+'</span>':'';
+    sub='<div class="hero-items">'+items+restNote+eq+'</div>';
+  } else if (sec.items&&sec.items.length) {
+    sub='<div class="hero-items-wrap">'+sec.items.map(function(it){return '· '+it;}).join('\n')+'</div>';
+  }
+  el.innerHTML='<span class="hero-title">'+sec.title+'</span>'+(sec.equipment?'<span class="hero-eq">'+sec.equipment+'</span>':'')+sub;
+}
+
+function pad(n){return n<10?'0'+n:''+n;}
+
+function renderControls() {
+  var sec=SECS[secIdx]; if(!sec) return;
+  var ctrl=document.getElementById('bottomBar');
+  var isLast=secIdx===SECS.length-1;
+
+  if (!sec.timed) {
+    var nxt=isLast?'Workout Complete':'▶ '+SECS[secIdx+1].title;
+    ctrl.innerHTML='<span class="back-link" onclick="goBack()">◀ Edit Set</span>'+(isLast
+      ?'<button class="btn btn-gray" disabled>Workout Complete</button>'
+      :'<button class="btn btn-green" onclick="goNextSection()">'+nxt+'</button>');
+    return;
+  }
+
+  var allDone=TS.slice(0,TIER_COUNT).every(function(s){return s.phase==='done';});
+  var html='<span class="back-link" onclick="goBack()">◀ Edit Set</span>';
+  if (allDone) {
+    html+='<button class="btn btn-green" onclick="goNextSection()">'+(isLast?'✓ Finish':'▶ '+(SECS[secIdx+1]?SECS[secIdx+1].title:'Next'))+'</button>';
+    html+='<button class="btn btn-gray" onclick="resetTimers()">↺ Reset</button>';
+  } else if (running) {
+    html+='<button class="btn btn-orange" onclick="pauseTimers()">⏸ Pause</button>';
+    html+='<button class="btn btn-yellow" onclick="skipRep()">⏭ Skip Rep</button>';
+    html+='<button class="btn btn-gray" onclick="resetTimers()">↺ Reset</button>';
+  } else if (paused) {
+    html+='<button class="btn btn-green" onclick="resumeTimers()">▶ Resume</button>';
+    html+='<button class="btn btn-yellow" onclick="skipRep()">⏭ Skip Rep</button>';
+    html+='<button class="btn btn-gray" onclick="resetTimers()">↺ Reset</button>';
+  } else {
+    html+='<button class="btn btn-green" onclick="startTimers()">▶ Start</button>';
+    html+='<button class="btn btn-gray" onclick="resetTimers()">↺ Reset</button>';
+  }
+  ctrl.innerHTML=html;
+}
+
+function renderClocks() {
+  for (var ti=0;ti<3;ti++) {
+    var cb=document.getElementById('cb'+ti);
+    var tb=document.getElementById('tb'+ti);
+    var s=TS[ti];
+    var sec=SECS[s.si];
+    if(!sec||!sec.timed) {
+      var nxt=null;
+      for(var si=(s.si)+1;si<SECS.length;si++){if(SECS[si].timed){nxt=SECS[si];break;}}
+      cb.className='cbody st';
+      cb.innerHTML='<div class="standby-msg">'+(sec?sec.title.toUpperCase():'READY')+'<span>'+(nxt?'timers on '+nxt.title:'')+'</span></div>';
+      if(tb) tb.innerHTML='';
+    } else {
+      renderClock(ti, s, sec, cb);
+      if(tb) renderTierBtns(ti, tb);
+    }
+  }
+}
+
+function renderTierBtns(ti, tb) {
+  var s=TS[ti];
+  var active=s.phase==='swim'||s.phase==='rest'||s.phase==='brk'||s.phase==='countdown';
+  if (!active) { tb.innerHTML=''; return; }
+  var pauseBtn = s.paused
+    ? '<button class="tier-btn tb-resume" data-action="resume" data-ti="'+ti+'">▶ Resume</button>'
+    : '<button class="tier-btn tb-pause" data-action="pause" data-ti="'+ti+'">⏸ Pause</button>';
+  tb.innerHTML = pauseBtn +
+    '<button class="tier-btn tb-reset" data-action="reset" data-ti="'+ti+'">↺ Reset</button>';
+}
+
+// Event delegation for tier buttons — mousedown fires before next RAF can rebuild DOM
+document.addEventListener('mousedown', function(e) {
+  var btn = e.target.closest('.tier-btn');
+  if (!btn) return;
+  var ti = parseInt(btn.getAttribute('data-ti'));
+  var action = btn.getAttribute('data-action');
+  if (isNaN(ti)) return;
+  e.preventDefault();
+  e.stopPropagation();
+  if (action === 'pause') pauseTier(ti);
+  else if (action === 'resume') resumeTier(ti);
+  else if (action === 'reset') resetTier(ti);
+});
+// Also handle touch for mobile
+document.addEventListener('touchstart', function(e) {
+  var btn = e.target.closest('.tier-btn');
+  if (!btn) return;
+  var ti = parseInt(btn.getAttribute('data-ti'));
+  var action = btn.getAttribute('data-action');
+  if (isNaN(ti)) return;
+  e.preventDefault();
+  if (action === 'pause') pauseTier(ti);
+  else if (action === 'resume') resumeTier(ti);
+  else if (action === 'reset') resetTier(ti);
+}, {passive: false});
+
+// Build a vertical set list. highlightIdx = which rep to highlight (-1 = none, 0 = first, etc.)
+function buildSetList(ti, sec, reps, highlightIdx) {
+  // Group consecutive identical distances for cleaner display
+  var groups = [], prev = null;
+  reps.forEach(function(r, i) {
+    if (prev && prev.dist === r.dist) {
+      prev.count++;
+      prev.indices.push(i);
+    } else {
+      prev = {dist: r.dist, laps: r.laps, count: 1, indices: [i]};
+      groups.push(prev);
+    }
+  });
+  return groups.map(function(g) {
+    var pace = getPace(ti, sec.zKey, g.dist);
+    var isCur = g.indices.indexOf(highlightIdx) >= 0;
+    var cls = 'set-row' + (isCur ? ' sr-cur' : '');
+    var prefix = g.count > 1 ? g.count + '×' : '';
+    return '<div class="'+cls+'">'+
+      '<div class="sr-num">'+ prefix +'</div>'+
+      '<div class="sr-dist">'+g.dist+'m</div>'+
+      '<div class="sr-laps">'+g.laps+'L</div>'+
+      '<div class="sr-target">'+fmtS(pace[0])+'–'+fmtS(pace[1])+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+function renderClock(ti, s, sec, cb) {
+  var reps=sec.reps; if(!reps||!reps.length) return;
+  var ri=Math.min(s.ri,reps.length-1);
+  var rep=reps[ri];
+  var pace=getPace(ti,sec.zKey,rep.dist);
+  var lo=pace[0],hi=pace[1];
+
+  // dots
+  var dots=reps.map(function(r,di){
+    var c='dot';
+    if(di<s.ri) c+=(s.results[di]==='miss'||s.results[di]==='skip')?' dm':' dd';
+    else if(di===s.ri&&s.phase==='swim') c+=' dc';
+    return '<div class="'+c+'"></div>';
+  }).join('');
+
+  var dotsH='<div class="c-dots">'+dots+'</div>';
+
+  if (s.phase==='done') {
+    // Find cool-down section if it exists
+    var cdSec = null;
+    for (var _ci=0;_ci<SECS.length;_ci++) { if (SECS[_ci].id==='cooldown') { cdSec=SECS[_ci]; break; } }
+    var cdHtml = '';
+    // Only show cool-down when this is the last timed section (no more timed sections after)
+    var hasMoreTimed = false;
+    for (var _mi=s.si+1;_mi<SECS.length;_mi++) { if (SECS[_mi].timed) { hasMoreTimed=true; break; } }
+    if (cdSec && cdSec.items && cdSec.items.length && !hasMoreTimed) {
+      cdHtml = '<div style="margin-top:12px;text-align:center">' +
+        '<div style="font-size:0.7rem;font-weight:700;color:#c0392b;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px">Cool-Down</div>' +
+        cdSec.items.map(function(it){ return '<div style="font-size:0.85rem;color:#d4b0b0;margin-bottom:3px">'+it+'</div>'; }).join('') +
+        '</div>';
+    }
+    cb.className='cbody dn';
+    cb.innerHTML=dotsH+'<div class="c-time tb" style="font-size:3.5rem">DONE</div><div class="c-badge bb">SET COMPLETE</div>'+cdHtml;
+    return;
+  }
+  if (s.phase==='ready') {
+    cb.className='cbody rd';
+    var setRows = buildSetList(ti, sec, reps, -1);
+    var restInfo = sec.restBetween ? '<div style="font-size:1.1rem;color:#e8b830;font-weight:700;margin:6px 0">:'+pad(sec.restBetween)+' rest between reps</div>' : '';
+    var eqInfo = sec.equipment ? '<div style="font-size:1rem;color:#a06060;font-style:italic">'+sec.equipment+'</div>' : '';
+    cb.innerHTML=
+      '<div style="font-size:1.4rem;font-weight:800;color:#c0392b;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px">'+sec.title+'</div>'+
+      restInfo + eqInfo +
+      '<div class="set-list" style="margin:10px 0">'+setRows+'</div>'+
+      '<div class="standby-msg" style="font-size:1.2rem;margin-top:8px">READY<span>Press Start</span></div>';
+    return;
+  }
+  if (s.phase==='countdown') {
+    var cdRem = Math.max(0, Math.ceil((s.countdownDur - s.elapsed) / 1000));
+    var firstRep = reps[0];
+    var firstPace = getPace(ti, sec.zKey, firstRep.dist);
+    cb.className='cbody rd';
+    cb.innerHTML=dotsH+
+      '<div class="c-rep-lbl" style="letter-spacing:0.15em">GET READY</div>'+
+      '<div class="c-laps">'+firstRep.laps+' laps</div>'+
+      '<div class="c-dist">'+firstRep.dist+'m</div>'+
+      '<div class="c-time tw" style="font-size:7rem">'+cdRem+'</div>'+
+      '<div class="c-badge by">STARTING IN '+cdRem+'s</div>'+
+      '<div class="c-target">Target: <b>'+fmtS(firstPace[0])+' – '+fmtS(firstPace[1])+'</b></div>';
+    return;
+  }
+  if (s.phase==='brk') {
+    var remB=Math.max(0,s.restDur-s.elapsed)/1000;
+    // Find next timed section for this tier
+    var nxtSi=s.si+1;
+    while(nxtSi<SECS.length && !SECS[nxtSi].timed) nxtSi++;
+    var nxtSec=SECS[nxtSi]||null;
+    var nxtHtml='';
+    if (nxtSec && nxtSec.reps.length) {
+      var nxtRows = buildSetList(ti, nxtSec, nxtSec.reps, 0);
+      var nxtRestInfo = nxtSec.restBetween ? '<div style="font-size:0.65rem;color:#e8b830;font-weight:600;margin-bottom:3px">:'+pad(nxtSec.restBetween)+' rest</div>' : '';
+      nxtHtml=
+        '<div class="c-next-lbl" style="margin-top:8px;font-size:0.65rem">Up Next</div>'+
+        '<div style="font-size:0.95rem;font-weight:800;color:#e8b830;text-align:center;margin-bottom:4px">'+nxtSec.title+'</div>'+
+        nxtRestInfo +
+        '<div class="set-list" style="margin:3px 0">'+nxtRows+'</div>';
+    } else {
+      // No more timed sections — show cool-down if it exists
+      var _cdSec2 = null;
+      for (var _c2=0;_c2<SECS.length;_c2++) { if (SECS[_c2].id==='cooldown') { _cdSec2=SECS[_c2]; break; } }
+      if (_cdSec2 && _cdSec2.items && _cdSec2.items.length) {
+        nxtHtml = '<div style="margin-top:10px;text-align:center">' +
+          '<div style="font-size:0.75rem;font-weight:700;color:#c0392b;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">Up Next: Cool-Down</div>' +
+          _cdSec2.items.map(function(it){ return '<div style="font-size:1.1rem;color:#d4b0b0;margin-bottom:4px;font-weight:600">'+it+'</div>'; }).join('') +
+          '</div>';
+      }
+    }
+    cb.className='cbody brk';
+    cb.innerHTML=dotsH+
+      '<div class="c-rep-lbl">Set Break</div>'+
+      '<div class="c-time ty">'+fmtS(remB)+'</div>'+
+      '<div class="c-badge by">REST '+fmtShort(remB)+'</div>'+
+      nxtHtml;
+    return;
+  }
+
+  var elS=s.elapsed/1000;
+
+  if (s.phase==='swim') {
+    var bodyClass,timeCls,badgeText,badgeCls;
+    if (elS<lo) {
+      bodyClass='sw0';timeCls='tw';badgeText='';badgeCls='';
+    } else if (elS<=hi) {
+      bodyClass='swg';timeCls='tg';badgeText='✓ IN RANGE';badgeCls='bg';
+    } else {
+      bodyClass='swr';timeCls='tr';badgeText='✗ MISSED';badgeCls='br';
+    }
+    var hasNext=s.ri+1<reps.length;
+    var nxtRep=reps[s.ri+1];
+    var badgeHtml=badgeText?'<div class="c-badge '+badgeCls+'">'+badgeText+'</div>':'';
+
+    cb.className='cbody '+bodyClass;
+    cb.innerHTML=dotsH+
+      '<div class="c-rep-lbl">Rep <span class="c-rep-num">'+(ri+1)+'/'+reps.length+'</span></div>'+
+      '<div class="c-laps">'+rep.laps+' laps</div>'+
+      '<div class="c-dist">'+rep.dist+'m</div>'+
+      (s.paused?'<div class="paused-tag">PAUSED</div>':'')+
+      '<div class="c-time '+timeCls+'">'+fmtMs(s.elapsed)+'</div>'+
+      badgeHtml+
+      '<div class="c-target">Target: <b'+(elS>hi?' class="red"':'')+'>'+fmtS(lo)+' – '+fmtS(hi)+'</b> <button class="edit-range-btn" onclick="openRangePopup('+ti+',\''+sec.zKey+'\','+rep.dist+',this)">✏</button></div>'+
+      (hasNext?'<div class="c-next">Next: <b>'+nxtRep.dist+'m</b></div>':'<div class="c-next" style="color:#196f3d">Last rep</div>');
+    return;
+  }
+
+  if (s.phase==='rest') {
+    var remR=Math.max(0,s.restDur-s.elapsed)/1000;
+    var lastRes=s.results[s.ri-1]; // s.ri already incremented; -1 = just-completed rep
+    var missed=lastRes==='miss';
+    var rtimeCls=missed?'tr':lastRes==='ok'?'tg':'ty';
+    var rbadgeCls=missed?'br':lastRes==='ok'?'bg':'by';
+    var hasNextR=s.ri<reps.length;  // s.ri IS the next rep index during rest
+    var nxtRep=hasNextR?reps[s.ri]:null;
+    var nxtPace=hasNextR?getPace(ti,sec.zKey,nxtRep.dist):null;
+    cb.className='cbody '+(missed?'swr':'rs');
+    cb.innerHTML=dotsH+
+      (s.paused
+        ? '<div class="paused-tag">PAUSED</div>'
+        : missed
+          ? '<div class="go-banner" style="color:#e74c3c">✗ MISSED</div>'
+          : '<div class="go-banner">GO AGAIN</div>')+
+      '<div class="c-time '+rtimeCls+'">'+fmtS(remR)+'</div>'+
+      '<div class="c-badge '+rbadgeCls+'">'+(missed?'MISSED · ':'REST ')+fmtShort(remR)+'</div>'+
+      (hasNextR
+        ? '<div class="c-next-lbl" style="font-size:0.6rem;margin-top:6px">Up next</div>'+
+          '<div class="c-laps" style="margin-bottom:0">'+nxtRep.laps+' laps</div>'+
+          '<div class="c-next-dist" style="font-size:2.2rem">'+nxtRep.dist+'m</div>'+
+          '<div class="c-next-target" style="font-size:0.85rem">Target: <b style="font-size:1.2rem">'+fmtS(nxtPace[0])+' – '+fmtS(nxtPace[1])+'</b></div>'
+        : '<div class="c-next" style="color:#196f3d">Last rep done</div>');
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmtMs(ms) {
+  var tot=ms/1000, m=Math.floor(tot/60), s=Math.floor(tot%60), t=Math.floor((ms%1000)/100);
+  return m+':'+pad(s)+'.'+t;
+}
+function fmtS(s) { s=Math.round(s); return Math.floor(s/60)+':'+pad(s%60); }
+function fmtShort(s) {
+  s=Math.max(0,Math.round(s)); var m=Math.floor(s/60);
+  return m>0?m+':'+pad(s%60):s+'s';
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+</script>
+</body>
+</html>

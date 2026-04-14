@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Stanford Water Polo</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  background: #0d0505;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  user-select: none; -webkit-user-select: none;
+}
+
+/* ═══ DISPLAY MODE ═══ */
+.display-app {
+  display: flex; flex-direction: column;
+  height: 100vh; width: 100vw;
+}
+
+/* Quarter bar */
+.qtr-bar {
+  display: flex; align-items: center; justify-content: center;
+  gap: 14px; padding: 8px 0 6px;
+  background: #0a0404;
+  border-bottom: 3px solid #8C1515;
+  flex-shrink: 0;
+}
+.qtr-dot {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid #5a2020;
+  transition: all .2s;
+}
+.qtr-dot.q-active { background: #f1c40f; border-color: #f1c40f; box-shadow: 0 0 10px rgba(241,196,15,.5); }
+.qtr-dot.q-done { background: #2ecc71; border-color: #2ecc71; }
+.qtr-lbl {
+  font-size: 1.4rem; font-weight: 900;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: #f1c40f;
+}
+
+/* Score row */
+.score-row {
+  display: flex; align-items: stretch;
+  flex-shrink: 0;
+}
+.team {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 10px 8px 6px;
+}
+.team-home { background: linear-gradient(180deg, #1a0808 0%, #0d0505 100%); }
+.team-away { background: linear-gradient(180deg, #0d0808 0%, #0d0505 100%); }
+
+.team-name {
+  font-size: 1.8rem; font-weight: 900;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  cursor: pointer;
+}
+.team-home .team-name { color: #fff; }
+.team-away .team-name { color: #ccc; }
+.team-name:hover { text-decoration: underline; text-decoration-color: #8C1515; }
+
+.team-name-input {
+  background: transparent; border: none; border-bottom: 2px solid #8C1515;
+  color: inherit; font-size: inherit; font-weight: inherit;
+  letter-spacing: inherit; text-transform: inherit;
+  text-align: center; outline: none; width: 200px;
+}
+
+.score-wrap {
+  display: flex; align-items: center; gap: 16px; margin-top: 2px;
+}
+.score-btn {
+  width: 48px; height: 48px;
+  border: 2px solid #3a1515;
+  border-radius: 10px; background: rgba(140,21,21,0.15);
+  color: #c0392b; font-size: 1.8rem; font-weight: 700;
+  cursor: pointer; transition: all .12s;
+  display: flex; align-items: center; justify-content: center;
+}
+.score-btn:hover { background: rgba(140,21,21,0.3); }
+.score-btn:active { transform: scale(0.9); }
+.score {
+  font-family: 'SF Mono', 'Courier New', monospace;
+  font-size: 7rem; font-weight: 900;
+  line-height: 1; font-variant-numeric: tabular-nums;
+  min-width: 120px; text-align: center;
+  color: #fff;
+}
+.score-div {
+  width: 3px; background: #2a0a0a; flex-shrink: 0;
+}
+
+/* Clock area */
+.clock-area {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 6px; min-height: 0; padding: 6px 0;
+  position: relative;
+}
+
+.gc-lbl {
+  font-size: 0.8rem; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: #5a2020;
+}
+.game-clock {
+  font-family: 'SF Mono', 'Courier New', monospace;
+  font-size: 15rem; font-weight: 900;
+  line-height: 1; letter-spacing: -0.02em;
+  color: #fff; cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  transition: color .3s;
+}
+.game-clock.gc-warn  { color: #f39c12; }
+.game-clock.gc-danger { color: #e74c3c; animation: pulse-c .5s ease-in-out infinite; }
+.game-clock.gc-stopped { color: #666; }
+
+@keyframes pulse-c { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+/* Clock mode badge */
+.mode-badge {
+  font-size: 0.7rem; font-weight: 800;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 3px 10px; border-radius: 12px;
+  background: #2a1800; color: #e8a020;
+  border: 1px solid #4a2800;
+  display: none;
+}
+.mode-badge.visible { display: inline-block; }
+
+.sc-wrap {
+  display: flex; align-items: center; gap: 14px;
+}
+.sc-lbl {
+  font-size: 0.8rem; font-weight: 700;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: #5a2020;
+}
+.shot-clock {
+  font-family: 'SF Mono', 'Courier New', monospace;
+  font-size: 6rem; font-weight: 900;
+  line-height: 1; color: #f1c40f;
+  font-variant-numeric: tabular-nums;
+  min-width: 100px; text-align: center;
+  cursor: pointer;
+  transition: color .3s;
+}
+.shot-clock.sc-warn   { color: #e67e22; }
+.shot-clock.sc-danger { color: #e74c3c; animation: pulse-c .35s ease-in-out infinite; }
+.shot-clock.sc-off    { color: #3a1515; }
+
+/* Exclusion row */
+.excl-row {
+  display: flex; gap: 10px; justify-content: center;
+  flex-wrap: wrap; padding: 2px 16px;
+  min-height: 28px; flex-shrink: 0;
+}
+.excl-tag {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 14px; border-radius: 6px;
+  font-size: 1.2rem; font-weight: 800;
+  font-family: 'SF Mono', monospace;
+  cursor: pointer;
+  animation: excl-blink .8s ease-in-out infinite;
+}
+.excl-tag.ex-home { background: #1a0a2a; color: #aa80ff; border: 1px solid #4a2080; }
+.excl-tag.ex-away { background: #2a1a0a; color: #ffaa40; border: 1px solid #805020; }
+.excl-cap { font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: .7; }
+@keyframes excl-blink { 0%,100%{opacity:1} 50%{opacity:.65} }
+
+/* Control strip at bottom of display */
+.display-strip {
+  display: flex; align-items: center; justify-content: center;
+  gap: 12px; padding: 8px 12px;
+  background: #0a0404; border-top: 2px solid #1a0808;
+  flex-shrink: 0;
+}
+.strip-info {
+  font-size: 0.75rem; color: #5a2020; letter-spacing: 0.05em;
+}
+.strip-url {
+  font-family: 'SF Mono', monospace;
+  font-size: 0.8rem; color: #8C1515; font-weight: 700;
+  background: #1a0808; padding: 4px 10px; border-radius: 6px;
+  border: 1px solid #2e1010;
+}
+.strip-qr {
+  width: 60px; height: 60px; background: #fff; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+
+/* Time edit overlay */
+.time-edit-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.85);
+  z-index: 1000;
+  justify-content: center; align-items: center;
+}
+.time-edit-overlay.open { display: flex; }
+.time-edit-box {
+  background: #1a0a0a; border: 2px solid #8C1515;
+  border-radius: 16px; padding: 28px;
+  text-align: center; min-width: 320px;
+}
+.time-edit-box h3 {
+  font-size: 1.1rem; font-weight: 800; color: #c0392b;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.te-inputs {
+  display: flex; align-items: center; justify-content: center;
+  gap: 6px; margin-bottom: 16px;
+}
+.te-inp {
+  width: 80px; background: #0d0505; border: 2px solid #3a1515;
+  border-radius: 8px; padding: 10px; color: #fff;
+  font-family: 'SF Mono', monospace; font-size: 2rem;
+  font-weight: 800; text-align: center; outline: none;
+}
+.te-inp:focus { border-color: #8C1515; }
+.te-sep { font-size: 2rem; font-weight: 900; color: #5a2020; }
+.te-btns { display: flex; gap: 8px; justify-content: center; }
+.te-save {
+  padding: 10px 28px; background: #8C1515; color: #fff;
+  border: none; border-radius: 8px; font-weight: 800;
+  font-size: 1rem; cursor: pointer;
+}
+.te-save:hover { filter: brightness(1.2); }
+.te-cancel {
+  padding: 10px 20px; background: #1a0808; color: #8a3030;
+  border: 1px solid #3a1515; border-radius: 8px;
+  font-size: 0.9rem; cursor: pointer;
+}
+
+/* ═══ CONTROL MODE (iPhone remote) ═══ */
+.control-app {
+  display: none; flex-direction: column;
+  height: 100vh; width: 100vw;
+  background: #0d0505;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+
+.ctrl-hdr {
+  text-align: center; padding: 14px 12px 10px;
+  background: #1a0808; border-bottom: 3px solid #8C1515;
+}
+.ctrl-hdr h1 {
+  font-size: 1.1rem; font-weight: 900; color: #c0392b;
+  letter-spacing: 0.12em; text-transform: uppercase;
+}
+.ctrl-hdr .conn-status {
+  font-size: 0.65rem; font-weight: 600;
+  margin-top: 4px;
+}
+.conn-status.connected { color: #2ecc71; }
+.conn-status.disconnected { color: #e74c3c; }
+
+/* Remote status display */
+.ctrl-status {
+  display: flex; justify-content: space-around;
+  padding: 12px 10px; background: #120808;
+  border-bottom: 1px solid #1a0808;
+}
+.cs-block { text-align: center; }
+.cs-label { font-size: 0.55rem; color: #5a2020; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.cs-val {
+  font-family: 'SF Mono', monospace;
+  font-size: 1.4rem; font-weight: 900; color: #fff;
+}
+.cs-val.yellow { color: #f1c40f; }
+
+/* Remote buttons */
+.ctrl-section {
+  padding: 12px;
+}
+.ctrl-section-title {
+  font-size: 0.65rem; font-weight: 700; color: #8C1515;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  margin-bottom: 8px; padding-left: 4px;
+}
+.ctrl-grid {
+  display: grid; gap: 8px;
+}
+.ctrl-grid.g2 { grid-template-columns: 1fr 1fr; }
+.ctrl-grid.g3 { grid-template-columns: 1fr 1fr 1fr; }
+.ctrl-grid.g4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+.rb {
+  padding: 16px 8px; border-radius: 10px;
+  font-size: 0.9rem; font-weight: 800;
+  text-align: center; cursor: pointer;
+  border: 2px solid transparent;
+  transition: all .1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.rb:active { transform: scale(0.94); filter: brightness(0.8); }
+
+.rb-start   { background: #196f3d; color: #fff; font-size: 1.2rem; }
+.rb-stop    { background: #c0392b; color: #fff; font-size: 1.2rem; }
+.rb-shot    { background: #2a1800; color: #f1c40f; border-color: #4a2800; }
+.rb-horn    { background: #3a0a0a; color: #ff6b6b; border-color: #5a1515; }
+.rb-score-h { background: #1a0808; color: #fff; border-color: #3a1515; font-size: 1.3rem; }
+.rb-score-a { background: #1a0808; color: #ccc; border-color: #3a1515; font-size: 1.3rem; }
+.rb-excl-h  { background: #1a0a2a; color: #aa80ff; border-color: #3a1555; }
+.rb-excl-a  { background: #2a1a0a; color: #ffaa40; border-color: #553a15; }
+.rb-qtr     { background: #2a2000; color: #f1c40f; border-color: #4a3800; }
+.rb-reset   { background: #2a0505; color: #e74c3c; border-color: #4a1010; }
+.rb-time    { background: #1a0a0a; color: #aaa; border-color: #2e1010; }
+.rb-mode    { background: #1a1400; color: #e8a020; border-color: #3a2800; }
+.rb-poss    { background: #0d0808; color: #888; border-color: #1a1010; }
+
+.rb-sub { display: block; font-size: 0.55rem; font-weight: 600; opacity: .6; margin-top: 2px; letter-spacing: 0.05em; }
+</style>
+</head>
+<body>
+
+<!-- ═══ DISPLAY VIEW (big screen) ═══ -->
+<div class="display-app" id="displayApp">
+  <div class="qtr-bar">
+    <div class="qtr-dot q-active" id="qd0"></div>
+    <div class="qtr-dot" id="qd1"></div>
+    <div class="qtr-dot" id="qd2"></div>
+    <div class="qtr-dot" id="qd3"></div>
+    <div class="qtr-lbl" id="qLabel">1ST QUARTER</div>
+  </div>
+
+  <div class="score-row">
+    <div class="team team-home">
+      <div class="team-name" id="homeName" onclick="editName('home')">STANFORD</div>
+      <div class="score-wrap">
+        <button class="score-btn" onclick="cmd('score',{t:'home',d:-1})">−</button>
+        <div class="score" id="homeScore">0</div>
+        <button class="score-btn" onclick="cmd('score',{t:'home',d:1})">+</button>
+      </div>
+    </div>
+    <div class="score-div"></div>
+    <div class="team team-away">
+      <div class="team-name" id="awayName" onclick="editName('away')">VISITOR</div>
+      <div class="score-wrap">
+        <button class="score-btn" onclick="cmd('score',{t:'away',d:-1})">−</button>
+        <div class="score" id="awayScore">0</div>
+        <button class="score-btn" onclick="cmd('score',{t:'away',d:1})">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="clock-area">
+    <div class="gc-lbl">GAME CLOCK</div>
+    <div class="game-clock gc-stopped" id="gameClock" onclick="openTimeEdit('game')">8:00</div>
+    <div class="mode-badge" id="modeBadge">SHOT CLOCK ONLY</div>
+    <div class="sc-wrap">
+      <div class="sc-lbl">SHOT CLOCK</div>
+      <div class="shot-clock sc-off" id="shotClock" onclick="openTimeEdit('shot')">30</div>
+    </div>
+  </div>
+
+  <div class="excl-row" id="exclRow"></div>
+
+  <div class="display-strip" id="displayStrip">
+    <span class="strip-info">Remote control ▸</span>
+    <span class="strip-url" id="remoteUrl"></span>
+  </div>
+</div>
+
+<!-- ═══ CONTROL VIEW (iPhone) ═══ -->
+<div class="control-app" id="controlApp">
+  <div class="ctrl-hdr">
+    <h1>Stanford Water Polo</h1>
+    <div class="conn-status disconnected" id="connStatus">● Connecting…</div>
+  </div>
+
+  <div class="ctrl-status" id="ctrlStatus">
+    <div class="cs-block">
+      <div class="cs-label">Game</div>
+      <div class="cs-val" id="csGame">8:00</div>
+    </div>
+    <div class="cs-block">
+      <div class="cs-label">Quarter</div>
+      <div class="cs-val" id="csQtr">Q1</div>
+    </div>
+    <div class="cs-block">
+      <div class="cs-label">Shot</div>
+      <div class="cs-val yellow" id="csShot">30</div>
+    </div>
+    <div class="cs-block">
+      <div class="cs-label">Home</div>
+      <div class="cs-val" id="csHome">0</div>
+    </div>
+    <div class="cs-block">
+      <div class="cs-label">Away</div>
+      <div class="cs-val" id="csAway">0</div>
+    </div>
+  </div>
+
+  <div class="ctrl-section">
+    <div class="ctrl-section-title">Clock</div>
+    <div class="ctrl-grid g2">
+      <div class="rb rb-start" id="rbStartStop" onclick="cmd('toggle')">▶ START</div>
+      <div class="rb rb-horn" onclick="cmd('horn')">📯 HORN</div>
+    </div>
+  </div>
+
+  <div class="ctrl-section">
+    <div class="ctrl-section-title">Shot Clock</div>
+    <div class="ctrl-grid g3">
+      <div class="rb rb-shot" onclick="cmd('shot30')">↺ 30</div>
+      <div class="rb rb-shot" onclick="cmd('shot20')">↺ 20</div>
+      <div class="rb rb-mode" onclick="cmd('toggleMode')">SHOT ONLY<span class="rb-sub">toggle mode</span></div>
+    </div>
+  </div>
+
+  <div class="ctrl-section">
+    <div class="ctrl-section-title">Score — Home</div>
+    <div class="ctrl-grid g2">
+      <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:1})">+ GOAL</div>
+      <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:-1})">− UNDO</div>
+    </div>
+  </div>
+
+  <div class="ctrl-section">
+    <div class="ctrl-section-title">Score — Away</div>
+    <div class="ctrl-grid g2">
+      <div class="rb rb-score-a" onclick="cmd('score',{t:'away',d:1})">+ GOAL</div>
+      <div class="rb rb-score-a" onclick="cmd('score',{t:'away',d:-1})">− UNDO</div>
+    </div>
+  </div>
+
+  <div class="ctrl-section">
+    <div class="ctrl-section-title">Exclusions & Quarter</div>
+    <div class="ctrl-grid g3">
+      <div class="rb rb-excl-h" onclick="cmd('excl',{t:'home'})">🏠 EXCL</div>
+      <div class="rb rb-excl-a" onclick="cmd('excl',{t:'away'})">👤 EXCL</div>
+      <div class="rb rb-qtr" onclick="cmd('nextQtr')">▶ NEXT QTR</div>
+    </div>
+  </div>
+
+  <div class="ctrl-section">
+    <div class="ctrl-section-title">Set Time</div>
+    <div class="ctrl-grid g2">
+      <div class="rb rb-time" onclick="cmd('editGame')">SET GAME<span class="rb-sub">tap to edit</span></div>
+      <div class="rb rb-time" onclick="cmd('editShot')">SET SHOT<span class="rb-sub">tap to edit</span></div>
+    </div>
+  </div>
+
+  <div class="ctrl-section">
+    <div class="ctrl-section-title">Manage</div>
+    <div class="ctrl-grid g3">
+      <div class="rb rb-poss" onclick="cmd('swapPoss')">⇄ POSS</div>
+      <div class="rb rb-reset" onclick="cmd('resetGame')">↺ RESET</div>
+      <div class="rb rb-poss" onclick="cmd('clearExcl')">✕ CLR EXCL</div>
+    </div>
+  </div>
+</div>
+
+<!-- Time edit overlay -->
+<div class="time-edit-overlay" id="timeEditOverlay">
+  <div class="time-edit-box">
+    <h3 id="teTitle">Set Game Clock</h3>
+    <div class="te-inputs">
+      <input class="te-inp" id="teMin" type="number" min="0" max="99" value="8">
+      <span class="te-sep">:</span>
+      <input class="te-inp" id="teSec" type="number" min="0" max="59" value="00">
+    </div>
+    <div class="te-btns">
+      <button class="te-save" onclick="saveTimeEdit()">SET</button>
+      <button class="te-cancel" onclick="closeTimeEdit()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── Detect mode ─────────────────────────────────────────────────────────
+var IS_CONTROL = location.search.indexOf('control') >= 0;
+
+if (IS_CONTROL) {
+  document.getElementById('displayApp').style.display = 'none';
+  document.getElementById('controlApp').style.display = 'flex';
+} else {
+  document.getElementById('displayApp').style.display = 'flex';
+  document.getElementById('controlApp').style.display = 'none';
+}
+
+// ── WebSocket ───────────────────────────────────────────────────────────
+var ws = null;
+var wsReady = false;
+
+function connectWS() {
+  try {
+    var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(proto + '//' + location.host);
+    ws.onopen = function() {
+      wsReady = true;
+      if (IS_CONTROL) {
+        document.getElementById('connStatus').textContent = '● Connected';
+        document.getElementById('connStatus').className = 'conn-status connected';
+      }
+      // Display sends full state so controller syncs
+      if (!IS_CONTROL) sendState();
+    };
+    ws.onmessage = function(e) {
+      var msg;
+      try { msg = JSON.parse(e.data); } catch(x) { return; }
+      if (msg.type === 'cmd') handleCmd(msg.action, msg.data);
+      else if (msg.type === 'state') applyState(msg);
+    };
+    ws.onclose = function() {
+      wsReady = false;
+      if (IS_CONTROL) {
+        document.getElementById('connStatus').textContent = '● Disconnected';
+        document.getElementById('connStatus').className = 'conn-status disconnected';
+      }
+      setTimeout(connectWS, 2000);
+    };
+  } catch(e) { setTimeout(connectWS, 3000); }
+}
+
+function wsSend(obj) {
+  if (ws && wsReady) ws.send(JSON.stringify(obj));
+}
+
+function sendState() {
+  wsSend({
+    type: 'state',
+    gameTime: gameTime,
+    shotTime: shotTime,
+    quarter: quarter,
+    homeScore: homeScoreVal,
+    awayScore: awayScoreVal,
+    running: running,
+    shotOnly: shotOnly,
+    exclusions: exclusions.map(function(e){ return {team:e.team, remaining:e.remaining, id:e.id}; })
+  });
+}
+
+// Controller receives state
+function applyState(s) {
+  if (!IS_CONTROL) return;
+  document.getElementById('csGame').textContent = fmtClock(s.gameTime);
+  document.getElementById('csShot').textContent = Math.ceil(s.shotTime / 1000);
+  document.getElementById('csQtr').textContent = 'Q' + (s.quarter + 1);
+  document.getElementById('csHome').textContent = s.homeScore;
+  document.getElementById('csAway').textContent = s.awayScore;
+  var btn = document.getElementById('rbStartStop');
+  if (s.running) {
+    btn.textContent = '⏸ STOP'; btn.className = 'rb rb-stop';
+  } else {
+    btn.textContent = '▶ START'; btn.className = 'rb rb-start';
+  }
+}
+
+// ── Config ──────────────────────────────────────────────────────────────
+var CFG = {
+  qtrLen: 8 * 60 * 1000,
+  shotLen: 30 * 1000,
+  shotShort: 20 * 1000,
+  exclLen: 20 * 1000,
+};
+
+// ── State ───────────────────────────────────────────────────────────────
+var quarter = 0;
+var gameTime = CFG.qtrLen;
+var shotTime = CFG.shotLen;
+var running = false;
+var shotOnly = false;   // shot clock runs independently
+var lastTs = null;
+var raf = null;
+var homeScoreVal = 0;
+var awayScoreVal = 0;
+var exclusions = [];
+var exclCounter = 0;
+
+var Q_LABELS = ['1ST QUARTER','2ND QUARTER','3RD QUARTER','4TH QUARTER','OVERTIME'];
+
+// ── Audio ───────────────────────────────────────────────────────────────
+var _audioCtx = null;
+function getAudio() {
+  try {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (_audioCtx.state === 'suspended') _audioCtx.resume();
+    return _audioCtx;
+  } catch(e) { return null; }
+}
+
+function soundHorn() {
+  var ctx = getAudio(); if (!ctx) return;
+  var t = ctx.currentTime;
+  // Rich air-horn style buzzer
+  var o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 185;
+  var o2 = ctx.createOscillator(); o2.type = 'sawtooth'; o2.frequency.value = 190;
+  var sub = ctx.createOscillator(); sub.type = 'sine'; sub.frequency.value = 93;
+  var subG = ctx.createGain(); subG.gain.value = 0.5;
+  var gain = ctx.createGain();
+  gain.gain.setValueAtTime(0, t);
+  gain.gain.linearRampToValueAtTime(0.65, t + 0.06);
+  gain.gain.setValueAtTime(0.65, t + 1.4);
+  gain.gain.linearRampToValueAtTime(0, t + 1.8);
+  o1.connect(gain); o2.connect(gain);
+  sub.connect(subG); subG.connect(gain);
+  gain.connect(ctx.destination);
+  o1.start(t); o1.stop(t + 1.9);
+  o2.start(t); o2.stop(t + 1.9);
+  sub.start(t); sub.stop(t + 1.9);
+}
+
+function beepShort() {
+  var ctx = getAudio(); if (!ctx) return;
+  var t = ctx.currentTime;
+  var o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 1000;
+  var g = ctx.createGain();
+  g.gain.setValueAtTime(0.35, t);
+  g.gain.linearRampToValueAtTime(0, t + 0.12);
+  o.connect(g); g.connect(ctx.destination);
+  o.start(t); o.stop(t + 0.15);
+}
+
+// ── Commands (both local + remote) ──────────────────────────────────────
+function cmd(action, data) {
+  if (IS_CONTROL) {
+    // Send to display
+    wsSend({type:'cmd', action:action, data:data||{}});
+  } else {
+    handleCmd(action, data||{});
+  }
+}
+
+function handleCmd(action, data) {
+  if (IS_CONTROL) return; // only display handles commands
+  switch(action) {
+    case 'toggle':
+      if (running) _stop(); else _start();
+      break;
+    case 'start': _start(); break;
+    case 'stop': _stop(); break;
+    case 'shot30':
+      shotTime = CFG.shotLen;
+      renderDisplay();
+      break;
+    case 'shot20':
+      shotTime = CFG.shotShort;
+      renderDisplay();
+      break;
+    case 'horn':
+      soundHorn();
+      break;
+    case 'score':
+      if (data.t === 'home') {
+        homeScoreVal = Math.max(0, homeScoreVal + data.d);
+        document.getElementById('homeScore').textContent = homeScoreVal;
+      } else {
+        awayScoreVal = Math.max(0, awayScoreVal + data.d);
+        document.getElementById('awayScore').textContent = awayScoreVal;
+      }
+      break;
+    case 'excl':
+      exclusions.push({team:data.t, remaining:CFG.exclLen, id:++exclCounter});
+      renderExcl();
+      break;
+    case 'clearExcl':
+      exclusions = [];
+      renderExcl();
+      break;
+    case 'nextQtr':
+      _stop();
+      quarter = Math.min(quarter + 1, 4);
+      gameTime = CFG.qtrLen;
+      shotTime = CFG.shotLen;
+      exclusions = [];
+      renderQtr(); renderDisplay(); renderExcl();
+      soundHorn();
+      break;
+    case 'resetGame':
+      _stop();
+      quarter = 0; gameTime = CFG.qtrLen; shotTime = CFG.shotLen;
+      homeScoreVal = 0; awayScoreVal = 0; exclusions = [];
+      document.getElementById('homeScore').textContent = '0';
+      document.getElementById('awayScore').textContent = '0';
+      renderQtr(); renderDisplay(); renderExcl();
+      break;
+    case 'toggleMode':
+      shotOnly = !shotOnly;
+      var badge = document.getElementById('modeBadge');
+      badge.className = 'mode-badge' + (shotOnly ? ' visible' : '');
+      renderDisplay();
+      break;
+    case 'swapPoss':
+      shotTime = CFG.shotLen;
+      renderDisplay();
+      break;
+    case 'editGame':
+      openTimeEdit('game');
+      break;
+    case 'editShot':
+      openTimeEdit('shot');
+      break;
+    case 'setGame':
+      gameTime = data.ms;
+      if (!running) renderDisplay();
+      break;
+    case 'setShot':
+      shotTime = data.ms;
+      if (!running) renderDisplay();
+      break;
+  }
+  sendState();
+}
+
+// ── Clock control ───────────────────────────────────────────────────────
+function _start() {
+  if (running) return;
+  if (gameTime <= 0 && !shotOnly) return;
+  if (shotTime <= 0 && shotOnly) return;
+  running = true; lastTs = null;
+  raf = requestAnimationFrame(loop);
+  renderStartBtn();
+}
+
+function _stop() {
+  running = false;
+  if (raf) { cancelAnimationFrame(raf); raf = null; }
+  renderStartBtn();
+  renderDisplay();
+}
+
+function renderStartBtn() {
+  // For display's keyboard indicator — actual display has no start button
+}
+
+// ── Main loop ───────────────────────────────────────────────────────────
+function loop(ts) {
+  if (!running) return;
+  if (lastTs !== null) {
+    var dt = ts - lastTs;
+
+    // Game clock (unless shot-only mode)
+    if (!shotOnly) {
+      gameTime -= dt;
+      if (gameTime <= 0) {
+        gameTime = 0; _stop(); soundHorn();
+        renderDisplay(); sendState(); return;
+      }
+    }
+
+    // Shot clock always runs
+    shotTime -= dt;
+    if (shotTime <= 0) {
+      shotTime = 0; _stop(); soundHorn();
+      renderDisplay(); sendState(); return;
+    }
+
+    // Exclusions
+    var exclDone = false;
+    exclusions.forEach(function(e) {
+      e.remaining -= dt;
+      if (e.remaining <= 0) { e.remaining = 0; exclDone = true; beepShort(); }
+    });
+    exclusions = exclusions.filter(function(e){ return e.remaining > 0; });
+    if (exclDone) renderExcl();
+  }
+  lastTs = ts;
+  renderDisplay();
+  // Send state to controller ~4x per second
+  if (Math.floor(ts / 250) !== Math.floor((lastTs||ts) / 250)) sendState();
+  raf = requestAnimationFrame(loop);
+}
+
+// ── Render ──────────────────────────────────────────────────────────────
+function renderDisplay() {
+  if (IS_CONTROL) return;
+
+  // Game clock
+  var gcEl = document.getElementById('gameClock');
+  gcEl.textContent = fmtClock(gameTime);
+  var gSec = gameTime / 1000;
+  var cls = 'game-clock';
+  if (!running && !shotOnly) cls += ' gc-stopped';
+  else if (shotOnly && !running) cls += ' gc-stopped';
+  else if (gSec <= 10 && !shotOnly) cls += ' gc-danger';
+  else if (gSec <= 60 && !shotOnly) cls += ' gc-warn';
+  gcEl.className = cls;
+
+  // Shot clock
+  var scEl = document.getElementById('shotClock');
+  var sSec = shotTime / 1000;
+  if (sSec <= 5 && sSec > 0 && running) {
+    var tenth = Math.ceil(shotTime / 100);
+    scEl.textContent = Math.floor(tenth/10) + '.' + (tenth%10);
+  } else {
+    scEl.textContent = Math.ceil(sSec);
+  }
+  var scCls = 'shot-clock';
+  if (!running) scCls += ' sc-off';
+  else if (sSec <= 5) scCls += ' sc-danger';
+  else if (sSec <= 10) scCls += ' sc-warn';
+  scEl.className = scCls;
+}
+
+function fmtClock(ms) {
+  if (ms <= 0) return '0:00';
+  var totalSec = ms / 1000;
+  // Show tenths under 1 minute
+  if (totalSec <= 60) {
+    var tenths = Math.ceil(ms / 100);
+    var sec = Math.floor(tenths / 10);
+    var t = tenths % 10;
+    return Math.floor(sec/60) + ':' + pad(sec%60) + '.' + t;
+  }
+  var s = Math.ceil(totalSec);
+  return Math.floor(s/60) + ':' + pad(s%60);
+}
+
+function pad(n) { return n < 10 ? '0'+n : ''+n; }
+
+function renderQtr() {
+  if (IS_CONTROL) return;
+  for (var i = 0; i < 4; i++) {
+    document.getElementById('qd'+i).className = 'qtr-dot' +
+      (i < quarter ? ' q-done' : i === quarter ? ' q-active' : '');
+  }
+  document.getElementById('qLabel').textContent = Q_LABELS[quarter] || 'OT';
+}
+
+function renderExcl() {
+  if (IS_CONTROL) return;
+  document.getElementById('exclRow').innerHTML = exclusions.map(function(e) {
+    var s = Math.ceil(e.remaining / 1000);
+    var cls = e.team === 'home' ? 'ex-home' : 'ex-away';
+    return '<div class="excl-tag '+cls+'" onclick="removeExcl('+e.id+')">'+
+      '<span class="excl-cap">EXCL</span> '+s+'s</div>';
+  }).join('');
+}
+function removeExcl(id) {
+  exclusions = exclusions.filter(function(e){ return e.id !== id; });
+  renderExcl();
+  sendState();
+}
+
+// ── Time edit ───────────────────────────────────────────────────────────
+var _teTarget = 'game'; // 'game' or 'shot'
+
+function openTimeEdit(target) {
+  if (running) _stop();
+  _teTarget = target;
+  var ms = target === 'game' ? gameTime : shotTime;
+  var totalSec = Math.ceil(ms / 1000);
+  document.getElementById('teTitle').textContent = target === 'game' ? 'Set Game Clock' : 'Set Shot Clock';
+  document.getElementById('teMin').value = Math.floor(totalSec / 60);
+  document.getElementById('teSec').value = pad(totalSec % 60);
+  document.getElementById('timeEditOverlay').classList.add('open');
+  document.getElementById('teMin').focus();
+  document.getElementById('teMin').select();
+}
+
+function saveTimeEdit() {
+  var m = parseInt(document.getElementById('teMin').value) || 0;
+  var s = parseInt(document.getElementById('teSec').value) || 0;
+  var ms = (m * 60 + Math.min(s, 59)) * 1000;
+  if (_teTarget === 'game') {
+    gameTime = ms;
+    // Also update CFG so next quarter uses this length
+    CFG.qtrLen = ms;
+  } else {
+    shotTime = ms;
+    CFG.shotLen = ms;
+  }
+  closeTimeEdit();
+  renderDisplay();
+  sendState();
+}
+
+function closeTimeEdit() {
+  document.getElementById('timeEditOverlay').classList.remove('open');
+}
+
+// ── Team name editing ───────────────────────────────────────────────────
+function editName(team) {
+  var el = document.getElementById(team === 'home' ? 'homeName' : 'awayName');
+  if (el.tagName === 'INPUT') return;
+  var cur = el.textContent;
+  var inp = document.createElement('input');
+  inp.type = 'text'; inp.value = cur;
+  inp.className = 'team-name-input team-name';
+  inp.style.color = getComputedStyle(el).color;
+  el.replaceWith(inp);
+  inp.id = (team === 'home' ? 'homeName' : 'awayName');
+  inp.focus(); inp.select();
+  function finish() {
+    var div = document.createElement('div');
+    div.className = 'team-name';
+    div.id = inp.id;
+    div.setAttribute('onclick', "editName('" + team + "')");
+    div.textContent = (inp.value.trim() || cur).toUpperCase();
+    div.style.color = inp.style.color;
+    inp.replaceWith(div);
+  }
+  inp.addEventListener('blur', finish);
+  inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); finish(); } });
+}
+
+// ── Keyboard shortcuts (display only) ───────────────────────────────────
+document.addEventListener('keydown', function(e) {
+  if (IS_CONTROL) return;
+  if (e.target.tagName === 'INPUT') return;
+  switch(e.code) {
+    case 'Space':     e.preventDefault(); cmd('toggle'); break;
+    case 'KeyR':      cmd('shot30'); break;
+    case 'KeyT':      cmd('shot20'); break;
+    case 'KeyH':      cmd('horn'); break;
+    case 'ArrowUp':   e.preventDefault(); cmd('score',{t:'home',d:1}); break;
+    case 'ArrowDown': e.preventDefault(); cmd('score',{t:'home',d:-1}); break;
+    case 'ArrowRight':e.preventDefault(); cmd('score',{t:'away',d:1}); break;
+    case 'ArrowLeft': e.preventDefault(); cmd('score',{t:'away',d:-1}); break;
+    case 'Digit1':    cmd('excl',{t:'home'}); break;
+    case 'Digit2':    cmd('excl',{t:'away'}); break;
+    case 'KeyQ':      cmd('nextQtr'); break;
+    case 'KeyP':      cmd('swapPoss'); break;
+    case 'KeyM':      cmd('toggleMode'); break;
+    case 'KeyG':      openTimeEdit('game'); break;
+    case 'KeyS':      openTimeEdit('shot'); break;
+  }
+});
+
+// ── Show remote URL on display ──────────────────────────────────────────
+function showRemoteURL() {
+  if (IS_CONTROL) return;
+  var url = location.protocol + '//' + location.host + '/waterpolo.html?control';
+  document.getElementById('remoteUrl').textContent = url;
+}
+
+// ── State sync interval (controller gets updates even when clock stopped) ──
+setInterval(function() {
+  if (!IS_CONTROL && wsReady) sendState();
+}, 1000);
+
+// ── Init ────────────────────────────────────────────────────────────────
+renderDisplay();
+renderQtr();
+renderExcl();
+showRemoteURL();
+connectWS();
+</script>
+</body>
+</html>
