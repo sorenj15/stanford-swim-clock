@@ -710,8 +710,15 @@ function handleCmd(action, data) {
       break;
     case 'toggleMode':
       shotOnly = !shotOnly;
-      var badge = document.getElementById('modeBadge');
-      badge.className = 'mode-badge' + (shotOnly ? ' visible' : '');
+      document.getElementById('modeBadge').className = 'mode-badge' + (shotOnly ? ' visible' : '');
+      // Hide/show game clock elements
+      document.getElementById('gameClock').style.display = shotOnly ? 'none' : '';
+      document.querySelector('.gc-lbl').style.display = shotOnly ? 'none' : '';
+      // Hide/show score row and quarter bar
+      document.querySelector('.score-row').style.display = shotOnly ? 'none' : '';
+      document.querySelector('.qtr-bar').style.display = shotOnly ? 'none' : '';
+      // Hide shot clock label since it's the only clock now
+      document.querySelector('.sc-lbl').style.display = shotOnly ? 'none' : '';
       renderDisplay();
       break;
     case 'swapPoss':
@@ -812,6 +819,7 @@ function renderDisplay() {
 
   // Shot clock
   var scEl = document.getElementById('shotClock');
+  scEl.style.fontSize = shotOnly ? '20rem' : '';
   var sSec = shotTime / 1000;
   if (sSec <= 5 && sSec > 0 && running) {
     var tenth = Math.ceil(shotTime / 100);
