@@ -7,6 +7,9 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
+// Redirect root to water polo clock
+app.get('/', (req, res) => res.redirect('/waterpolo.html'));
+
 app.use(express.static(__dirname));
 
 // Track all connected clients
@@ -32,7 +35,7 @@ wss.on('connection', (ws) => {
   });
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
   // Find local IP for phone connection
   const nets = os.networkInterfaces();
