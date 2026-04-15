@@ -714,6 +714,7 @@ function cleanLine(l) {
     .replace(/\*\([^)]*\)\*/g, '')      // strip *(italic notes)* before star removal
     .replace(/\*\*/g, '')               // strip **bold**
     .replace(/\*/g, '')                 // strip *italic*
+    .replace(/\u00d7/g, 'x')            // convert × (Unicode multiply) to x
     .replace(/[^\x20-\x7E]/g, ' ')     // strip non-ASCII (em-dash, emoji, arrows)
     .replace(/\/\s*\d+\s*laps?/gi, '') // strip "/ 6 laps" lap notations
     .replace(/^\s*[-—·•>]+\s*/, '')    // strip leading bullets / dashes
@@ -756,8 +757,12 @@ function parseSet(text) {
       }
     }
 
-    // Between-rounds rest: ":30 between rounds"
-    var btw = line.match(/:(\d+)\s*between\s*rounds?/i);
+    // "N rounds:" as standalone line — sets rounds on current timed section
+    var rndLine = line.match(/^(\d+)\s*rounds?\s*:?$/i);
+    if (rndLine && cur && cur.timed) { cur.rounds = parseInt(rndLine[1]); return; }
+
+    // Between-rounds rest: ":30 between rounds" or "60 easy between rounds" or "60 between rounds"
+    var btw = line.match(/:?(\d+)\s*(?:\w+\s+)?between\s*rounds?/i);
     if (btw && cur && cur.timed) { cur.roundBreakRest = parseInt(btw[1]); return; }
 
     // Apply rest to current section
@@ -845,6 +850,7 @@ function parseSet(text) {
     // "MAIN SET", "MAIN LADDER", or transition lines containing "MAIN SET"
     // but NOT "Main: Nx..." (handled above)
     var isMainHeader = up.match(/MAIN\s+SET|MAIN\s+LADDER/)
+      || (up === 'MAIN')
       || (up.indexOf('MAIN') >= 0 && up.match(/ZONE|LADDER/) && !isMainLabel)
       || (up.indexOf('MAIN') >= 0 && up.match(/\bZ[2-5]\b/) && !isMainLabel);
     if (isMainHeader) {
