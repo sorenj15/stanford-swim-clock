@@ -181,6 +181,18 @@ textarea#setInput::placeholder { color: #5a2020; }
 .prev-rep .pr-laps { color: #e8b830; font-size: 0.7rem; font-weight: 600; }
 .prev-rep .pr-target { color: #2ecc71; font-family: 'SF Mono', monospace; font-size: 0.7rem; }
 .prev-rep .pr-rnd { color: #8a5050; font-size: 0.6rem; font-style: italic; }
+.prev-rep .pr-zone, .prev-rep .pr-rest {
+  display: inline-block; padding: 1px 5px; border-radius: 3px;
+  font-size: 0.55rem; font-weight: 700; margin-left: 4px; vertical-align: middle;
+}
+.prev-rep .pr-zone { background: #2a4060; color: #a8c4e8; }
+.prev-rep .pr-rest { background: #3a2810; color: #e8b830; }
+.sr-zone, .sr-rest {
+  display: inline-block; padding: 1px 5px; border-radius: 3px;
+  font-size: 0.7rem; font-weight: 700; margin-left: 4px; vertical-align: middle;
+}
+.sr-zone { background: #2a4060; color: #a8c4e8; }
+.sr-rest { background: #3a2810; color: #e8b830; }
 .prev-item { font-size: 0.78rem; color: #d4b0b0; padding: 2px 8px; }
 .prev-warn {
   font-size: 0.72rem; color: #e8a020; padding: 6px 8px;
@@ -798,6 +810,10 @@ function getPace(ti, zKey, dist) {
   return [Math.round(lo*scale), Math.round(hi*scale)];
 }
 
+// ── Rep-aware fallbacks (rep can override section zone/rest) ─────────────────
+function repZ(sec, rep)  { return (rep && rep.zKey) || (sec && sec.zKey) || 'z3'; }
+function repR(sec, rep)  { return (rep && rep.rest != null) ? rep.rest : (sec ? sec.restBetween : 0); }
+
 // ── Parser ──────────────────────────────────────────────────────────────────
 function cleanLine(l) {
   return l
@@ -877,26 +893,43 @@ function parseSet(text) {
   var secs = [], cur = null;
 
   // Process a line of content (reps / items / rest) into current section.
-  // Auto-splits into a new timed section when a zone change is detected.
+  // Reps can carry their own zone + rest (different from section defaults)
+  // so a single Main Set can contain mixed zones without being split.
   function processContent(line) {
     if (!line) return;
     if (!cur) { cur = mkUntimed('warmup','Warm-up','','Warm-up','badge-warmup'); secs.push(cur); }
 
+    // ── Standalone "X:YY rest" or ":NN rest" line (no distances) ──────────
+    // When placed right after a section header with no reps yet in this section,
+    // this denotes the set-break BEFORE this block — apply it to the previous
+    // timed section's restAfterSec so it becomes the gap between blocks.
+    var soloRest = line.match(/^\s*(\d+):(\d{2})\s*r(?:est)?\s*$/i)
+                || line.match(/^\s*:(\d+)\s*r(?:est)?\s*$/i);
+    if (soloRest && cur && cur.timed && cur.reps.length === 0) {
+      var gapSecs = soloRest[2] !== undefined
+        ? parseInt(soloRest[1]) * 60 + parseInt(soloRest[2])
+        : parseInt(soloRest[1]);
+      var gapLabel = soloRest[2] !== undefined
+        ? soloRest[1] + ':' + soloRest[2]
+        : ':' + pad(parseInt(soloRest[1]));
+      // Find most recent timed section before this one
+      for (var ps = secs.length - 2; ps >= 0; ps--) {
+        if (secs[ps].timed) {
+          secs[ps].restAfterSec = gapSecs;
+          secs[ps].restAfterLabel = gapLabel;
+          break;
+        }
+      }
+      return;
+    }
+
     // Rest between reps (e.g. ":45 rest", ":20r", ":15 seconds rest")
     var rm = line.match(/:(\d+)\s*(?:sec(?:ond)?s?\s+)?r(?:est)?\b/i);
 
-    // Zone detection for auto-splitting timed sections
-    if (cur.timed) {
-      var lineZone = detectZone(line, null);
-      if (lineZone && lineZone !== cur.zKey) {
-        // Zone changed — start a new timed sub-section
-        var zNum = lineZone.slice(1);
-        var newRest = rm ? parseInt(rm[1]) : cur.restBetween;
-        cur = mkTimed('main', 'Main Set — Zone ' + zNum, '', lineZone, newRest, cur.restAfterSec, cur.restAfterLabel);
-        secs.push(cur);
-        rm = null; // already consumed into new section
-      }
-    }
+    // Line-level zone (tagged onto reps from this line; does NOT split section)
+    var lineZone = cur.timed ? detectZone(line, null) : null;
+    // Line-level rest (in seconds) — used to tag individual reps
+    var lineRest = rm ? parseInt(rm[1]) : null;
 
     // "N rounds:" as standalone line — sets rounds on current timed section
     var rndLine = line.match(/^(\d+)\s*rounds?\s*:?$/i);
@@ -911,10 +944,16 @@ function parseSet(text) {
       return;
     }
 
-    // Apply rest to current section
-    if (rm && cur.timed) { cur.restBetween = parseInt(rm[1]); }
+    // Standalone "N:NN rest" / "1:30 rest" or lines starting with "Rest:"
+    // These denote set-level rest (after this section), not per-rep rest.
     var rm2 = line.match(/(\d+):(\d+)\s*rest/i);
-    if (rm2 && cur.timed) { cur.restAfterSec = parseInt(rm2[1])*60+parseInt(rm2[2]); cur.restAfterLabel=rm2[1]+':'+rm2[2]; }
+    if (rm2 && cur.timed && !rm) {
+      cur.restAfterSec = parseInt(rm2[1])*60+parseInt(rm2[2]);
+      cur.restAfterLabel = rm2[1]+':'+rm2[2];
+    }
+
+    // Apply line-level rest as section default if section has none yet
+    if (cur.timed && lineRest != null && !cur.restBetween) cur.restBetween = lineRest;
 
     // Equipment
     if (line.match(/paddle|buoy|fins|snorkel|band/i) && cur.timed) {
@@ -922,10 +961,18 @@ function parseSet(text) {
       if (!line.match(/\d+\s*[xX×]\s*\d+/) && !line.match(/^\d+/)) return;
     }
 
+    // Helper to build a rep with optional per-rep zone/rest overrides
+    function mkRep(d) {
+      var r = { dist: d, laps: Math.max(1, Math.round(d/POOL_LEN)) };
+      if (lineZone && lineZone !== cur.zKey) r.zKey = lineZone;
+      if (lineRest != null && lineRest !== cur.restBetween) r.rest = lineRest;
+      return r;
+    }
+
     // Dash-list: 108-72-36-72-108
     var dm = line.match(/^(\d+(?:-\d+)+)/);
     if (dm && cur.timed) {
-      dm[1].split('-').forEach(function(d){ var n=parseInt(d); if(n>=10) cur.reps.push({dist:n,laps:Math.max(1,Math.round(n/POOL_LEN))}); });
+      dm[1].split('-').forEach(function(d){ var n=parseInt(d); if(n>=10) cur.reps.push(mkRep(n)); });
       return;
     }
 
@@ -933,7 +980,7 @@ function parseSet(text) {
     var xm = line.match(/(\d+)\s*[xX×]\s*(\d+)/);
     if (xm && cur.timed) {
       var cnt=parseInt(xm[1]), d2=parseInt(xm[2]);
-      for (var j=0;j<cnt;j++) cur.reps.push({dist:d2, laps:Math.max(1,Math.round(d2/POOL_LEN))});
+      for (var j=0;j<cnt;j++) cur.reps.push(mkRep(d2));
       return;
     }
 
@@ -941,7 +988,7 @@ function parseSet(text) {
     var sm = line.match(/^(\d+)/);
     if (sm && parseInt(sm[1]) >= 10) {
       var ds = parseInt(sm[1]);
-      if (cur.timed) cur.reps.push({dist:ds, laps:Math.max(1,Math.round(ds/POOL_LEN))});
+      if (cur.timed) cur.reps.push(mkRep(ds));
       else cur.items.push(line);
       return;
     }
@@ -985,7 +1032,7 @@ function parseSet(text) {
       // If no timed section exists yet, create a default main section
       if (!cur || !cur.timed) {
         var zl = detectZone(repPart, 'z3');
-        cur = mkTimed('main','Main Set — Zone '+zl.slice(1),'',zl,20,0,'');
+        cur = mkTimed('main','Main Set','',zl,0,0,'');
         secs.push(cur);
       }
       processContent(repPart);
@@ -1003,8 +1050,8 @@ function parseSet(text) {
       var z = detectZone(line,'z3');
       var rndM = line.match(/\((\d+)\s*rounds?\)/i);
       var rndN = rndM ? parseInt(rndM[1]) : 1;
-      var mainTitle = 'Main Set'+(rndN>1?' ×'+rndN:'')+' — Zone '+z.slice(1);
-      cur = mkTimed('main',mainTitle,'',z,20,0,'');
+      var mainTitle = 'Main Set'+(rndN>1?' ×'+rndN:'');
+      cur = mkTimed('main',mainTitle,'',z,0,0,'');
       cur.rounds = rndN;
       secs.push(cur);
       continue;
@@ -1014,7 +1061,7 @@ function parseSet(text) {
     var isLadderHeader = up.match(/^LADDER\b/) || (up.indexOf('LADDER') >= 0 && up.indexOf('@') >= 0);
     if (isLadderHeader) {
       var zLad = detectZone(line,'z3');
-      cur = mkTimed('main','Ladder — Zone '+zLad.slice(1),'',zLad,20,0,'');
+      cur = mkTimed('main','Ladder','',zLad,0,0,'');
       secs.push(cur);
       continue;
     }
@@ -1026,7 +1073,7 @@ function parseSet(text) {
     }
     if (up === 'EXTENSION' || up.match(/^EXTENSION\b/)) {
       var zExt = detectZone(line,'z3');
-      cur = mkTimed('main','Extension — Zone '+zExt.slice(1),'',zExt,20,0,'');
+      cur = mkTimed('main','Extension','',zExt,0,0,'');
       secs.push(cur);
       continue;
     }
@@ -1349,7 +1396,7 @@ function step(s, ti, sec, dt) {
   s.elapsed+=dt;
   var elS=s.elapsed/1000;
   var rep=sec.reps[Math.min(s.ri,sec.reps.length-1)];
-  var pace=getPace(ti,sec.zKey,rep.dist);
+  var pace=getPace(ti,repZ(sec,rep),rep.dist);
   var lo=pace[0],hi=pace[1];
 
   if (s.phase==='swim') {
@@ -1364,7 +1411,8 @@ function step(s, ti, sec, dt) {
         s.restDur=sec.restAfterSec*1000;
       } else {
         var prevRep=sec.reps[s.ri-1];
-        var restSecs=(prevRep&&prevRep.roundEnd&&sec.roundBreakRest>0)?sec.roundBreakRest:sec.restBetween;
+        // Per-rep rest: each rep carries over its rest to the break that follows.
+        var restSecs=(prevRep&&prevRep.roundEnd&&sec.roundBreakRest>0)?sec.roundBreakRest:repR(sec,prevRep);
         s.phase='rest'; s.restDur=restSecs*1000;
       }
     }
@@ -1518,25 +1566,30 @@ document.addEventListener('touchstart', function(e) {
 
 // Build a vertical set list. highlightIdx = which rep to highlight (-1 = none, 0 = first, etc.)
 function buildSetList(ti, sec, reps, highlightIdx) {
-  // Group consecutive identical distances for cleaner display
+  // Group consecutive reps sharing dist + zone + rest for cleaner display
   var groups = [], prev = null;
   reps.forEach(function(r, i) {
-    if (prev && prev.dist === r.dist) {
+    var rz = r.zKey || null, rr = r.rest != null ? r.rest : null;
+    if (prev && prev.dist === r.dist && prev.z === rz && prev.r === rr) {
       prev.count++;
       prev.indices.push(i);
     } else {
-      prev = {dist: r.dist, laps: r.laps, count: 1, indices: [i]};
+      prev = {dist: r.dist, laps: r.laps, count: 1, indices: [i], z: rz, r: rr};
       groups.push(prev);
     }
   });
   return groups.map(function(g) {
-    var pace = getPace(ti, sec.zKey, g.dist);
+    // Use first rep in group for zone lookup (reps in a group share dist, usually zone too)
+    var gRep = sec.reps[g.indices[0]];
+    var pace = getPace(ti, repZ(sec, gRep), g.dist);
     var isCur = g.indices.indexOf(highlightIdx) >= 0;
     var cls = 'set-row' + (isCur ? ' sr-cur' : '');
     var prefix = g.count > 1 ? g.count + '×' : '';
+    var zTag = gRep && gRep.zKey ? '<span class="sr-zone">Z'+gRep.zKey.slice(1)+'</span>' : '';
+    var rTag = gRep && gRep.rest != null ? '<span class="sr-rest">:'+pad(gRep.rest)+'r</span>' : '';
     return '<div class="'+cls+'">'+
       '<div class="sr-num">'+ prefix +'</div>'+
-      '<div class="sr-dist">'+g.dist+'m</div>'+
+      '<div class="sr-dist">'+g.dist+'m '+zTag+' '+rTag+'</div>'+
       '<div class="sr-laps">'+g.laps+'L</div>'+
       '<div class="sr-target">'+fmtS(pace[0])+'–'+fmtS(pace[1])+'</div>'+
     '</div>';
@@ -1547,7 +1600,7 @@ function renderClock(ti, s, sec, cb) {
   var reps=sec.reps; if(!reps||!reps.length) return;
   var ri=Math.min(s.ri,reps.length-1);
   var rep=reps[ri];
-  var pace=getPace(ti,sec.zKey,rep.dist);
+  var pace=getPace(ti,repZ(sec,rep),rep.dist);
   var lo=pace[0],hi=pace[1];
 
   // dots
@@ -1593,7 +1646,7 @@ function renderClock(ti, s, sec, cb) {
   if (s.phase==='countdown') {
     var cdRem = Math.max(0, Math.ceil((s.countdownDur - s.elapsed) / 1000));
     var firstRep = reps[0];
-    var firstPace = getPace(ti, sec.zKey, firstRep.dist);
+    var firstPace = getPace(ti, repZ(sec, firstRep), firstRep.dist);
     cb.className='cbody rd';
     cb.innerHTML=dotsH+
       '<div class="c-rep-lbl" style="letter-spacing:0.15em">GET READY</div>'+
@@ -1662,7 +1715,7 @@ function renderClock(ti, s, sec, cb) {
       (s.paused?'<div class="paused-tag">PAUSED</div>':'')+
       '<div class="c-time '+timeCls+'">'+fmtMs(s.elapsed)+'</div>'+
       badgeHtml+
-      '<div class="c-target">Target: <b'+(elS>hi?' class="red"':'')+'>'+fmtS(lo)+' – '+fmtS(hi)+'</b> <button class="edit-range-btn" onclick="openRangePopup('+ti+',\''+sec.zKey+'\','+rep.dist+',this)">✏</button></div>'+
+      '<div class="c-target">Target: <b'+(elS>hi?' class="red"':'')+'>'+fmtS(lo)+' – '+fmtS(hi)+'</b> <button class="edit-range-btn" onclick="openRangePopup('+ti+',\''+repZ(sec,rep)+'\','+rep.dist+',this)">✏</button></div>'+
       (hasNext?'<div class="c-next">Next: <b>'+nxtRep.dist+'m</b></div>':'<div class="c-next" style="color:#196f3d">Last rep</div>');
     return;
   }
@@ -1675,7 +1728,7 @@ function renderClock(ti, s, sec, cb) {
     var rbadgeCls=missed?'br':lastRes==='ok'?'bg':'by';
     var hasNextR=s.ri<reps.length;  // s.ri IS the next rep index during rest
     var nxtRep=hasNextR?reps[s.ri]:null;
-    var nxtPace=hasNextR?getPace(ti,sec.zKey,nxtRep.dist):null;
+    var nxtPace=hasNextR?getPace(ti,repZ(sec,nxtRep),nxtRep.dist):null;
     cb.className='cbody '+(missed?'swr':'rs');
     cb.innerHTML=dotsH+
       (s.paused
@@ -1736,9 +1789,13 @@ function renderPreview() {
     html += '<div class="prev-sec-title">' + sec.title + '</div>';
 
     if (sec.timed) {
+      // Determine if section has mixed zones across reps
+      var zones = {};
+      sec.reps.forEach(function(r){ zones[(r.zKey||sec.zKey)] = 1; });
+      var zoneList = Object.keys(zones).sort().map(function(z){ return z.slice(1); });
       // Meta info
       var meta = [];
-      meta.push('<span>Zone ' + sec.zKey.slice(1) + '</span>');
+      meta.push('<span>Zone ' + zoneList.join('/') + '</span>');
       if (sec.restBetween) meta.push('<span>:' + pad(sec.restBetween) + ' rest</span>');
       if (sec.rounds > 1) meta.push('<span>' + sec.rounds + ' rounds</span>');
       if (sec.roundBreakRest > 0) meta.push('<span>:' + pad(sec.roundBreakRest) + ' between rounds</span>');
@@ -1752,11 +1809,13 @@ function renderPreview() {
         html += '<div class="prev-warn">⚠ No reps parsed!</div>';
       }
       sec.reps.forEach(function(r, ri) {
-        var pace = getPace(0, sec.zKey, r.dist); // tier 1 for preview
+        var pace = getPace(0, repZ(sec, r), r.dist); // tier 1 for preview
         var rndTag = r.roundEnd ? '<span class="pr-rnd">round end</span>' : '';
+        var zTag = r.zKey ? ' <span class="pr-zone">Z'+r.zKey.slice(1)+'</span>' : '';
+        var restTag = r.rest != null ? ' <span class="pr-rest">:'+pad(r.rest)+'r</span>' : '';
         html += '<div class="prev-rep">' +
           '<span class="pr-idx">' + (ri+1) + '.</span>' +
-          '<span class="pr-dist">' + r.dist + 'm</span>' +
+          '<span class="pr-dist">' + r.dist + 'm' + zTag + restTag + '</span>' +
           '<span class="pr-laps">' + r.laps + 'L</span>' +
           '<span class="pr-target">' + fmtS(pace[0]) + '–' + fmtS(pace[1]) + '</span>' +
           rndTag +
