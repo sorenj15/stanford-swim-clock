@@ -822,11 +822,11 @@ function parseSet(text) {
         var rl = cleanLine(rawLines[ri]);
         var rlUp = rl.toUpperCase();
         // Stop at section headers
-        if (rlUp.match(/\bWARM.?UP\b|^WU\b|^MAIN\b|MAIN\s+SET|PULL|COOL.?DOWN|^CD\b/)) break;
+        if (rlUp.match(/\bWARM.?UP\b|^WU\b|^MAIN\b|MAIN\s+SET|PULL|COOL.?DOWN|^CD\b|^LADDER\b|^TEST\b|^EXTENSION\b/)) break;
         // Stop at another "N rounds:" line
         if (rl.match(/^\d+\s*rounds?\s*:?\s*$/i)) break;
-        // Check for "between rounds" line — extract as the between-rounds content
-        var btwMatch = rl.match(/^:?(\d+)\s*(.*?)between\s*rounds?/i);
+        // Check for "between rounds" / "after each round" — extract as the between-rounds content
+        var btwMatch = rl.match(/^:?(\d+)(?::(\d{2}))?\s*(.*?)(?:between\s*rounds?|after\s*each\s*round)/i);
         if (btwMatch) {
           betweenRest = rawLines[ri]; // keep the raw line to insert between rounds
           ri++;
@@ -860,8 +860,8 @@ function parseSet(text) {
     if (!line) return;
     if (!cur) { cur = mkUntimed('warmup','Warm-up','','Warm-up','badge-warmup'); secs.push(cur); }
 
-    // Rest between reps (e.g. ":45 rest", ":20r")
-    var rm = line.match(/:(\d+)\s*r(?:est)?/i);
+    // Rest between reps (e.g. ":45 rest", ":20r", ":15 seconds rest")
+    var rm = line.match(/:(\d+)\s*(?:sec(?:ond)?s?\s+)?r(?:est)?\b/i);
 
     // Zone detection for auto-splitting timed sections
     if (cur.timed) {
@@ -880,9 +880,14 @@ function parseSet(text) {
     var rndLine = line.match(/^(\d+)\s*rounds?\s*:?$/i);
     if (rndLine && cur && cur.timed) { cur.rounds = parseInt(rndLine[1]); return; }
 
-    // Between-rounds rest: ":30 between rounds" or "60 easy between rounds" or "60 between rounds"
-    var btw = line.match(/:?(\d+)\s*(?:\w+\s+)?between\s*rounds?/i);
-    if (btw && cur && cur.timed) { cur.roundBreakRest = parseInt(btw[1]); return; }
+    // Between-rounds rest: ":30 between rounds", "1:00 between rounds", "60 easy between rounds", ":30 rest after each round"
+    var btw = line.match(/:?(\d+)(?::(\d{2}))?\s*(?:\w+\s+)?(?:between\s*rounds?|after\s*each\s*round)/i);
+    if (btw && cur && cur.timed) {
+      cur.roundBreakRest = btw[2] !== undefined
+        ? parseInt(btw[1]) * 60 + parseInt(btw[2])
+        : parseInt(btw[1]);
+      return;
+    }
 
     // Apply rest to current section
     if (rm && cur.timed) { cur.restBetween = parseInt(rm[1]); }
@@ -979,6 +984,27 @@ function parseSet(text) {
       var mainTitle = 'Main Set'+(rndN>1?' ×'+rndN:'')+' — Zone '+z.slice(1);
       cur = mkTimed('main',mainTitle,'',z,20,0,'');
       cur.rounds = rndN;
+      secs.push(cur);
+      continue;
+    }
+
+    // ── LADDER / TEST / EXTENSION headers (treated as timed main-style sections) ─
+    var isLadderHeader = up.match(/^LADDER\b/) || (up.indexOf('LADDER') >= 0 && up.indexOf('@') >= 0);
+    if (isLadderHeader) {
+      var zLad = detectZone(line,'z3');
+      cur = mkTimed('main','Ladder — Zone '+zLad.slice(1),'',zLad,20,0,'');
+      secs.push(cur);
+      continue;
+    }
+    if (up === 'TEST' || up.match(/^TEST\b/)) {
+      var zTest = detectZone(line,'z4');
+      cur = mkTimed('main','Test Set','',zTest,30,0,'');
+      secs.push(cur);
+      continue;
+    }
+    if (up === 'EXTENSION' || up.match(/^EXTENSION\b/)) {
+      var zExt = detectZone(line,'z3');
+      cur = mkTimed('main','Extension — Zone '+zExt.slice(1),'',zExt,20,0,'');
       secs.push(cur);
       continue;
     }
