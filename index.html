@@ -647,11 +647,35 @@ var RAW = {
 var TKEYS = ['tier1','tier2','tier3'];
 var TIER_COUNT = 3; // how many columns to show
 
+var _TIER_PRESETS = {
+  3: [
+    'Ohl* \xb7 Krilanovich \xb7 West \xb7 Oerlemans \xb7 De Vecchis \xb7 Mathiopoulos',
+    'Leonardi \xb7 Balogh \xb7 Forer \xb7 Schneider',
+    'Caras \xb7 Arakelian \xb7 Mnatsakanian \xb7 Zervoudakis'
+  ],
+  2: [
+    'Ohl* \xb7 Krilanovich \xb7 West \xb7 Oerlemans \xb7 De Vecchis \xb7 Mathiopoulos \xb7 Leonardi',
+    'Balogh \xb7 Forer \xb7 Schneider \xb7 Caras \xb7 Arakelian \xb7 Mnatsakanian \xb7 Zervoudakis',
+    ''
+  ],
+  1: [
+    'All',
+    '',
+    ''
+  ]
+};
 function setTierCount(n) {
   TIER_COUNT = n;
   [1,2,3].forEach(function(i){
     document.getElementById('tc'+i).classList.toggle('active', i===n);
   });
+  // Auto-fill tier names for the selected count
+  var preset = _TIER_PRESETS[n];
+  if (preset) {
+    document.getElementById('t1names').value = preset[0];
+    document.getElementById('t2names').value = preset[1];
+    document.getElementById('t3names').value = preset[2];
+  }
 }
 
 // ── Range popup ──────────────────────────────────────────────────────────────
@@ -934,7 +958,7 @@ function parseSet(text) {
       // If no timed section exists yet, create a default main section
       if (!cur || !cur.timed) {
         var zl = detectZone(repPart, 'z3');
-        cur = mkTimed('main','Main Set — Zone '+zl.slice(1),'',zl,20,90,'1:30');
+        cur = mkTimed('main','Main Set — Zone '+zl.slice(1),'',zl,20,0,'');
         secs.push(cur);
       }
       processContent(repPart);
@@ -953,7 +977,7 @@ function parseSet(text) {
       var rndM = line.match(/\((\d+)\s*rounds?\)/i);
       var rndN = rndM ? parseInt(rndM[1]) : 1;
       var mainTitle = 'Main Set'+(rndN>1?' ×'+rndN:'')+' — Zone '+z.slice(1);
-      cur = mkTimed('main',mainTitle,'',z,20,90,'1:30');
+      cur = mkTimed('main',mainTitle,'',z,20,0,'');
       cur.rounds = rndN;
       secs.push(cur);
       continue;
