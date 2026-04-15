@@ -273,11 +273,11 @@ textarea#setInput::placeholder { color: #5a2020; }
   transform: scale(1.04);
 }
 .set-row.sr-done { opacity: 0.4; text-decoration: line-through; }
-.sr-num { font-size: 1.6rem; color: #e8b830; font-weight: 800; min-width: 44px; text-align: right; flex-shrink: 0; padding-right: 4px; }
+.sr-num { font-size: 1.6rem; color: #fff; font-weight: 800; min-width: 44px; text-align: right; flex-shrink: 0; padding-right: 4px; }
 .sr-dist { font-size: 1.8rem; font-weight: 800; color: #fff; flex-shrink: 0; }
 .sr-meta { display: flex; flex-direction: row; gap: 4px; align-items: center; flex: 1; flex-wrap: nowrap; }
-.sr-laps { font-size: 1.3rem; color: #e8b830; font-weight: 700; }
-.sr-target { font-family: 'SF Mono',monospace; font-size: 1.1rem; color: #2ecc71; font-weight: 700; }
+.sr-laps { font-size: 1.3rem; color: #fff; font-weight: 700; opacity: 0.85; }
+.sr-target { font-family: 'SF Mono',monospace; font-size: 1.1rem; color: #2ecc71; font-weight: 700; white-space: nowrap; }
 
 /* Clocks area */
 .clocks-area {
@@ -1645,7 +1645,14 @@ function renderClock(ti, s, sec, cb) {
   if (s.phase==='ready') {
     cb.className='cbody rd';
     var setRows = buildSetList(ti, sec, reps, -1);
-    var restInfo = sec.restBetween ? '<div style="font-size:1.1rem;color:#e8b830;font-weight:700;margin:6px 0">:'+pad(sec.restBetween)+' rest between reps</div>' : '';
+    // Only show section-wide "rest between reps" header if ALL reps share the
+    // section default (no per-rep overrides). Otherwise the badges on each
+    // row tell the real story and a single header is misleading.
+    var anyOverride = false;
+    for (var _ri = 0; _ri < sec.reps.length; _ri++) {
+      if (sec.reps[_ri].rest != null && sec.reps[_ri].rest !== sec.restBetween) { anyOverride = true; break; }
+    }
+    var restInfo = (sec.restBetween && !anyOverride) ? '<div style="font-size:1.1rem;color:#e8b830;font-weight:700;margin:6px 0">:'+pad(sec.restBetween)+' rest between reps</div>' : '';
     var eqInfo = sec.equipment ? '<div style="font-size:1rem;color:#a06060;font-style:italic">'+sec.equipment+'</div>' : '';
     cb.innerHTML=
       '<div style="font-size:1.4rem;font-weight:800;color:#c0392b;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px">'+sec.title+'</div>'+
