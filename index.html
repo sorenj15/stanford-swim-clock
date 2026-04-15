@@ -1140,6 +1140,9 @@ function loadExample() {
 }
 
 // ── AI Clean (calls server-side proxy at /api/ai-clean) ──────────────────────
+// Absolute URL so this works when the page is embedded on smwphub.com,
+// opened from a local file://, or served directly from Render.
+var AI_CLEAN_URL = 'https://stanford-swim-clock.onrender.com/api/ai-clean';
 async function aiClean() {
   var input = document.getElementById('setInput');
   var btn = document.getElementById('aiCleanBtn');
@@ -1155,7 +1158,7 @@ async function aiClean() {
   status.textContent = 'Cleaning...';
 
   try {
-    var resp = await fetch('/api/ai-clean', {
+    var resp = await fetch(AI_CLEAN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
