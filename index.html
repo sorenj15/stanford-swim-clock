@@ -136,6 +136,45 @@ textarea#setInput::placeholder { color: #5a2020; }
 }
 .example-link:hover { color: #c0392b; }
 
+/* Preview */
+.prev-sec {
+  margin-bottom: 12px; padding: 10px; border-radius: 8px;
+  background: #110606; border: 1px solid #2e1010;
+}
+.prev-sec:last-child { margin-bottom: 0; }
+.prev-sec-title {
+  font-size: 0.85rem; font-weight: 800; color: #c0392b;
+  margin-bottom: 6px;
+}
+.prev-sec-meta {
+  font-size: 0.68rem; color: #8a5050; margin-bottom: 6px;
+  line-height: 1.6;
+}
+.prev-sec-meta span {
+  display: inline-block; background: #1a0808; padding: 1px 6px;
+  border-radius: 3px; margin-right: 4px; margin-bottom: 2px;
+}
+.prev-rep {
+  display: flex; align-items: center; gap: 8px;
+  padding: 3px 8px; border-radius: 4px;
+  margin-bottom: 2px; font-size: 0.78rem;
+}
+.prev-rep:nth-child(odd) { background: rgba(255,255,255,0.02); }
+.prev-rep .pr-idx { color: #5a2020; width: 22px; text-align: right; font-size: 0.65rem; }
+.prev-rep .pr-dist { color: #fff; font-weight: 800; min-width: 50px; }
+.prev-rep .pr-laps { color: #e8b830; font-size: 0.7rem; font-weight: 600; }
+.prev-rep .pr-target { color: #2ecc71; font-family: 'SF Mono', monospace; font-size: 0.7rem; }
+.prev-rep .pr-rnd { color: #8a5050; font-size: 0.6rem; font-style: italic; }
+.prev-item { font-size: 0.78rem; color: #d4b0b0; padding: 2px 8px; }
+.prev-warn {
+  font-size: 0.72rem; color: #e8a020; padding: 6px 8px;
+  background: #2a1800; border-radius: 4px; margin-top: 6px;
+}
+.prev-ok {
+  font-size: 0.72rem; color: #2ecc71; padding: 6px 8px;
+  background: #0a1a0d; border-radius: 4px; margin-top: 6px;
+}
+
 /* ═══ CLOCK VIEW ═══ */
 
 /* Tab bar */
@@ -448,6 +487,11 @@ textarea#setInput::placeholder { color: #5a2020; }
     </div>
   </div>
 
+  <div class="card" id="previewCard" style="display:none">
+    <label class="card-lbl">Parsed Preview <span style="color:#5a2020;font-weight:400;text-transform:none;letter-spacing:0">(check this looks right before launching)</span></label>
+    <div class="card-body" id="previewBody" style="padding-top:10px"></div>
+  </div>
+
   <button class="launch-btn" onclick="launch()">▶ Launch Clocks</button>
   <div class="example-link" onclick="loadExample()">Load today's set as example</div>
 </div>
@@ -732,7 +776,58 @@ function detectZone(line, def) {
 }
 
 function parseSet(text) {
-  var lines = text.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  var rawLines = text.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+
+  // ── Pre-process: expand round blocks ──────────────────────────────────────
+  // "2 rounds:" followed by indented content lines gets expanded into
+  // N copies of those lines with rest inserted between rounds.
+  // This must happen BEFORE the main parse loop so that zone auto-splitting
+  // naturally creates the correct sequence of sections.
+  var lines = [];
+  var ri = 0;
+  while (ri < rawLines.length) {
+    var cl = cleanLine(rawLines[ri]);
+    var rndMatch = cl.match(/^(\d+)\s*rounds?\s*:?\s*$/i);
+    if (rndMatch) {
+      var roundCount = parseInt(rndMatch[1]);
+      var roundLines = [];
+      var betweenRest = 0;
+      ri++;
+      // Collect lines belonging to this round block until next section header
+      while (ri < rawLines.length) {
+        var rl = cleanLine(rawLines[ri]);
+        var rlUp = rl.toUpperCase();
+        // Stop at section headers
+        if (rlUp.match(/\bWARM.?UP\b|^WU\b|^MAIN\b|MAIN\s+SET|PULL|COOL.?DOWN|^CD\b/)) break;
+        // Stop at another "N rounds:" line
+        if (rl.match(/^\d+\s*rounds?\s*:?\s*$/i)) break;
+        // Check for "between rounds" line — extract as the between-rounds content
+        var btwMatch = rl.match(/^:?(\d+)\s*(.*?)between\s*rounds?/i);
+        if (btwMatch) {
+          betweenRest = rawLines[ri]; // keep the raw line to insert between rounds
+          ri++;
+          continue;
+        }
+        roundLines.push(rawLines[ri]);
+        ri++;
+      }
+      // Expand: duplicate round lines N times with between-rounds line inserted
+      for (var rr = 0; rr < roundCount; rr++) {
+        for (var rj = 0; rj < roundLines.length; rj++) {
+          lines.push(roundLines[rj]);
+        }
+        if (rr < roundCount - 1 && betweenRest) {
+          // Strip "between rounds" text and insert as a normal rep/distance line
+          var btwLine = cleanLine(betweenRest).replace(/\s*between\s*rounds?\s*/i, ' ').trim();
+          lines.push(btwLine);
+        }
+      }
+    } else {
+      lines.push(rawLines[ri]);
+      ri++;
+    }
+  }
+
   var secs = [], cur = null;
 
   // Process a line of content (reps / items / rest) into current section.
@@ -1490,6 +1585,103 @@ function fmtShort(s) {
   s=Math.max(0,Math.round(s)); var m=Math.floor(s/60);
   return m>0?m+':'+pad(s%60):s+'s';
 }
+
+// ── Preview ─────────────────────────────────────────────────────────────────
+function renderPreview() {
+  var txt = document.getElementById('setInput').value.trim();
+  var card = document.getElementById('previewCard');
+  var body = document.getElementById('previewBody');
+  if (!txt) { card.style.display='none'; return; }
+
+  // Temporarily set USER_CSS from inputs
+  var tmpCSS = [
+    parseFloat(document.getElementById('css0').value)||66,
+    parseFloat(document.getElementById('css1').value)||68,
+    parseFloat(document.getElementById('css2').value)||71
+  ];
+  USER_CSS[0]=tmpCSS[0]; USER_CSS[1]=tmpCSS[1]; USER_CSS[2]=tmpCSS[2];
+  POOL_LEN = parseFloat(document.getElementById('poolLen').value)||36;
+
+  var secs;
+  try { secs = parseSet(txt); } catch(e) {
+    card.style.display='block';
+    body.innerHTML='<div class="prev-warn">⚠ Parse error: '+e.message+'</div>';
+    return;
+  }
+
+  var html = '';
+  var totalReps = 0, totalDist = 0, warnings = [];
+
+  secs.forEach(function(sec, si) {
+    html += '<div class="prev-sec">';
+    html += '<div class="prev-sec-title">' + sec.title + '</div>';
+
+    if (sec.timed) {
+      // Meta info
+      var meta = [];
+      meta.push('<span>Zone ' + sec.zKey.slice(1) + '</span>');
+      if (sec.restBetween) meta.push('<span>:' + pad(sec.restBetween) + ' rest</span>');
+      if (sec.rounds > 1) meta.push('<span>' + sec.rounds + ' rounds</span>');
+      if (sec.roundBreakRest > 0) meta.push('<span>:' + pad(sec.roundBreakRest) + ' between rounds</span>');
+      if (sec.equipment) meta.push('<span>' + sec.equipment + '</span>');
+      if (sec.restAfterSec > 0) meta.push('<span>' + sec.restAfterLabel + ' set break</span>');
+      html += '<div class="prev-sec-meta">' + meta.join(' ') + '</div>';
+
+      // Reps
+      if (sec.reps.length === 0) {
+        warnings.push('Section "' + sec.title + '" is timed but has 0 reps');
+        html += '<div class="prev-warn">⚠ No reps parsed!</div>';
+      }
+      sec.reps.forEach(function(r, ri) {
+        var pace = getPace(0, sec.zKey, r.dist); // tier 1 for preview
+        var rndTag = r.roundEnd ? '<span class="pr-rnd">round end</span>' : '';
+        html += '<div class="prev-rep">' +
+          '<span class="pr-idx">' + (ri+1) + '.</span>' +
+          '<span class="pr-dist">' + r.dist + 'm</span>' +
+          '<span class="pr-laps">' + r.laps + 'L</span>' +
+          '<span class="pr-target">' + fmtS(pace[0]) + '–' + fmtS(pace[1]) + '</span>' +
+          rndTag +
+        '</div>';
+        totalReps++;
+        totalDist += r.dist;
+      });
+    } else {
+      // Untimed items
+      if (sec.items && sec.items.length) {
+        sec.items.forEach(function(it) {
+          html += '<div class="prev-item">· ' + it + '</div>';
+        });
+      } else {
+        html += '<div class="prev-item" style="color:#5a2020">(no items)</div>';
+      }
+    }
+    html += '</div>';
+  });
+
+  // Summary
+  var summary = '<div class="prev-ok">✓ ' + secs.length + ' section' + (secs.length>1?'s':'') +
+    ' · ' + totalReps + ' timed reps · ' + totalDist + 'm total distance</div>';
+  if (warnings.length) {
+    summary = warnings.map(function(w){ return '<div class="prev-warn">⚠ '+w+'</div>'; }).join('') + summary;
+  }
+
+  card.style.display = 'block';
+  body.innerHTML = html + summary;
+}
+
+// Live preview on input
+var _prevTimer = null;
+document.getElementById('setInput').addEventListener('input', function() {
+  clearTimeout(_prevTimer);
+  _prevTimer = setTimeout(renderPreview, 400);
+});
+// Also update on CSS/pool changes
+['css0','css1','css2','poolLen'].forEach(function(id){
+  document.getElementById(id).addEventListener('input', function(){
+    clearTimeout(_prevTimer);
+    _prevTimer = setTimeout(renderPreview, 400);
+  });
+});
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 </script>
