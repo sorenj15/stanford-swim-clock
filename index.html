@@ -182,17 +182,25 @@ textarea#setInput::placeholder { color: #5a2020; }
 .prev-rep .pr-target { color: #2ecc71; font-family: 'SF Mono', monospace; font-size: 0.7rem; }
 .prev-rep .pr-rnd { color: #8a5050; font-size: 0.6rem; font-style: italic; }
 .prev-rep .pr-zone, .prev-rep .pr-rest {
-  display: inline-block; padding: 1px 5px; border-radius: 3px;
-  font-size: 0.55rem; font-weight: 700; margin-left: 4px; vertical-align: middle;
+  display: inline-block; padding: 2px 7px; border-radius: 4px;
+  font-size: 0.72rem; font-weight: 800; margin-left: 5px; vertical-align: middle;
+  letter-spacing: 0.04em;
 }
 .prev-rep .pr-zone { background: #2a4060; color: #a8c4e8; }
 .prev-rep .pr-rest { background: #3a2810; color: #e8b830; }
 .sr-zone, .sr-rest {
-  display: inline-block; padding: 1px 5px; border-radius: 3px;
-  font-size: 0.7rem; font-weight: 700; margin-left: 4px; vertical-align: middle;
+  display: inline-block; padding: 3px 9px; border-radius: 5px;
+  font-size: 0.95rem; font-weight: 800; margin-left: 6px; vertical-align: middle;
+  letter-spacing: 0.05em;
 }
 .sr-zone { background: #2a4060; color: #a8c4e8; }
 .sr-rest { background: #3a2810; color: #e8b830; }
+/* Zone-specific colors — more pop per intensity level */
+.sr-zone.z-z1, .prev-rep .pr-zone.z-z1 { background: #1a3a2a; color: #8ae0b0; }
+.sr-zone.z-z2, .prev-rep .pr-zone.z-z2 { background: #1a3050; color: #a8c4e8; }
+.sr-zone.z-z3, .prev-rep .pr-zone.z-z3 { background: #4a3810; color: #f0c860; }
+.sr-zone.z-z4, .prev-rep .pr-zone.z-z4 { background: #4a1820; color: #f08090; }
+.sr-zone.z-z5, .prev-rep .pr-zone.z-z5 { background: #4a1050; color: #e080f0; }
 .prev-item { font-size: 0.78rem; color: #d4b0b0; padding: 2px 8px; }
 .prev-warn {
   font-size: 0.72rem; color: #e8a020; padding: 6px 8px;
@@ -1585,7 +1593,8 @@ function buildSetList(ti, sec, reps, highlightIdx) {
     var isCur = g.indices.indexOf(highlightIdx) >= 0;
     var cls = 'set-row' + (isCur ? ' sr-cur' : '');
     var prefix = g.count > 1 ? g.count + '×' : '';
-    var zTag = gRep && gRep.zKey ? '<span class="sr-zone">Z'+gRep.zKey.slice(1)+'</span>' : '';
+    var effZ = repZ(sec, gRep);
+    var zTag = '<span class="sr-zone z-'+effZ+'">Z'+effZ.slice(1)+'</span>';
     var rTag = gRep && gRep.rest != null ? '<span class="sr-rest">:'+pad(gRep.rest)+'r</span>' : '';
     return '<div class="'+cls+'">'+
       '<div class="sr-num">'+ prefix +'</div>'+
@@ -1811,7 +1820,8 @@ function renderPreview() {
       sec.reps.forEach(function(r, ri) {
         var pace = getPace(0, repZ(sec, r), r.dist); // tier 1 for preview
         var rndTag = r.roundEnd ? '<span class="pr-rnd">round end</span>' : '';
-        var zTag = r.zKey ? ' <span class="pr-zone">Z'+r.zKey.slice(1)+'</span>' : '';
+        var effPrevZ = repZ(sec, r);
+        var zTag = ' <span class="pr-zone z-'+effPrevZ+'">Z'+effPrevZ.slice(1)+'</span>';
         var restTag = r.rest != null ? ' <span class="pr-rest">:'+pad(r.rest)+'r</span>' : '';
         html += '<div class="prev-rep">' +
           '<span class="pr-idx">' + (ri+1) + '.</span>' +
