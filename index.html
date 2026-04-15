@@ -179,6 +179,7 @@ textarea#setInput::placeholder { color: #5a2020; }
 .prev-rep .pr-idx { color: #5a2020; width: 22px; text-align: right; font-size: 0.65rem; }
 .prev-rep .pr-dist { color: #fff; font-weight: 800; min-width: 50px; }
 .prev-rep .pr-laps { color: #e8b830; font-size: 0.7rem; font-weight: 600; }
+.prev-rep .pr-laps-inline { color: #fff; opacity: 0.55; font-size: 0.7rem; font-weight: 600; margin-left: 2px; }
 .prev-rep .pr-target { color: #2ecc71; font-family: 'SF Mono', monospace; font-size: 0.7rem; }
 .prev-rep .pr-rnd { color: #8a5050; font-size: 0.6rem; font-style: italic; }
 .prev-rep .pr-zone, .prev-rep .pr-rest {
@@ -274,9 +275,9 @@ textarea#setInput::placeholder { color: #5a2020; }
 }
 .set-row.sr-done { opacity: 0.4; text-decoration: line-through; }
 .sr-num { font-size: 1.6rem; color: #fff; font-weight: 800; min-width: 44px; text-align: right; flex-shrink: 0; padding-right: 4px; }
-.sr-dist { font-size: 1.8rem; font-weight: 800; color: #fff; flex-shrink: 0; }
-.sr-meta { display: flex; flex-direction: row; gap: 4px; align-items: center; flex: 1; flex-wrap: nowrap; }
-.sr-laps { font-size: 1.3rem; color: #fff; font-weight: 700; opacity: 0.85; }
+.sr-dist { font-size: 1.8rem; font-weight: 800; color: #fff; flex-shrink: 0; white-space: nowrap; }
+.sr-dist .sr-laps { font-size: 1.1rem; color: #fff; font-weight: 600; opacity: 0.55; margin-left: 4px; }
+.sr-meta { display: flex; flex-direction: row; gap: 6px; align-items: center; flex: 1; flex-wrap: nowrap; justify-content: flex-start; padding-left: 8px; }
 .sr-target { font-family: 'SF Mono',monospace; font-size: 1.1rem; color: #2ecc71; font-weight: 700; white-space: nowrap; }
 
 /* Clocks area */
@@ -1575,6 +1576,11 @@ document.addEventListener('touchstart', function(e) {
 
 // Build a vertical set list. highlightIdx = which rep to highlight (-1 = none, 0 = first, etc.)
 function buildSetList(ti, sec, reps, highlightIdx) {
+  // Detect whether rests vary across reps — if so, show rest on every row
+  var anyRestOverride = false;
+  for (var _i = 0; _i < sec.reps.length; _i++) {
+    if (sec.reps[_i].rest != null && sec.reps[_i].rest !== sec.restBetween) { anyRestOverride = true; break; }
+  }
   // Group consecutive reps sharing dist + zone + rest for cleaner display
   var groups = [], prev = null;
   reps.forEach(function(r, i) {
@@ -1595,13 +1601,15 @@ function buildSetList(ti, sec, reps, highlightIdx) {
     var cls = 'set-row' + (isCur ? ' sr-cur' : '');
     var prefix = g.count > 1 ? g.count + '×' : '';
     var effZ = repZ(sec, gRep);
-    var zTag = '<span class="sr-zone z-'+effZ+'">Z'+effZ.slice(1)+'</span>';
-    var rTag = gRep && gRep.rest != null ? '<span class="sr-rest">:'+pad(gRep.rest)+'r</span>' : '';
+    var effRest = (gRep && gRep.rest != null) ? gRep.rest : sec.restBetween;
+    var zTag = '<span class="sr-zone z-'+effZ+'">Zone '+effZ.slice(1)+'</span>';
+    // Show rest on every row when any rep overrides (so :10 and :15 both display)
+    var showRest = anyRestOverride && effRest;
+    var rTag = showRest ? '<span class="sr-rest">:'+pad(effRest)+' rest</span>' : '';
     return '<div class="'+cls+'">'+
       '<div class="sr-num">'+ prefix +'</div>'+
-      '<div class="sr-dist">'+g.dist+'m</div>'+
+      '<div class="sr-dist">'+g.dist+'m <span class="sr-laps">('+g.laps+'L)</span></div>'+
       '<div class="sr-meta">'+zTag+rTag+'</div>'+
-      '<div class="sr-laps">'+g.laps+'L</div>'+
       '<div class="sr-target">'+fmtS(pace[0])+'–'+fmtS(pace[1])+'</div>'+
     '</div>';
   }).join('');
@@ -1826,16 +1834,21 @@ function renderPreview() {
         warnings.push('Section "' + sec.title + '" is timed but has 0 reps');
         html += '<div class="prev-warn">⚠ No reps parsed!</div>';
       }
+      // Pre-compute rest override detection for preview (same rule as live display)
+      var _prevAnyRest = false;
+      for (var _pi = 0; _pi < sec.reps.length; _pi++) {
+        if (sec.reps[_pi].rest != null && sec.reps[_pi].rest !== sec.restBetween) { _prevAnyRest = true; break; }
+      }
       sec.reps.forEach(function(r, ri) {
         var pace = getPace(0, repZ(sec, r), r.dist); // tier 1 for preview
         var rndTag = r.roundEnd ? '<span class="pr-rnd">round end</span>' : '';
         var effPrevZ = repZ(sec, r);
-        var zTag = ' <span class="pr-zone z-'+effPrevZ+'">Z'+effPrevZ.slice(1)+'</span>';
-        var restTag = r.rest != null ? ' <span class="pr-rest">:'+pad(r.rest)+'r</span>' : '';
+        var zTag = ' <span class="pr-zone z-'+effPrevZ+'">Zone '+effPrevZ.slice(1)+'</span>';
+        var effPrevRest = (r.rest != null) ? r.rest : sec.restBetween;
+        var restTag = (_prevAnyRest && effPrevRest) ? ' <span class="pr-rest">:'+pad(effPrevRest)+' rest</span>' : '';
         html += '<div class="prev-rep">' +
           '<span class="pr-idx">' + (ri+1) + '.</span>' +
-          '<span class="pr-dist">' + r.dist + 'm' + zTag + restTag + '</span>' +
-          '<span class="pr-laps">' + r.laps + 'L</span>' +
+          '<span class="pr-dist">' + r.dist + 'm <span class="pr-laps-inline">('+r.laps+'L)</span>' + zTag + restTag + '</span>' +
           '<span class="pr-target">' + fmtS(pace[0]) + '–' + fmtS(pace[1]) + '</span>' +
           rndTag +
         '</div>';
