@@ -182,20 +182,20 @@ textarea#setInput::placeholder { color: #5a2020; }
 .prev-rep .pr-target { color: #2ecc71; font-family: 'SF Mono', monospace; font-size: 0.7rem; }
 .prev-rep .pr-rnd { color: #8a5050; font-size: 0.6rem; font-style: italic; }
 .prev-rep .pr-zone, .prev-rep .pr-rest {
-  display: inline-block; padding: 2px 7px; border-radius: 4px;
-  font-size: 0.72rem; font-weight: 800; margin-left: 5px; vertical-align: middle;
-  letter-spacing: 0.04em;
+  display: inline-block; padding: 2px 6px; border-radius: 3px;
+  font-size: 0.65rem; font-weight: 700; margin-left: 4px; vertical-align: middle;
+  letter-spacing: 0.03em;
 }
 .prev-rep .pr-zone { background: #2a4060; color: #a8c4e8; }
 .prev-rep .pr-rest { background: #3a2810; color: #e8b830; }
 .sr-zone, .sr-rest {
-  display: inline-block; padding: 3px 9px; border-radius: 5px;
-  font-size: 0.95rem; font-weight: 800; margin-left: 6px; vertical-align: middle;
-  letter-spacing: 0.05em;
+  display: inline-block; padding: 3px 8px; border-radius: 4px;
+  font-size: 0.8rem; font-weight: 700; vertical-align: middle;
+  letter-spacing: 0.04em; white-space: nowrap;
 }
 .sr-zone { background: #2a4060; color: #a8c4e8; }
 .sr-rest { background: #3a2810; color: #e8b830; }
-/* Zone-specific colors — more pop per intensity level */
+/* Zone-specific colors — intensity at a glance */
 .sr-zone.z-z1, .prev-rep .pr-zone.z-z1 { background: #1a3a2a; color: #8ae0b0; }
 .sr-zone.z-z2, .prev-rep .pr-zone.z-z2 { background: #1a3050; color: #a8c4e8; }
 .sr-zone.z-z3, .prev-rep .pr-zone.z-z3 { background: #4a3810; color: #f0c860; }
@@ -274,7 +274,8 @@ textarea#setInput::placeholder { color: #5a2020; }
 }
 .set-row.sr-done { opacity: 0.4; text-decoration: line-through; }
 .sr-num { font-size: 1.6rem; color: #e8b830; font-weight: 800; min-width: 44px; text-align: right; flex-shrink: 0; padding-right: 4px; }
-.sr-dist { font-size: 1.8rem; font-weight: 800; color: #fff; flex: 1; }
+.sr-dist { font-size: 1.8rem; font-weight: 800; color: #fff; flex-shrink: 0; }
+.sr-meta { display: flex; flex-direction: row; gap: 4px; align-items: center; flex: 1; flex-wrap: nowrap; }
 .sr-laps { font-size: 1.3rem; color: #e8b830; font-weight: 700; }
 .sr-target { font-family: 'SF Mono',monospace; font-size: 1.1rem; color: #2ecc71; font-weight: 700; }
 
@@ -1598,7 +1599,8 @@ function buildSetList(ti, sec, reps, highlightIdx) {
     var rTag = gRep && gRep.rest != null ? '<span class="sr-rest">:'+pad(gRep.rest)+'r</span>' : '';
     return '<div class="'+cls+'">'+
       '<div class="sr-num">'+ prefix +'</div>'+
-      '<div class="sr-dist">'+g.dist+'m '+zTag+' '+rTag+'</div>'+
+      '<div class="sr-dist">'+g.dist+'m</div>'+
+      '<div class="sr-meta">'+zTag+rTag+'</div>'+
       '<div class="sr-laps">'+g.laps+'L</div>'+
       '<div class="sr-target">'+fmtS(pace[0])+'–'+fmtS(pace[1])+'</div>'+
     '</div>';
