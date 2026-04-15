@@ -10,12 +10,59 @@ const wss = new WebSocketServer({ server });
 // Redirect root to water polo clock
 app.get('/', (req, res) => res.redirect('/waterpolo.html'));
 
-app.use(express.json({ limit: '100kb' }));
-app.use(express.static(__dirname));
+// Parse JSON bodies for API routes
+app.use(express.json());
 
-// ── AI Clean proxy ──────────────────────────────────────────────────────────
-// Calls OpenAI server-side so the API key never ships to the browser.
-// Requires OPENAI_API_KEY env var (set in Render dashboard).
+// ── AI Clean proxy (keeps OpenAI key server-side) ────────────────────────────
+app.post('/api/ai-clean', async (req, res) => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: 'OPENAI_API_KEY not configured on server' });
+  }
+
+  const { text, poolLength } = req.body;
+  if (!text || typeof text !== 'string') {
+    return res.status(400).json({ error: 'Missing "text" field' });
+  }
+
+  try {
+    const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        temperature: 0,
+        max_tokens: 2000,
+        messages: [
+          { role: 'system', content: AI_SYSTEM_PROMPT },
+          { role: 'user', content: `Pool length: ${poolLength || 36}m\n\nReformat this swim set:\n\n${text}` }
+        ]
+      })
+    });
+
+    if (!openaiRes.ok) {
+      const errBody = await openaiRes.json().catch(() => ({}));
+      console.error('OpenAI error:', openaiRes.status, errBody);
+      return res.status(openaiRes.status).json({
+        error: errBody.error?.message || `OpenAI API error ${openaiRes.status}`
+      });
+    }
+
+    const data = await openaiRes.json();
+    let cleaned = (data.choices[0].message.content || '').trim();
+    // Strip markdown fences if model wraps output
+    cleaned = cleaned.replace(/^```[\w]*\n?/, '').replace(/\n?```$/, '').trim();
+
+    res.json({ cleaned });
+  } catch (err) {
+    console.error('AI Clean error:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
+  }
+});
+
 const AI_SYSTEM_PROMPT = `You are a swim set formatting assistant for a Stanford swim clock app. Your ONLY job is to take messy, inconsistent swim set text and reformat it into the exact structure the parser expects. Return ONLY the cleaned set text — no explanations, no markdown, no backticks.
 
 THE PARSER EXPECTS THIS EXACT FORMAT:
@@ -82,48 +129,7 @@ COOL-DOWN
 100 back
 100 easy free`;
 
-app.post('/api/ai-clean', async (req, res) => {
-  try {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: 'Server missing OPENAI_API_KEY env var' });
-    }
-    const { text, poolLen } = req.body || {};
-    if (!text || typeof text !== 'string' || text.length > 8000) {
-      return res.status(400).json({ error: 'Invalid text' });
-    }
-    const userMsg = 'Pool length: ' + (poolLen || '36') + 'm\n\nReformat this swim set:\n\n' + text;
-
-    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        temperature: 0,
-        max_tokens: 2000,
-        messages: [
-          { role: 'system', content: AI_SYSTEM_PROMPT },
-          { role: 'user', content: userMsg }
-        ]
-      })
-    });
-
-    if (!resp.ok) {
-      const errData = await resp.json().catch(() => ({}));
-      return res.status(resp.status).json({ error: (errData.error && errData.error.message) || ('OpenAI error ' + resp.status) });
-    }
-
-    const data = await resp.json();
-    const cleaned = (data.choices?.[0]?.message?.content || '').trim();
-    res.json({ cleaned });
-  } catch (err) {
-    console.error('AI Clean error:', err);
-    res.status(500).json({ error: err.message || 'Internal error' });
-  }
-});
+app.use(express.static(__dirname));
 
 // Track all connected clients
 const clients = new Set();

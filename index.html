@@ -430,12 +430,12 @@ textarea#setInput::placeholder { color: #5a2020; }
     <label class="card-lbl" for="setInput">Swim Set</label>
     <div class="card-body">
       <textarea id="setInput" placeholder="WARM-UP&#10;108m free (3 laps)&#10;72m kick (2 laps)&#10;108m choice&#10;4x36 build to Z3, :10 rest&#10;&#10;MAIN SET — Zone 3&#10;:20 rest between reps&#10;108-72-36-72-108-72-36-72-108&#10;&#10;PULL SET — Zone 2&#10;paddles + pull buoy, :20 rest&#10;4x216&#10;&#10;COOL-DOWN&#10;108m back&#10;108m easy free"></textarea>
-    </div>
-    <div class="ai-bar">
-      <button class="ai-btn" id="aiCleanBtn" onclick="aiClean()">
-        <span class="ai-icon" id="aiIcon">✨</span> AI Clean
-      </button>
-      <span class="ai-status" id="aiStatus"></span>
+      <div class="ai-bar">
+        <button class="ai-btn" id="aiCleanBtn" onclick="aiClean()">
+          <span class="ai-icon" id="aiIcon">✨</span> AI Clean
+        </button>
+        <span class="ai-status" id="aiStatus"></span>
+      </div>
     </div>
   </div>
 
@@ -1139,7 +1139,7 @@ function loadExample() {
 "WARM-UP\n108m free (3 laps)\n72m kick (2 laps)\n108m choice\n4x36 build to Z3, :10 rest\n\nMAIN SET — Zone 3\n:20 rest between reps\n108-72-36-72-108-72-36-72-108\n\nPULL SET — Zone 2\npaddles + pull buoy, :20 rest\n4x216\n\nCOOL-DOWN\n108m back\n108m easy free";
 }
 
-// ── AI Clean (calls server proxy; OpenAI key lives on the server) ───────────
+// ── AI Clean (calls server-side proxy at /api/ai-clean) ──────────────────────
 async function aiClean() {
   var input = document.getElementById('setInput');
   var btn = document.getElementById('aiCleanBtn');
@@ -1149,26 +1149,31 @@ async function aiClean() {
 
   if (!txt) { status.textContent = 'Paste a set first'; setTimeout(function(){ status.textContent=''; }, 2000); return; }
 
+  // Disable button, show spinner
   btn.disabled = true;
   icon.innerHTML = '<span class="ai-spin">⟳</span>';
   status.textContent = 'Cleaning...';
 
   try {
-    var poolLen = (document.getElementById('poolLen') && document.getElementById('poolLen').value) || '36';
     var resp = await fetch('/api/ai-clean', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: txt, poolLen: poolLen })
+      body: JSON.stringify({
+        text: txt,
+        poolLength: document.getElementById('poolLen').value || '36'
+      })
     });
-    var data = await resp.json().catch(function(){ return {}; });
+
+    var data = await resp.json();
     if (!resp.ok) throw new Error(data.error || ('Server error ' + resp.status));
 
-    var cleaned = (data.cleaned || '').replace(/^```[\w]*\n?/,'').replace(/\n?```$/,'').trim();
-    input.value = cleaned;
+    input.value = data.cleaned;
+    // Trigger preview update
     input.dispatchEvent(new Event('input'));
 
     status.textContent = '✓ Cleaned';
     setTimeout(function(){ status.textContent=''; }, 3000);
+
   } catch(err) {
     status.textContent = '✕ ' + (err.message || 'Failed');
     console.error('AI Clean error:', err);
