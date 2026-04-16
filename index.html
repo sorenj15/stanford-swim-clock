@@ -330,6 +330,17 @@ textarea#setInput::placeholder { color: #5a2020; }
   line-height: 1; text-align: center; letter-spacing: -0.02em;
 }
 .c-zone { font-size: 0.58rem; color: #a06060; text-align: center; }
+.c-zone-badge {
+  display: inline-block; padding: 4px 12px; border-radius: 5px;
+  font-size: 0.95rem; font-weight: 800; letter-spacing: 0.05em;
+  margin: 2px auto 4px; text-align: center;
+}
+.c-zone-badge.z-z1 { background: #1a3a2a; color: #8ae0b0; }
+.c-zone-badge.z-z2 { background: #1a3050; color: #a8c4e8; }
+.c-zone-badge.z-z3 { background: #4a3810; color: #f0c860; }
+.c-zone-badge.z-z4 { background: #4a1820; color: #f08090; }
+.c-zone-badge.z-z5 { background: #4a1050; color: #e080f0; }
+.c-zone-wrap { text-align: center; }
 
 .c-time {
   font-family: 'SF Mono', 'Courier New', monospace;
@@ -1673,9 +1684,11 @@ function renderClock(ti, s, sec, cb) {
     var cdRem = Math.max(0, Math.ceil((s.countdownDur - s.elapsed) / 1000));
     var firstRep = reps[0];
     var firstPace = getPace(ti, repZ(sec, firstRep), firstRep.dist);
+    var firstZ = repZ(sec, firstRep);
     cb.className='cbody rd';
     cb.innerHTML=dotsH+
       '<div class="c-rep-lbl" style="letter-spacing:0.15em">GET READY</div>'+
+      '<div class="c-zone-wrap"><span class="c-zone-badge z-'+firstZ+'">Zone '+firstZ.slice(1)+'</span></div>'+
       '<div class="c-laps">'+firstRep.laps+' laps</div>'+
       '<div class="c-dist">'+firstRep.dist+'m</div>'+
       '<div class="c-time tw" style="font-size:7rem">'+cdRem+'</div>'+
@@ -1733,9 +1746,11 @@ function renderClock(ti, s, sec, cb) {
     var nxtRep=reps[s.ri+1];
     var badgeHtml=badgeText?'<div class="c-badge '+badgeCls+'">'+badgeText+'</div>':'';
 
+    var curZ = repZ(sec, rep);
     cb.className='cbody '+bodyClass;
     cb.innerHTML=dotsH+
       '<div class="c-rep-lbl">Rep <span class="c-rep-num">'+(ri+1)+'/'+reps.length+'</span></div>'+
+      '<div class="c-zone-wrap"><span class="c-zone-badge z-'+curZ+'">Zone '+curZ.slice(1)+'</span></div>'+
       '<div class="c-laps">'+rep.laps+' laps</div>'+
       '<div class="c-dist">'+rep.dist+'m</div>'+
       (s.paused?'<div class="paused-tag">PAUSED</div>':'')+
@@ -1766,6 +1781,7 @@ function renderClock(ti, s, sec, cb) {
       '<div class="c-badge '+rbadgeCls+'">'+(missed?'MISSED · ':'REST ')+fmtShort(remR)+'</div>'+
       (hasNextR
         ? '<div class="c-next-lbl" style="font-size:0.6rem;margin-top:6px">Up next</div>'+
+          '<div class="c-zone-wrap"><span class="c-zone-badge z-'+repZ(sec,nxtRep)+'" style="font-size:0.75rem;padding:3px 9px">Zone '+repZ(sec,nxtRep).slice(1)+'</span></div>'+
           '<div class="c-laps" style="margin-bottom:0">'+nxtRep.laps+' laps</div>'+
           '<div class="c-next-dist" style="font-size:2.2rem">'+nxtRep.dist+'m</div>'+
           '<div class="c-next-target" style="font-size:0.85rem">Target: <b style="font-size:1.2rem">'+fmtS(nxtPace[0])+' – '+fmtS(nxtPace[1])+'</b></div>'
