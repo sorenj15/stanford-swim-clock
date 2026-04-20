@@ -320,7 +320,14 @@ body {
 .rb-sub { display: block; font-size: 0.55rem; font-weight: 600; opacity: .6; margin-top: 2px; letter-spacing: 0.05em; }
 
 /* ═══════ TV VIEW (dedicated shot clock for outdoor TV) ═══════ */
-/* Pure black + pure white for max contrast in direct sunlight. */
+/* Amber-on-black seven-segment style — matches real commercial shot clocks.
+   Amber (~590nm) sits near the eye's peak photopic sensitivity, so it reads
+   brighter than white in direct sunlight even though it's physically dimmer. */
+@font-face {
+  font-family: 'DSEG7';
+  src: url('https://cdn.jsdelivr.net/gh/keshikan/DSEG@v0.46/fonts/DSEG7-Classic/DSEG7Classic-Bold.woff2') format('woff2');
+  font-display: swap;
+}
 body.is-tv { background: #000 !important; overflow: hidden; }
 .tv-app {
   position: fixed; inset: 0;
@@ -330,17 +337,17 @@ body.is-tv { background: #000 !important; overflow: hidden; }
   user-select: none;
 }
 .tv-num {
-  color: #fff;
-  font-family: 'Arial Black', 'Helvetica', sans-serif;
+  color: #FFB800; /* amber, not pure yellow — matches Daktronics/Colorado Time */
+  font-family: 'DSEG7', 'Arial Black', 'Helvetica', sans-serif;
   font-weight: 900;
-  font-size: 85vh;
+  font-size: 78vh; /* slightly smaller than Arial Black's 85 because DSEG7 is wider */
   line-height: 0.85;
-  letter-spacing: -0.04em;
-  text-shadow: 0 0 30px rgba(255,255,255,0.15);
+  letter-spacing: 0;
+  text-shadow: 0 0 40px rgba(255,184,0,0.25);
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
-/* Red flash when shot clock hits 0 — full screen inverts to red */
+/* Red flash when shot clock hits 0 — full screen flash, digits turn white */
 .tv-app.tv-buzz { background: #d00; animation: tvFlash 0.18s linear infinite alternate; }
 .tv-app.tv-buzz .tv-num { color: #fff; text-shadow: 0 0 60px rgba(255,255,255,0.5); }
 @keyframes tvFlash {
