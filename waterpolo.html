@@ -318,9 +318,52 @@ body {
 .rb-poss    { background: #0d0808; color: #888; border-color: #1a1010; }
 
 .rb-sub { display: block; font-size: 0.55rem; font-weight: 600; opacity: .6; margin-top: 2px; letter-spacing: 0.05em; }
+
+/* ═══════ TV VIEW (dedicated shot clock for outdoor TV) ═══════ */
+/* Pure black + pure white for max contrast in direct sunlight. */
+body.is-tv { background: #000 !important; overflow: hidden; }
+.tv-app {
+  position: fixed; inset: 0;
+  background: #000;
+  display: flex; align-items: center; justify-content: center;
+  cursor: none; /* hide cursor on TV */
+  user-select: none;
+}
+.tv-num {
+  color: #fff;
+  font-family: 'Arial Black', 'Helvetica', sans-serif;
+  font-weight: 900;
+  font-size: 85vh;
+  line-height: 0.85;
+  letter-spacing: -0.04em;
+  text-shadow: 0 0 30px rgba(255,255,255,0.15);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+/* Red flash when shot clock hits 0 — full screen inverts to red */
+.tv-app.tv-buzz { background: #d00; animation: tvFlash 0.18s linear infinite alternate; }
+.tv-app.tv-buzz .tv-num { color: #fff; text-shadow: 0 0 60px rgba(255,255,255,0.5); }
+@keyframes tvFlash {
+  from { background: #ff0000; }
+  to   { background: #600000; }
+}
+/* Tiny connection indicator in corner — only visible when disconnected */
+.tv-conn {
+  position: fixed; top: 12px; right: 16px;
+  font-size: 0.7rem; color: #400; font-family: sans-serif;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  display: none;
+}
+.tv-conn.off { display: block; color: #e74c3c; }
 </style>
 </head>
 <body>
+
+<!-- ═══ TV VIEW (dedicated outdoor shot clock) ═══ -->
+<div class="tv-app" id="tvApp" style="display:none">
+  <div class="tv-num" id="tvNum">30</div>
+  <div class="tv-conn" id="tvConn">Disconnected</div>
+</div>
 
 <!-- ═══ DISPLAY VIEW (big screen) ═══ -->
 <div class="display-app" id="displayApp">
@@ -478,8 +521,26 @@ body {
 
 // ── Detect mode ─────────────────────────────────────────────────────────
 var IS_CONTROL = location.search.indexOf('control') >= 0;
+var IS_TV      = location.search.indexOf('tv') >= 0;
 
-if (IS_CONTROL) {
+if (IS_TV) {
+  document.body.classList.add('is-tv');
+  document.getElementById('tvApp').style.display = 'flex';
+  document.getElementById('displayApp').style.display = 'none';
+  document.getElementById('controlApp').style.display = 'none';
+  // Try to go fullscreen automatically on first user interaction
+  var goFS = function() {
+    var el = document.documentElement;
+    var req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen;
+    if (req) req.call(el).catch(function(){});
+    document.removeEventListener('click', goFS);
+    document.removeEventListener('keydown', goFS);
+    document.removeEventListener('touchstart', goFS);
+  };
+  document.addEventListener('click', goFS);
+  document.addEventListener('keydown', goFS);
+  document.addEventListener('touchstart', goFS);
+} else if (IS_CONTROL) {
   document.body.classList.add('is-control');
   document.getElementById('displayApp').style.display = 'none';
   document.getElementById('controlApp').style.display = 'flex';
@@ -502,13 +563,19 @@ function connectWS() {
         document.getElementById('connStatus').textContent = '● Connected';
         document.getElementById('connStatus').className = 'conn-status connected';
       }
-      // Display sends full state so controller syncs
-      if (!IS_CONTROL) sendState();
+      if (IS_TV) {
+        document.getElementById('tvConn').classList.remove('off');
+      }
+      // Display sends full state so controller + TV sync immediately
+      if (!IS_CONTROL && !IS_TV) sendState();
     };
     ws.onmessage = function(e) {
       var msg;
       try { msg = JSON.parse(e.data); } catch(x) { return; }
-      if (msg.type === 'cmd') handleCmd(msg.action, msg.data);
+      if (msg.type === 'cmd') {
+        if (IS_TV) return; // TV is receive-only, ignores commands
+        handleCmd(msg.action, msg.data);
+      }
       else if (msg.type === 'state') applyState(msg);
     };
     ws.onclose = function() {
@@ -516,6 +583,9 @@ function connectWS() {
       if (IS_CONTROL) {
         document.getElementById('connStatus').textContent = '● Disconnected';
         document.getElementById('connStatus').className = 'conn-status disconnected';
+      }
+      if (IS_TV) {
+        document.getElementById('tvConn').classList.add('off');
       }
       setTimeout(connectWS, 2000);
     };
@@ -544,6 +614,24 @@ function sendState() {
 var _lastRemoteState = { gameTime: 8*60*1000, shotTime: 30*1000 };
 
 function applyState(s) {
+  if (IS_TV) {
+    _lastRemoteState = s;
+    var secs = Math.max(0, Math.ceil(s.shotTime / 1000));
+    document.getElementById('tvNum').textContent = secs;
+    // Red flash + horn when shot clock hits 0 (only transition from >0 to 0)
+    var tvApp = document.getElementById('tvApp');
+    if (s.shotTime <= 0) {
+      if (!tvApp.classList.contains('tv-buzz')) {
+        tvApp.classList.add('tv-buzz');
+        try { soundHorn(); } catch(e){}
+        // auto-clear after 3 seconds so flash doesn't stick forever
+        setTimeout(function(){ tvApp.classList.remove('tv-buzz'); }, 3000);
+      }
+    } else {
+      tvApp.classList.remove('tv-buzz');
+    }
+    return;
+  }
   if (!IS_CONTROL) return;
   _lastRemoteState = s;
   document.getElementById('csGame').textContent = fmtClock(s.gameTime);
@@ -744,6 +832,7 @@ function handleCmd(action, data) {
 
 // ── Clock control ───────────────────────────────────────────────────────
 function _start() {
+  if (IS_TV) return; // TV is receive-only, never runs its own clock
   if (running) return;
   if (gameTime <= 0 && !shotOnly) return;
   if (shotTime <= 0 && shotOnly) return;
