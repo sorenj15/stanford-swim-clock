@@ -939,16 +939,18 @@ function parseSet(text) {
         ? parseInt(soloRest[1]) * 60 + parseInt(soloRest[2])
         : parseInt(soloRest[1]);
       if (cur.reps.length === 0) {
-        // Top-of-section: apply to previous timed section as set-break
+        // Top-of-section: apply to previous section as set-break.
+        // Also stored as current section's preRestSec so the break runs
+        // even if the previous section was untimed (e.g. warm-up).
         var gapLabel = soloRest[2] !== undefined
           ? soloRest[1] + ':' + soloRest[2]
           : ':' + pad(parseInt(soloRest[1]));
-        for (var ps = secs.length - 2; ps >= 0; ps--) {
-          if (secs[ps].timed) {
-            secs[ps].restAfterSec = gapSecs;
-            secs[ps].restAfterLabel = gapLabel;
-            break;
-          }
+        cur.preRestSec = gapSecs;
+        cur.preRestLabel = gapLabel;
+        if (secs.length >= 2) {
+          var prev = secs[secs.length - 2];
+          prev.restAfterSec = gapSecs;
+          prev.restAfterLabel = gapLabel;
         }
       } else {
         // Mid-section: extend last rep's rest so there's a pause before next group
@@ -1036,14 +1038,20 @@ function parseSet(text) {
     if (!line) continue;
 
     // ── Standalone "Rest: time" lines between sections ───────────────────────
-    // e.g. "**Rest:** 1:00" or "Rest: :30"
+    // e.g. "**Rest:** 1:00" or "Rest: :30" — these sit BETWEEN sections in
+    // the source text. They denote the gap before the next section starts,
+    // so apply to the current (previous) section's restAfterSec.
     var restLine = line.match(/^rest\s*:?\s+(\d+):(\d{2})/i) || line.match(/^rest\s*:?\s+:(\d+)/i);
     if (restLine) {
       if (cur) {
         var rSec = restLine[2] !== undefined
           ? parseInt(restLine[1])*60 + parseInt(restLine[2])
           : parseInt(restLine[1]);
+        var rLbl = restLine[2] !== undefined
+          ? restLine[1] + ':' + restLine[2]
+          : ':' + pad(parseInt(restLine[1]));
         cur.restAfterSec = rSec;
+        cur.restAfterLabel = rLbl;
       }
       continue;
     }

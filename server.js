@@ -109,54 +109,55 @@ Rep line formats. Each rep line goes on its own line, underneath the section hea
 
 CRITICAL RULES:
 1. ONE header per workout block. Warm-up = 1 section. Main = 1 section. Pull = 1 section. Cool-down = 1 section. Do not split by zone.
-2. Zone goes on the REP LINE as "@ Zone N" — NOT in the header, NOT on its own line.
+2. Zone goes on the REP LINE as "@ Zone N" — but ONLY on MAIN SET / PULL SET / LADDER / TEST / EXTENSION rep lines. Warm-up and cool-down rep lines MUST NEVER include a zone (those blocks are always easy swim / drill work, no target pace).
 3. Rest between reps goes on the REP LINE as ":NN rest" — NOT on its own line.
 4. A standalone "1:00 rest" or ":30 rest" line is ONLY used at the very top of a section to denote the break between blocks. Do not invent these.
 5. Strip "on 1:30" or "@ 1:30" style interval targets — the app computes targets from the swimmer's CSS.
 6. Use exact distances from input — do NOT convert or round.
 7. Keep "build" / "descend" as an inline note.
-8. Warm-up and cool-down items should be simple "{distance} {stroke}" lines — no zone needed.
+8. PRESERVE BREAKDOWNS. If the input has a parent distance with nested sub-items explaining the split (e.g. "288m / 8 laps" with sub-bullets "108 free / 72 back / 108 free"), collapse them into ONE line using parenthetical inline breakdown: "288m (108 free / 72 back / 108 free)". Same rule for multi-rep breakdowns — "4x72 (36 breathe every 3 / 36 breathe every 5), :15 rest". Do NOT flatten into multiple separate lines.
 9. If input has no clear headers, infer: warm-up patterns → WARM-UP, main set patterns → MAIN SET, anything with paddles/buoy → PULL SET, easy stuff at end → COOL-DOWN.
 10. Pool-specific distances (36, 72, 108, 144, 216 for 36m pool; 25, 50, 100, 200 for 25yd/25m pool) — keep as-is.
 
-EXAMPLE INPUT (messy):
+EXAMPLE INPUT (messy, with nested breakdowns):
 "Warm-up
-- 216m free
-- 108m kick
+- 288m / 8 laps
+    - 108m free
+    - 72m back
+    - 108m free
+- 4 x 72m, :15 rest
+    - 36m breathe every 3
+    - 36m breathe every 5
+
+Rest: 1:00
 
 Main Set
-- **1:00 rest**
-- 6x108m @ Zone 2, :10 rest
-- 4x108m @ Zone 3, :15 rest
-- 4x72m @ Zone 3, :15 rest
+- 2x216 @ Zone 2, :20 rest
+- 3x144 @ Zone 3, :20 rest
 
-Pull Set w/ paddles + pull buoy
-- **1:30 rest**
-- 3x216m @ Zone 2, :20 rest
+Pull Set
+- paddles + pull buoy
+- 4x180 @ Zone 2, :20 rest
 
 Cool-down
-- **:30 rest**
-- 216m easy"
+- 144m easy choice"
 
-EXAMPLE OUTPUT (clean):
+EXAMPLE OUTPUT (clean, with inline breakdowns and NO zones on warm-up/cool-down):
 WARM-UP
-216m free
-108m kick
+288 (108 free / 72 back / 108 free)
+4x72 (36 breathe every 3 / 36 breathe every 5), :15 rest
 
 MAIN SET
 1:00 rest
-6x108 @ Zone 2, :10 rest
-4x108 @ Zone 3, :15 rest
-4x72 @ Zone 3, :15 rest
+2x216 @ Zone 2, :20 rest
+3x144 @ Zone 3, :20 rest
 
 PULL SET
-1:30 rest
 paddles + pull buoy
-3x216 @ Zone 2, :20 rest
+4x180 @ Zone 2, :20 rest
 
 COOL-DOWN
-:30 rest
-216 easy`;
+144 easy choice`;
 
 app.use(express.static(__dirname));
 
