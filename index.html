@@ -921,25 +921,33 @@ function parseSet(text) {
     if (!cur) { cur = mkUntimed('warmup','Warm-up','','Warm-up','badge-warmup'); secs.push(cur); }
 
     // ── Standalone "X:YY rest" or ":NN rest" line (no distances) ──────────
-    // When placed right after a section header with no reps yet in this section,
-    // this denotes the set-break BEFORE this block — apply it to the previous
-    // timed section's restAfterSec so it becomes the gap between blocks.
+    // Two behaviors depending on where it appears:
+    //   • At the TOP of a section (no reps yet) → set-break BEFORE this block,
+    //     applied to the previous timed section's restAfterSec.
+    //   • In the MIDDLE of a section (after some reps) → extend the rest
+    //     AFTER the most recently pushed rep so there's a pause before the
+    //     next rep group starts.
     var soloRest = line.match(/^\s*(\d+):(\d{2})\s*r(?:est)?\s*$/i)
                 || line.match(/^\s*:(\d+)\s*r(?:est)?\s*$/i);
-    if (soloRest && cur && cur.timed && cur.reps.length === 0) {
+    if (soloRest && cur && cur.timed) {
       var gapSecs = soloRest[2] !== undefined
         ? parseInt(soloRest[1]) * 60 + parseInt(soloRest[2])
         : parseInt(soloRest[1]);
-      var gapLabel = soloRest[2] !== undefined
-        ? soloRest[1] + ':' + soloRest[2]
-        : ':' + pad(parseInt(soloRest[1]));
-      // Find most recent timed section before this one
-      for (var ps = secs.length - 2; ps >= 0; ps--) {
-        if (secs[ps].timed) {
-          secs[ps].restAfterSec = gapSecs;
-          secs[ps].restAfterLabel = gapLabel;
-          break;
+      if (cur.reps.length === 0) {
+        // Top-of-section: apply to previous timed section as set-break
+        var gapLabel = soloRest[2] !== undefined
+          ? soloRest[1] + ':' + soloRest[2]
+          : ':' + pad(parseInt(soloRest[1]));
+        for (var ps = secs.length - 2; ps >= 0; ps--) {
+          if (secs[ps].timed) {
+            secs[ps].restAfterSec = gapSecs;
+            secs[ps].restAfterLabel = gapLabel;
+            break;
+          }
         }
+      } else {
+        // Mid-section: extend last rep's rest so there's a pause before next group
+        cur.reps[cur.reps.length - 1].rest = gapSecs;
       }
       return;
     }

@@ -89,9 +89,10 @@ Section headers (each on its own line, ALL CAPS). ONE header per workout block:
 ** DO NOT split a block into multiple sections just because the zones vary. **
 Every rep line can carry its own zone and rest — the parser handles mixed zones in one block.
 
-Set-break line (optional, appears FIRST inside a section to denote the rest gap before the block starts):
-- "1:00 rest"   (1 minute break before this block begins)
-- ":30 rest"    (30 second break before this block begins)
+Rest-gap line (optional). A standalone "1:00 rest" / ":30 rest" line has TWO meanings depending on where it sits:
+- FIRST line inside a section (before any rep lines) → rest gap BEFORE this block starts (separates blocks on the clock).
+- BETWEEN two rep lines inside a section → extra pause between those two rep groups (e.g. a rest in the middle of a main set).
+Preserve both kinds verbatim — do not merge them into per-rep rest.
 
 Equipment line (optional, for PULL SET usually):
 - paddles + pull buoy
