@@ -262,12 +262,13 @@ textarea#setInput::placeholder { color: #5a2020; }
 .hero-items-wrap { font-size: 1.1rem; color: #d4b0b0; line-height: 2.1; white-space: pre-wrap; }
 
 /* Vertical set list for ready/break states */
-.set-list { display: flex; flex-direction: column; gap: 6px; align-items: center; width: 100%; }
+.set-list { display: flex; flex-direction: column; gap: 6px; align-items: stretch; width: 100%; padding: 0 10px; }
 .set-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px 16px; border-radius: 8px; width: 95%; max-width: 400px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 8px; width: 100%;
   background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
   transition: all .2s;
+  flex-wrap: wrap; /* let the target range wrap to a 2nd line if it has to */
 }
 .set-row.sr-cur {
   background: rgba(25,111,61,0.35); border: 1px solid rgba(46,204,113,0.5);
@@ -277,8 +278,12 @@ textarea#setInput::placeholder { color: #5a2020; }
 .sr-num { font-size: 1.6rem; color: #fff; font-weight: 800; min-width: 44px; text-align: right; flex-shrink: 0; padding-right: 4px; }
 .sr-dist { font-size: 1.8rem; font-weight: 800; color: #fff; flex-shrink: 0; white-space: nowrap; }
 .sr-dist .sr-laps { font-size: 1.1rem; color: #fff; font-weight: 600; opacity: 0.55; margin-left: 4px; }
-.sr-meta { display: flex; flex-direction: row; gap: 6px; align-items: center; flex: 1; flex-wrap: nowrap; justify-content: flex-start; padding-left: 8px; }
-.sr-target { font-family: 'SF Mono',monospace; font-size: 1.1rem; color: #2ecc71; font-weight: 700; white-space: nowrap; }
+.sr-meta { display: flex; flex-direction: row; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-start; padding-left: 4px; }
+/* Target range pushes to right, gets own line on narrow columns */
+.sr-target {
+  font-family: 'SF Mono',monospace; font-size: 1.05rem; color: #2ecc71; font-weight: 700;
+  white-space: nowrap; margin-left: auto; flex-shrink: 0;
+}
 
 /* Clocks area */
 .clocks-area {
