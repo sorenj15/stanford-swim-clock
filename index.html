@@ -262,27 +262,39 @@ textarea#setInput::placeholder { color: #5a2020; }
 .hero-items-wrap { font-size: 1.1rem; color: #d4b0b0; line-height: 2.1; white-space: pre-wrap; }
 
 /* Vertical set list for ready/break states */
-.set-list { display: flex; flex-direction: column; gap: 6px; align-items: stretch; width: 100%; padding: 0 10px; }
+.set-list { display: flex; flex-direction: column; gap: 6px; align-items: stretch; width: 100%; padding: 0 8px; box-sizing: border-box; }
+/* Two-row grid: row 1 = count + distance + badges, row 2 = target range.
+   Always both rows visible regardless of column width. */
 .set-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 14px; border-radius: 8px; width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  grid-column-gap: 10px;
+  grid-row-gap: 2px;
+  padding: 8px 12px; border-radius: 8px; width: 100%; box-sizing: border-box;
   background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
   transition: all .2s;
-  flex-wrap: wrap; /* let the target range wrap to a 2nd line if it has to */
 }
 .set-row.sr-cur {
   background: rgba(25,111,61,0.35); border: 1px solid rgba(46,204,113,0.5);
-  transform: scale(1.04);
+  transform: scale(1.02);
 }
 .set-row.sr-done { opacity: 0.4; text-decoration: line-through; }
-.sr-num { font-size: 1.6rem; color: #fff; font-weight: 800; min-width: 44px; text-align: right; flex-shrink: 0; padding-right: 4px; }
-.sr-dist { font-size: 1.8rem; font-weight: 800; color: #fff; flex-shrink: 0; white-space: nowrap; }
-.sr-dist .sr-laps { font-size: 1.1rem; color: #fff; font-weight: 600; opacity: 0.55; margin-left: 4px; }
-.sr-meta { display: flex; flex-direction: row; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-start; padding-left: 4px; }
-/* Target range pushes to right, gets own line on narrow columns */
+.sr-num {
+  grid-row: 1 / span 2; align-self: center;
+  font-size: 1.7rem; color: #fff; font-weight: 800; min-width: 42px; text-align: right;
+  padding-right: 4px;
+}
+.sr-main {
+  grid-column: 2; grid-row: 1;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0;
+}
+.sr-dist { font-size: 1.55rem; font-weight: 800; color: #fff; white-space: nowrap; }
+.sr-dist .sr-laps { font-size: 0.95rem; color: #fff; font-weight: 600; opacity: 0.55; margin-left: 4px; }
 .sr-target {
-  font-family: 'SF Mono',monospace; font-size: 1.05rem; color: #2ecc71; font-weight: 700;
-  white-space: nowrap; margin-left: auto; flex-shrink: 0;
+  grid-column: 2; grid-row: 2;
+  font-family: 'SF Mono',monospace; font-size: 1.1rem; color: #2ecc71; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 /* Clocks area */
@@ -1508,7 +1520,8 @@ function renderHero() {
     }).join('');
     var restNote=sec.restBetween?'<span class="hero-rest">:'+pad(sec.restBetween)+' rest</span>':'';
     var eq=sec.equipment?'<span class="hero-eq">'+sec.equipment+'</span>':'';
-    sub='<div class="hero-items">'+items+restNote+eq+'</div>';
+    var breakNote=sec.restAfterSec>0?'<span class="hero-rest" style="color:#e74c3c">→ '+(sec.restAfterLabel||(':'+pad(sec.restAfterSec)))+' set break</span>':'';
+    sub='<div class="hero-items">'+items+restNote+eq+breakNote+'</div>';
   } else if (sec.items&&sec.items.length) {
     sub='<div class="hero-items-wrap">'+sec.items.map(function(it){return '· '+it;}).join('\n')+'</div>';
   }
@@ -1640,9 +1653,11 @@ function buildSetList(ti, sec, reps, highlightIdx) {
     var rTag = showRest ? '<span class="sr-rest">:'+pad(effRest)+' rest</span>' : '';
     return '<div class="'+cls+'">'+
       '<div class="sr-num">'+ prefix +'</div>'+
-      '<div class="sr-dist">'+g.dist+'m <span class="sr-laps">('+g.laps+'L)</span></div>'+
-      '<div class="sr-meta">'+zTag+rTag+'</div>'+
-      '<div class="sr-target">'+fmtS(pace[0])+'–'+fmtS(pace[1])+'</div>'+
+      '<div class="sr-main">'+
+        '<div class="sr-dist">'+g.dist+'m <span class="sr-laps">('+g.laps+'L)</span></div>'+
+        zTag + rTag +
+      '</div>'+
+      '<div class="sr-target">Target: '+fmtS(pace[0])+'–'+fmtS(pace[1])+'</div>'+
     '</div>';
   }).join('');
 }
