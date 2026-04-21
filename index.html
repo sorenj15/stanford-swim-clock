@@ -930,6 +930,18 @@ function parseSet(text) {
 
   var secs = [], cur = null;
 
+  // If `cur` has a deferred end-rest (from a standalone rest line after
+  // the last rep), treat it as a set break BEFORE the next section starts.
+  // Called at each section header transition and at end of parse.
+  function finalizePendingRest() {
+    if (cur && cur._pendingEndRest != null) {
+      cur.restAfterSec = cur._pendingEndRest;
+      cur.restAfterLabel = cur._pendingEndRestLabel;
+      cur._pendingEndRest = null;
+      cur._pendingEndRestLabel = null;
+    }
+  }
+
   // Process a line of content (reps / items / rest) into current section.
   // Reps can carry their own zone + rest (different from section defaults)
   // so a single Main Set can contain mixed zones without being split.
@@ -950,13 +962,13 @@ function parseSet(text) {
       var gapSecs = soloRest[2] !== undefined
         ? parseInt(soloRest[1]) * 60 + parseInt(soloRest[2])
         : parseInt(soloRest[1]);
+      var gapLabel = soloRest[2] !== undefined
+        ? soloRest[1] + ':' + soloRest[2]
+        : ':' + pad(parseInt(soloRest[1]));
       if (cur.reps.length === 0) {
         // Top-of-section: apply to previous section as set-break.
         // Also stored as current section's preRestSec so the break runs
         // even if the previous section was untimed (e.g. warm-up).
-        var gapLabel = soloRest[2] !== undefined
-          ? soloRest[1] + ':' + soloRest[2]
-          : ':' + pad(parseInt(soloRest[1]));
         cur.preRestSec = gapSecs;
         cur.preRestLabel = gapLabel;
         if (secs.length >= 2) {
@@ -965,8 +977,12 @@ function parseSet(text) {
           prev.restAfterLabel = gapLabel;
         }
       } else {
-        // Mid-section: extend last rep's rest so there's a pause before next group
-        cur.reps[cur.reps.length - 1].rest = gapSecs;
+        // After some reps — could be a mid-group pause OR the set break
+        // before the next section. We can't tell yet, so defer and resolve
+        // it when either the next rep is pushed (mid-group pause) or a
+        // new section header is hit (set break).
+        cur._pendingEndRest = gapSecs;
+        cur._pendingEndRestLabel = gapLabel;
       }
       return;
     }
@@ -1011,6 +1027,14 @@ function parseSet(text) {
 
     // Helper to build a rep with optional per-rep zone/rest overrides
     function mkRep(d) {
+      // Pending end-rest from earlier standalone "X:YY rest" line: since
+      // another rep is being pushed, this was a mid-group pause — attach it
+      // to the previous-last rep's rest so the pause lands between groups.
+      if (cur._pendingEndRest != null && cur.reps.length > 0) {
+        cur.reps[cur.reps.length - 1].rest = cur._pendingEndRest;
+        cur._pendingEndRest = null;
+        cur._pendingEndRestLabel = null;
+      }
       var r = { dist: d, laps: Math.max(1, Math.round(d/POOL_LEN)) };
       if (lineZone && lineZone !== cur.zKey) r.zKey = lineZone;
       if (lineRest != null && lineRest !== cur.restBetween) r.rest = lineRest;
@@ -1070,6 +1094,7 @@ function parseSet(text) {
 
     // ── WARM-UP header ──────────────────────────────────────────────────────
     if (up.match(/\bWARM.?UP\b|^WU\b/)) {
+      finalizePendingRest();
       cur = mkUntimed('warmup','Warm-up','','Warm-up','badge-warmup');
       secs.push(cur);
       // Handle same-line items: "Warm-up: 100 free, 100 back"
@@ -1101,6 +1126,7 @@ function parseSet(text) {
       || (up.indexOf('MAIN') >= 0 && up.match(/ZONE|LADDER/) && !isMainLabel)
       || (up.indexOf('MAIN') >= 0 && up.match(/\bZ[2-5]\b/) && !isMainLabel);
     if (isMainHeader) {
+      finalizePendingRest();
       var z = detectZone(line,'z3');
       var rndM = line.match(/\((\d+)\s*rounds?\)/i);
       var rndN = rndM ? parseInt(rndM[1]) : 1;
@@ -1114,18 +1140,21 @@ function parseSet(text) {
     // ── LADDER / TEST / EXTENSION headers (treated as timed main-style sections) ─
     var isLadderHeader = up.match(/^LADDER\b/) || (up.indexOf('LADDER') >= 0 && up.indexOf('@') >= 0);
     if (isLadderHeader) {
+      finalizePendingRest();
       var zLad = detectZone(line,'z3');
       cur = mkTimed('main','Ladder','',zLad,0,0,'');
       secs.push(cur);
       continue;
     }
     if (up === 'TEST' || up.match(/^TEST\b/)) {
+      finalizePendingRest();
       var zTest = detectZone(line,'z4');
       cur = mkTimed('main','Test Set','',zTest,30,0,'');
       secs.push(cur);
       continue;
     }
     if (up === 'EXTENSION' || up.match(/^EXTENSION\b/)) {
+      finalizePendingRest();
       var zExt = detectZone(line,'z3');
       cur = mkTimed('main','Extension','',zExt,0,0,'');
       secs.push(cur);
@@ -1134,6 +1163,7 @@ function parseSet(text) {
 
     // ── PULL SET header ──────────────────────────────────────────────────────
     if (up.indexOf('PULL') >= 0 && !up.match(/^\d/)) {
+      finalizePendingRest();
       var zp = detectZone(line,'z2');
       cur = mkTimed('pull','Pull Set — Zone '+zp.slice(1),'paddles + pull buoy',zp,20,30,':30');
       cur.equipment = 'paddles + pull buoy';
@@ -1143,6 +1173,7 @@ function parseSet(text) {
 
     // ── COOL-DOWN header ─────────────────────────────────────────────────────
     if (up.match(/\bCOOL.?DOWN\b|^CD\b/)) {
+      finalizePendingRest();
       cur = mkUntimed('cooldown','Cool-down','','Cool-down','badge-cooldown');
       secs.push(cur);
       continue;
@@ -1151,6 +1182,8 @@ function parseSet(text) {
     // ── Content line (reps, items, rest info) ─────────────────────────────────
     processContent(line);
   }
+  // End of parse — if a section has a deferred end-rest, finalize as set break
+  finalizePendingRest();
 
   // Expand rounds: multiply reps by round count, mark round breaks
   secs.forEach(function(s) {
