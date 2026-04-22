@@ -2087,22 +2087,26 @@ function renderClock(ti, s, sec, cb) {
 
   if (s.phase==='rest') {
     var remR=Math.max(0,s.restDur-s.elapsed)/1000;
+    var restElapsedS = s.elapsed/1000; // how long we've been resting
     var lastRes=s.results[s.ri-1]; // s.ri already incremented; -1 = just-completed rep
-    var missed=lastRes==='miss';
-    var rtimeCls=missed?'tr':lastRes==='ok'?'tg':'ty';
-    var rbadgeCls=missed?'br':lastRes==='ok'?'bg':'by';
+    // The MISSED tag is only a "heads-up" — it fades away after 10 seconds of
+    // rest so swimmers see a clean countdown, not a permanent stamp.
+    var wasMiss = lastRes==='miss';
+    var showMiss = wasMiss && restElapsedS < 10;
+    var rtimeCls = showMiss?'tr':lastRes==='ok'?'tg':'ty';
+    var rbadgeCls = showMiss?'br':lastRes==='ok'?'bg':'by';
     var hasNextR=s.ri<reps.length;  // s.ri IS the next rep index during rest
     var nxtRep=hasNextR?reps[s.ri]:null;
     var nxtPace=hasNextR?getPace(ti,repZ(sec,nxtRep),nxtRep.dist):null;
-    cb.className='cbody '+(missed?'swr':'rs');
+    cb.className='cbody '+(showMiss?'swr':'rs');
     cb.innerHTML=dotsH+
       (s.paused
         ? '<div class="paused-tag">PAUSED</div>'
-        : missed
+        : showMiss
           ? '<div class="go-banner" style="color:#e74c3c">✗ MISSED</div>'
           : '<div class="go-banner">GO AGAIN</div>')+
       '<div class="c-time '+rtimeCls+'">'+fmtS(remR)+'</div>'+
-      '<div class="c-badge '+rbadgeCls+'">'+(missed?'MISSED · ':'REST ')+fmtShort(remR)+'</div>'+
+      '<div class="c-badge '+rbadgeCls+'">'+(showMiss?'MISSED · ':'REST ')+fmtShort(remR)+'</div>'+
       (hasNextR
         ? '<div class="c-next-lbl" style="font-size:0.6rem;margin-top:6px">Up next</div>'+
           '<div class="c-zone-wrap"><span class="c-zone-badge z-'+repZ(sec,nxtRep)+'" style="font-size:0.75rem;padding:3px 9px">Zone '+repZ(sec,nxtRep).slice(1)+'</span></div>'+
