@@ -471,6 +471,72 @@ textarea#setInput::placeholder { color: #5a2020; }
 /* section-advancing flash */
 @keyframes sectionFlash { 0%{opacity:1} 50%{opacity:.5} 100%{opacity:1} }
 .section-flash { animation: sectionFlash .4s ease 2; }
+
+/* ═══ TV VIEW (minimal time-keeper for 43" TV) ═══ */
+/* Three big numbers, no zones, no targets, no distractions. */
+body.is-tv { background: #000 !important; overflow: hidden; }
+#tvView { display: none; }
+body.is-tv #tvView { display: flex; }
+body.is-tv #setupView, body.is-tv #clockView { display: none !important; }
+#tvView {
+  position: fixed; inset: 0;
+  flex-direction: row;
+  background: #000;
+  cursor: none;
+  user-select: none;
+}
+.tv-col {
+  flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  border-right: 2px solid #111;
+  padding: 20px;
+  background: #000;
+}
+.tv-col:last-child { border-right: none; }
+.tv-col.tv-t1 .tv-label { color: #2ecc71; }
+.tv-col.tv-t2 .tv-label { color: #4b7bf5; }
+.tv-col.tv-t3 .tv-label { color: #e74c3c; }
+.tv-label {
+  font-family: 'Arial Black', sans-serif;
+  font-size: 4vh; font-weight: 900;
+  letter-spacing: 0.2em;
+  margin-bottom: 2vh;
+  text-transform: uppercase;
+}
+.tv-time {
+  font-family: 'Arial Black', sans-serif;
+  font-weight: 900;
+  font-size: 28vh;
+  line-height: 0.9;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  -webkit-font-smoothing: antialiased;
+}
+.tv-time.tv-rest { color: #e8b830; }
+.tv-time.tv-green { color: #2ecc71; }
+.tv-time.tv-red { color: #e74c3c; }
+.tv-time.tv-cd { color: #fff; }
+.tv-phase {
+  font-family: 'Arial Black', sans-serif;
+  font-size: 3.5vh; font-weight: 900;
+  color: #888;
+  margin-top: 2vh;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.tv-phase.tv-swim { color: #2ecc71; }
+.tv-phase.tv-rest-p { color: #e8b830; }
+.tv-phase.tv-break { color: #e74c3c; }
+/* Disconnected indicator */
+.tv-conn {
+  position: fixed; top: 8px; right: 12px;
+  font-size: 0.7rem; color: #e74c3c; font-family: sans-serif;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  display: none;
+}
+.tv-conn.off { display: block; }
 </style>
 </head>
 <body>
@@ -607,6 +673,14 @@ textarea#setInput::placeholder { color: #5a2020; }
   <div class="bottom-bar" id="bottomBar"></div>
 </div>
 
+<!-- ═══ TV VIEW (for secondary 43" time-keeper display) ═══ -->
+<div id="tvView">
+  <div class="tv-col tv-t1"><div class="tv-label" id="tvl0">Tier 1</div><div class="tv-time" id="tvt0">—</div><div class="tv-phase" id="tvp0">READY</div></div>
+  <div class="tv-col tv-t2"><div class="tv-label" id="tvl1">Tier 2</div><div class="tv-time" id="tvt1">—</div><div class="tv-phase" id="tvp1">READY</div></div>
+  <div class="tv-col tv-t3"><div class="tv-label" id="tvl2">Tier 3</div><div class="tv-time" id="tvt2">—</div><div class="tv-phase" id="tvp2">READY</div></div>
+  <div class="tv-conn" id="tvConn">Disconnected</div>
+</div>
+
 <!-- Range edit popup -->
 <div id="rangePopup">
   <h4>Edit Target Range</h4>
@@ -621,6 +695,12 @@ textarea#setInput::placeholder { color: #5a2020; }
 
 <script>
 'use strict';
+
+// ── TV mode detection ────────────────────────────────────────────────────────
+// ?tv turns this page into a dedicated time-keeper view that mirrors the
+// main swim clock via WebSocket. No audio, no controls, just 3 big numbers.
+var IS_TV = /[?&]tv(\b|=)/.test(location.search);
+if (IS_TV) document.body.classList.add('is-tv');
 
 // ── Audio ────────────────────────────────────────────────────────────────────
 var _audioCtx = null;
@@ -694,6 +774,108 @@ function beepSection() {
   _whistleBlast(t,        0.42, ctx);
   _whistleBlast(t + 0.58, 0.42, ctx);
 }
+
+// ── WebSocket sync for TV time-keeper view ──────────────────────────────────
+// Main board broadcasts minimal tier state (phase/elapsed) at ~10 Hz.
+// TV view (?tv) receives state and renders 3 big numbers.
+var _ws = null, _wsReady = false, _wsLastSend = 0;
+function tvConnect() {
+  try {
+    var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    _ws = new WebSocket(proto + '//' + location.host);
+    _ws.onopen = function() {
+      _wsReady = true;
+      if (IS_TV) document.getElementById('tvConn').classList.remove('off');
+    };
+    _ws.onmessage = function(e) {
+      if (!IS_TV) return;
+      var msg; try { msg = JSON.parse(e.data); } catch(x){ return; }
+      if (msg.type === 'swimState') applyTvState(msg);
+    };
+    _ws.onclose = function() {
+      _wsReady = false;
+      if (IS_TV) document.getElementById('tvConn').classList.add('off');
+      setTimeout(tvConnect, 2000);
+    };
+    _ws.onerror = function() { try { _ws.close(); } catch(e){} };
+  } catch(e) { setTimeout(tvConnect, 3000); }
+}
+function tvBroadcast() {
+  if (!_ws || !_wsReady || IS_TV) return;
+  // Throttle to ~10 updates/sec — plenty for second-level display
+  var now = performance.now();
+  if (now - _wsLastSend < 100) return;
+  _wsLastSend = now;
+  var payload = { type: 'swimState', tiers: [] };
+  if (typeof TS !== 'undefined' && typeof SECS !== 'undefined') {
+    for (var i = 0; i < (typeof TIER_COUNT !== 'undefined' ? TIER_COUNT : 3); i++) {
+      var s = TS[i]; if (!s) { payload.tiers.push(null); continue; }
+      var sec = SECS[s.si];
+      var rep = sec && sec.reps && sec.reps[Math.min(s.ri, sec.reps.length-1)];
+      payload.tiers.push({
+        phase: s.phase,
+        elapsed: s.elapsed || 0,
+        restDur: s.restDur || 0,
+        countdownDur: s.countdownDur || 0,
+        repIdx: s.ri || 0,
+        repCount: sec && sec.reps ? sec.reps.length : 0,
+        repDist: rep ? rep.dist : null,
+        paused: !!s.paused
+      });
+    }
+  }
+  try { _ws.send(JSON.stringify(payload)); } catch(e){}
+}
+function applyTvState(msg) {
+  if (!msg.tiers) return;
+  for (var i = 0; i < 3; i++) {
+    var t = msg.tiers[i];
+    var timeEl = document.getElementById('tvt'+i);
+    var phaseEl = document.getElementById('tvp'+i);
+    if (!t) {
+      timeEl.textContent = '—'; timeEl.className = 'tv-time';
+      phaseEl.textContent = 'READY'; phaseEl.className = 'tv-phase';
+      continue;
+    }
+    var elS = (t.elapsed||0)/1000;
+    if (t.phase === 'countdown') {
+      var cdRem = Math.max(0, Math.ceil((t.countdownDur - t.elapsed)/1000));
+      timeEl.textContent = cdRem;
+      timeEl.className = 'tv-time tv-cd';
+      phaseEl.textContent = 'GET READY';
+      phaseEl.className = 'tv-phase tv-break';
+    } else if (t.phase === 'swim') {
+      timeEl.textContent = fmtMs(t.elapsed);
+      timeEl.className = 'tv-time tv-green';
+      phaseEl.textContent = 'SWIM · REP ' + ((t.repIdx||0)+1) + '/' + (t.repCount||0);
+      phaseEl.className = 'tv-phase tv-swim';
+    } else if (t.phase === 'rest') {
+      var restRem = Math.max(0, (t.restDur - t.elapsed)/1000);
+      timeEl.textContent = fmtS(restRem);
+      timeEl.className = 'tv-time tv-rest';
+      phaseEl.textContent = 'REST';
+      phaseEl.className = 'tv-phase tv-rest-p';
+    } else if (t.phase === 'brk') {
+      var brkRem = Math.max(0, (t.restDur - t.elapsed)/1000);
+      timeEl.textContent = fmtS(brkRem);
+      timeEl.className = 'tv-time tv-rest';
+      phaseEl.textContent = 'SET BREAK';
+      phaseEl.className = 'tv-phase tv-break';
+    } else if (t.phase === 'done') {
+      timeEl.textContent = 'DONE';
+      timeEl.className = 'tv-time';
+      phaseEl.textContent = 'COMPLETE';
+      phaseEl.className = 'tv-phase';
+    } else {
+      timeEl.textContent = '—';
+      timeEl.className = 'tv-time';
+      phaseEl.textContent = 'READY';
+      phaseEl.className = 'tv-phase';
+    }
+  }
+}
+// Kick off WS connection on load (both main board + TV view use it)
+tvConnect();
 
 // ── Pace table (base CSS: T1=66, T2=68, T3=71 sec/100m) ────────────────────
 var BASE_CSS = [66, 68, 71];
@@ -1491,8 +1673,9 @@ function loop(ts) {
   secIdx = TS[0].si;
   renderClocks();
   renderHero();
+  tvBroadcast(); // mirror tier state to any connected ?tv viewers
   if (TS.slice(0,TIER_COUNT).every(function(s){return s.phase==='done';})) {
-    running=false; renderControls(); return;
+    running=false; renderControls(); tvBroadcast(); return;
   }
   raf=requestAnimationFrame(loop);
 }
@@ -1649,6 +1832,7 @@ function renderControls() {
 }
 
 function renderClocks() {
+  if (!IS_TV) tvBroadcast();
   for (var ti=0;ti<3;ti++) {
     var cb=document.getElementById('cb'+ti);
     var tb=document.getElementById('tb'+ti);
