@@ -110,7 +110,8 @@ Rep line formats. Each rep line goes on its own line, underneath the section hea
 CRITICAL RULES:
 1. ONE header per workout block. Warm-up = 1 section. Main = 1 section. Pull = 1 section. Cool-down = 1 section. Do not split by zone.
 2. Zone goes on the REP LINE as "@ Zone N" — but ONLY on MAIN SET / PULL SET / LADDER / TEST / EXTENSION rep lines. Warm-up and cool-down rep lines MUST NEVER include a zone (those blocks are always easy swim / drill work, no target pace).
-3. Rest between reps goes on the REP LINE as ":NN rest" — NOT on its own line.
+2a. NEVER add "@ Zone N" to any rep line that is described as "easy", "choice", or "recovery" — these are by definition untargeted active recovery. Preserve the word "easy" / "choice" / "recovery" verbatim in the output so the clock knows to run them without a target.
+3. Rest between reps goes on the REP LINE as ":NN rest" for seconds or "M:SS rest" for minute-level rests. Do NOT convert "1:30 rest" into ":90 rest" — keep the original format. NOT on its own line.
 4. A standalone "1:00 rest" or ":30 rest" line is ONLY used at the very top of a section to denote the break between blocks. Do not invent these.
 5. Strip "on 1:30" or "@ 1:30" style interval targets — the app computes targets from the swimmer's CSS.
 6. Use exact distances from input — do NOT convert or round.
@@ -118,6 +119,18 @@ CRITICAL RULES:
 8. PRESERVE BREAKDOWNS. If the input has a parent distance with nested sub-items explaining the split (e.g. "288m / 8 laps" with sub-bullets "108 free / 72 back / 108 free"), collapse them into ONE line using parenthetical inline breakdown: "288m (108 free / 72 back / 108 free)". Same rule for multi-rep breakdowns — "4x72 (36 breathe every 3 / 36 breathe every 5), :15 rest". Do NOT flatten into multiple separate lines.
 9. If input has no clear headers, infer: warm-up patterns → WARM-UP, main set patterns → MAIN SET, anything with paddles/buoy → PULL SET, easy stuff at end → COOL-DOWN.
 10. Pool-specific distances (36, 72, 108, 144, 216 for 36m pool; 25, 50, 100, 200 for 25yd/25m pool) — keep as-is.
+
+EXAMPLE — rounds with between-rounds easy swim:
+Input:
+  Main set
+  - 2 rounds:
+    - 3x80 @ Z5, 1:30 rest
+    - 120 easy between rounds @ 2:30 rest
+Output:
+  MAIN SET
+  2 rounds:
+  3x80 @ Zone 5, 1:30 rest
+  120 easy between rounds, 2:30 rest
 
 EXAMPLE INPUT (messy, with nested breakdowns):
 "Warm-up
