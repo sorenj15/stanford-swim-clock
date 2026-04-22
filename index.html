@@ -196,6 +196,12 @@ textarea#setInput::placeholder { color: #5a2020; }
 }
 .sr-zone { background: #2a4060; color: #a8c4e8; }
 .sr-rest { background: #3a2810; color: #e8b830; }
+.sr-easy {
+  display: inline-block; padding: 3px 9px; border-radius: 5px;
+  font-size: 0.95rem; font-weight: 800; margin-left: 6px; vertical-align: middle;
+  letter-spacing: 0.05em;
+  background: #2a2a2a; color: #a0a0a0;
+}
 /* Zone-specific colors — intensity at a glance */
 .sr-zone.z-z1, .prev-rep .pr-zone.z-z1 { background: #1a3a2a; color: #8ae0b0; }
 .sr-zone.z-z2, .prev-rep .pr-zone.z-z2 { background: #1a3050; color: #a8c4e8; }
@@ -1003,6 +1009,8 @@ function parseSet(text) {
       : (rmSec ? parseInt(rmSec[1]) : null);
     // Keep `rm` name alive for downstream null-guards
     var rm = rmMin || rmSec;
+    // Line-level "easy" marker — reps get no zone badge and no target range
+    var lineEasy = /\beasy\b|\bchoice\b|\brecovery\b/i.test(line);
 
     // "N rounds:" as standalone line — sets rounds on current timed section
     var rndLine = line.match(/^(\d+)\s*rounds?\s*:?$/i);
@@ -1065,6 +1073,7 @@ function parseSet(text) {
       var r = { dist: d, laps: Math.max(1, Math.round(d/POOL_LEN)) };
       if (lineZone && lineZone !== cur.zKey) r.zKey = lineZone;
       if (lineRest != null && lineRest !== cur.restBetween) r.rest = lineRest;
+      if (lineEasy) r.easy = true;  // no zone badge, no target range
       return r;
     }
 
@@ -1512,10 +1521,20 @@ function step(s, ti, sec, dt) {
   var rep=sec.reps[Math.min(s.ri,sec.reps.length-1)];
   var pace=getPace(ti,repZ(sec,rep),rep.dist);
   var lo=pace[0],hi=pace[1];
+  // Easy reps: no target, never marked "missed". Auto-advance at a generous
+  // timeout (1.6x the upper-bound for this distance at the section zone).
+  if (rep.easy) {
+    lo = 0;
+    hi = hi * 1.6;
+  }
 
   if (s.phase==='swim') {
-    if (elS>lo && !s.swimRes) s.swimRes='ok';
-    if (elS>hi) s.swimRes='miss';
+    if (rep.easy) {
+      s.swimRes = 'ok'; // never miss on easy reps
+    } else {
+      if (elS>lo && !s.swimRes) s.swimRes='ok';
+      if (elS>hi) s.swimRes='miss';
+    }
     if (elS >= hi+GRACE/1000) {
       s.results[s.ri]=s.swimRes||'miss';
       s.ri++;
@@ -1701,13 +1720,22 @@ function buildSetList(ti, sec, reps, highlightIdx) {
   return groups.map(function(g) {
     // Use first rep in group for zone lookup (reps in a group share dist, usually zone too)
     var gRep = sec.reps[g.indices[0]];
-    var pace = getPace(ti, repZ(sec, gRep), g.dist);
+    var isEasy = gRep && gRep.easy;
     var isCur = g.indices.indexOf(highlightIdx) >= 0;
     var cls = 'set-row' + (isCur ? ' sr-cur' : '');
     var prefix = g.count > 1 ? g.count + '×' : '';
-    var effZ = repZ(sec, gRep);
     var effRest = (gRep && gRep.rest != null) ? gRep.rest : sec.restBetween;
-    var zTag = '<span class="sr-zone z-'+effZ+'">Zone '+effZ.slice(1)+'</span>';
+    // Easy reps: show only an EASY badge (no zone, no target)
+    var zTag, targetLine;
+    if (isEasy) {
+      zTag = '<span class="sr-easy">EASY</span>';
+      targetLine = '<div class="sr-target" style="color:#8a8a8a">no target</div>';
+    } else {
+      var effZ = repZ(sec, gRep);
+      var pace = getPace(ti, effZ, g.dist);
+      zTag = '<span class="sr-zone z-'+effZ+'">Zone '+effZ.slice(1)+'</span>';
+      targetLine = '<div class="sr-target">Target: '+fmtS(pace[0])+'–'+fmtS(pace[1])+'</div>';
+    }
     // Show rest on every row when any rep overrides (so :10 and :15 both display)
     var showRest = anyRestOverride && effRest;
     var rTag = showRest ? '<span class="sr-rest">:'+pad(effRest)+' rest</span>' : '';
@@ -1717,7 +1745,7 @@ function buildSetList(ti, sec, reps, highlightIdx) {
         '<div class="sr-dist">'+g.dist+'m <span class="sr-laps">('+g.laps+'L)</span></div>'+
         zTag + rTag +
       '</div>'+
-      '<div class="sr-target">Target: '+fmtS(pace[0])+'–'+fmtS(pace[1])+'</div>'+
+      targetLine +
     '</div>';
   }).join('');
 }
@@ -1843,16 +1871,26 @@ function renderClock(ti, s, sec, cb) {
     var badgeHtml=badgeText?'<div class="c-badge '+badgeCls+'">'+badgeText+'</div>':'';
 
     var curZ = repZ(sec, rep);
-    cb.className='cbody '+bodyClass;
+    var isEasyRep = !!rep.easy;
+    // Easy reps: no zone badge, no in-range/missed coloring, no target line
+    var zoneRow = isEasyRep
+      ? '<div class="c-zone-wrap"><span class="c-zone-badge" style="background:#2a2a2a;color:#a0a0a0">EASY</span></div>'
+      : '<div class="c-zone-wrap"><span class="c-zone-badge z-'+curZ+'">Zone '+curZ.slice(1)+'</span></div>';
+    var timeColor = isEasyRep ? 'tw' : timeCls;
+    var easyBadge = isEasyRep ? '' : badgeHtml;
+    var targetRow = isEasyRep
+      ? '<div class="c-target" style="color:#7a7a7a">no target · swim easy</div>'
+      : '<div class="c-target">Target: <b'+(elS>hi?' class="red"':'')+'>'+fmtS(lo)+' – '+fmtS(hi)+'</b> <button class="edit-range-btn" onclick="openRangePopup('+ti+',\''+curZ+'\','+rep.dist+',this)">✏</button></div>';
+    cb.className='cbody '+(isEasyRep?'st':bodyClass);
     cb.innerHTML=dotsH+
       '<div class="c-rep-lbl">Rep <span class="c-rep-num">'+(ri+1)+'/'+reps.length+'</span></div>'+
-      '<div class="c-zone-wrap"><span class="c-zone-badge z-'+curZ+'">Zone '+curZ.slice(1)+'</span></div>'+
+      zoneRow+
       '<div class="c-laps">'+rep.laps+' laps</div>'+
       '<div class="c-dist">'+rep.dist+'m</div>'+
       (s.paused?'<div class="paused-tag">PAUSED</div>':'')+
-      '<div class="c-time '+timeCls+'">'+fmtMs(s.elapsed)+'</div>'+
-      badgeHtml+
-      '<div class="c-target">Target: <b'+(elS>hi?' class="red"':'')+'>'+fmtS(lo)+' – '+fmtS(hi)+'</b> <button class="edit-range-btn" onclick="openRangePopup('+ti+',\''+repZ(sec,rep)+'\','+rep.dist+',this)">✏</button></div>'+
+      '<div class="c-time '+timeColor+'">'+fmtMs(s.elapsed)+'</div>'+
+      easyBadge+
+      targetRow+
       (hasNext?'<div class="c-next">Next: <b>'+nxtRep.dist+'m</b></div>':'<div class="c-next" style="color:#196f3d">Last rep</div>');
     return;
   }
