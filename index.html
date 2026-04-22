@@ -2104,7 +2104,7 @@ function renderClock(ti, s, sec, cb) {
         ? '<div class="paused-tag">PAUSED</div>'
         : showMiss
           ? '<div class="go-banner" style="color:#e74c3c">✗ MISSED</div>'
-          : '<div class="go-banner">GO AGAIN</div>')+
+          : '')+
       '<div class="c-time '+rtimeCls+'">'+fmtS(remR)+'</div>'+
       '<div class="c-badge '+rbadgeCls+'">'+(showMiss?'MISSED · ':'REST ')+fmtShort(remR)+'</div>'+
       (hasNextR
