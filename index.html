@@ -806,9 +806,10 @@ function tvBroadcast() {
   var now = performance.now();
   if (now - _wsLastSend < 100) return;
   _wsLastSend = now;
-  var payload = { type: 'swimState', tiers: [] };
+  var tierCount = typeof TIER_COUNT !== 'undefined' ? TIER_COUNT : 3;
+  var payload = { type: 'swimState', tierCount: tierCount, tiers: [] };
   if (typeof TS !== 'undefined' && typeof SECS !== 'undefined') {
-    for (var i = 0; i < (typeof TIER_COUNT !== 'undefined' ? TIER_COUNT : 3); i++) {
+    for (var i = 0; i < tierCount; i++) {
       var s = TS[i]; if (!s) { payload.tiers.push(null); continue; }
       var sec = SECS[s.si];
       var rep = sec && sec.reps && sec.reps[Math.min(s.ri, sec.reps.length-1)];
@@ -828,7 +829,15 @@ function tvBroadcast() {
 }
 function applyTvState(msg) {
   if (!msg.tiers) return;
+  // Hide unused tier columns so 1- or 2-tier setups fill the whole TV instead
+  // of leaving blank columns.
+  var activeTiers = typeof msg.tierCount === 'number' ? msg.tierCount : 3;
+  for (var _c = 0; _c < 3; _c++) {
+    var col = document.querySelectorAll('.tv-col')[_c];
+    if (col) col.style.display = _c < activeTiers ? 'flex' : 'none';
+  }
   for (var i = 0; i < 3; i++) {
+    if (i >= activeTiers) continue;
     var t = msg.tiers[i];
     var timeEl = document.getElementById('tvt'+i);
     var phaseEl = document.getElementById('tvp'+i);
