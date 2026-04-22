@@ -902,8 +902,8 @@ function parseSet(text) {
         // Stop at another "N rounds:" line
         if (rl.match(/^\d+\s*rounds?\s*:?\s*$/i)) break;
         // Check for "between rounds" / "after each round" — extract as the between-rounds content
-        var btwMatch = rl.match(/^:?(\d+)(?::(\d{2}))?\s*(.*?)(?:between\s*rounds?|after\s*each\s*round)/i);
-        if (btwMatch) {
+        // (any line containing the keyword counts, regardless of how the duration is expressed)
+        if (rl.match(/between\s*rounds?|after\s*each\s*round/i)) {
           betweenRest = rawLines[ri]; // keep the raw line to insert between rounds
           ri++;
           continue;
@@ -987,24 +987,51 @@ function parseSet(text) {
       return;
     }
 
-    // Rest between reps (e.g. ":45 rest", ":20r", ":15 seconds rest")
-    var rm = line.match(/:(\d+)\s*(?:sec(?:ond)?s?\s+)?r(?:est)?\b/i);
+    // Rest between reps. Accepts multiple formats:
+    //   "1:30 rest"     → 90 seconds (minutes:seconds)
+    //   ":45 rest"      → 45 seconds
+    //   ":20r"          → 20 seconds
+    //   ":15 seconds rest"
+    var rmMin = line.match(/(\d+):(\d{2})\s*(?:sec(?:ond)?s?\s+)?r(?:est)?\b/i);
+    var rmSec = line.match(/:(\d+)\s*(?:sec(?:ond)?s?\s+)?r(?:est)?\b/i);
 
     // Line-level zone (tagged onto reps from this line; does NOT split section)
     var lineZone = cur.timed ? detectZone(line, null) : null;
-    // Line-level rest (in seconds) — used to tag individual reps
-    var lineRest = rm ? parseInt(rm[1]) : null;
+    // Line-level rest (in seconds) — used to tag individual reps. Prefer M:SS.
+    var lineRest = rmMin
+      ? parseInt(rmMin[1]) * 60 + parseInt(rmMin[2])
+      : (rmSec ? parseInt(rmSec[1]) : null);
+    // Keep `rm` name alive for downstream null-guards
+    var rm = rmMin || rmSec;
 
     // "N rounds:" as standalone line — sets rounds on current timed section
     var rndLine = line.match(/^(\d+)\s*rounds?\s*:?$/i);
     if (rndLine && cur && cur.timed) { cur.rounds = parseInt(rndLine[1]); return; }
 
-    // Between-rounds rest: ":30 between rounds", "1:00 between rounds", "60 easy between rounds", ":30 rest after each round"
-    var btw = line.match(/:?(\d+)(?::(\d{2}))?\s*(?:\w+\s+)?(?:between\s*rounds?|after\s*each\s*round)/i);
-    if (btw && cur && cur.timed) {
-      cur.roundBreakRest = btw[2] !== undefined
-        ? parseInt(btw[1]) * 60 + parseInt(btw[2])
-        : parseInt(btw[1]);
+    // Between-rounds rest. Handles a variety of wordings:
+    //   ":30 between rounds"                      → 30 sec
+    //   "1:00 between rounds"                     → 60 sec
+    //   "60 easy between rounds"                  → 60 sec (legacy)
+    //   "120 easy between rounds @ 2:30 rest"     → 150 sec (prefer M:SS rest)
+    //   ":30 rest after each round"               → 30 sec
+    var btwKw = line.match(/between\s*rounds?|after\s*each\s*round/i);
+    if (btwKw && cur && cur.timed) {
+      // Prefer explicit M:SS rest pattern anywhere in the line
+      var bmMin = line.match(/(\d+):(\d{2})\s*(?:sec(?:ond)?s?\s+)?r(?:est)?\b/i);
+      var bmSec = line.match(/:(\d+)\s*(?:sec(?:ond)?s?\s+)?r(?:est)?\b/i);
+      if (bmMin) {
+        cur.roundBreakRest = parseInt(bmMin[1]) * 60 + parseInt(bmMin[2]);
+      } else if (bmSec) {
+        cur.roundBreakRest = parseInt(bmSec[1]);
+      } else {
+        // Fall back to leading "NN between rounds" or "N:NN between rounds"
+        var bFb = line.match(/:?(\d+)(?::(\d{2}))?\s*(?:\w+\s+)?(?:between\s*rounds?|after\s*each\s*round)/i);
+        if (bFb) {
+          cur.roundBreakRest = bFb[2] !== undefined
+            ? parseInt(bFb[1]) * 60 + parseInt(bFb[2])
+            : parseInt(bFb[1]);
+        }
+      }
       return;
     }
 
