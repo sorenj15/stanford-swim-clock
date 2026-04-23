@@ -320,9 +320,10 @@ body {
 .rb-sub { display: block; font-size: 0.55rem; font-weight: 600; opacity: .6; margin-top: 2px; letter-spacing: 0.05em; }
 
 /* ═══════ TV VIEW (dedicated shot clock for outdoor TV) ═══════ */
-/* Amber-on-black seven-segment style — matches real commercial shot clocks.
-   Amber (~590nm) sits near the eye's peak photopic sensitivity, so it reads
-   brighter than white in direct sunlight even though it's physically dimmer. */
+/* White-on-black by default — on a backlit LCD TV this maxes out peak
+   luminance (all RGB subpixels fully on), which matters more in direct
+   sunlight than any hue-sensitivity argument for amber. Amber is still
+   available via ?tv&amber for A/B comparison. */
 @font-face {
   font-family: 'DSEG7';
   src: url('https://cdn.jsdelivr.net/gh/keshikan/DSEG@v0.46/fonts/DSEG7-Classic/DSEG7Classic-Bold.woff2') format('woff2');
@@ -337,15 +338,20 @@ body.is-tv { background: #000 !important; overflow: hidden; }
   user-select: none;
 }
 .tv-num {
-  color: #FFB800; /* amber, not pure yellow — matches Daktronics/Colorado Time */
+  color: #fff;
   font-family: 'DSEG7', 'Arial Black', 'Helvetica', sans-serif;
   font-weight: 900;
-  font-size: 78vh; /* slightly smaller than Arial Black's 85 because DSEG7 is wider */
+  font-size: 78vh;
   line-height: 0.85;
   letter-spacing: 0;
-  text-shadow: 0 0 40px rgba(255,184,0,0.25);
+  text-shadow: 0 0 40px rgba(255,255,255,0.2);
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
+}
+/* Opt-in amber mode for A/B testing: waterpolo.html?tv&amber */
+.tv-app.tv-amber .tv-num {
+  color: #FFB800;
+  text-shadow: 0 0 40px rgba(255,184,0,0.25);
 }
 /* Red flash when shot clock hits 0 — full screen flash, digits turn white */
 .tv-app.tv-buzz { background: #d00; animation: tvFlash 0.18s linear infinite alternate; }
@@ -532,6 +538,10 @@ var IS_TV      = location.search.indexOf('tv') >= 0;
 
 if (IS_TV) {
   document.body.classList.add('is-tv');
+  // Optional: ?tv&amber for amber digits instead of white
+  if (/[?&]amber(\b|=)/.test(location.search)) {
+    document.getElementById('tvApp').classList.add('tv-amber');
+  }
   document.getElementById('tvApp').style.display = 'flex';
   document.getElementById('displayApp').style.display = 'none';
   document.getElementById('controlApp').style.display = 'none';
