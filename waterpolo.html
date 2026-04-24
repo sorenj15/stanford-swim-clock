@@ -155,6 +155,7 @@ body {
 .shot-clock.sc-warn   { color: #e67e22; }
 .shot-clock.sc-danger { color: #e74c3c; animation: pulse-c .35s ease-in-out infinite; }
 .shot-clock.sc-off    { color: #f1c40f; }
+.shot-clock.sc-disabled { color: #555; }
 
 /* Exclusion row */
 .excl-row {
@@ -633,10 +634,19 @@ var _lastRemoteState = { gameTime: 8*60*1000, shotTime: 30*1000 };
 function applyState(s) {
   if (IS_TV) {
     _lastRemoteState = s;
-    var secs = Math.max(0, Math.ceil(s.shotTime / 1000));
-    document.getElementById('tvNum').textContent = secs;
-    // Red flash + horn when shot clock hits 0 (only transition from >0 to 0)
+    // Shot clock is off when game time < shot time — quarter will end
+    // before possession completes, so there's no shot clock to show.
+    var shotClockOff = !s.shotOnly && s.gameTime > 0 && s.gameTime < s.shotTime;
     var tvApp = document.getElementById('tvApp');
+    var tvNum = document.getElementById('tvNum');
+    if (shotClockOff) {
+      tvNum.textContent = '—';
+      tvApp.classList.remove('tv-buzz');
+      return;
+    }
+    var secs = Math.max(0, Math.ceil(s.shotTime / 1000));
+    tvNum.textContent = secs;
+    // Red flash + horn when shot clock hits 0 (only transition from >0 to 0)
     if (s.shotTime <= 0) {
       if (!tvApp.classList.contains('tv-buzz')) {
         tvApp.classList.add('tv-buzz');
@@ -926,14 +936,21 @@ function renderDisplay() {
   var scEl = document.getElementById('shotClock');
   scEl.style.fontSize = shotOnly ? '20rem' : '';
   var sSec = shotTime / 1000;
-  if (sSec <= 5 && sSec > 0 && running) {
+  // Shot clock is off when less game time remains than shot time — the
+  // period will end before the possession can be completed, so the shot
+  // clock is irrelevant per rule. Show "OFF" instead of the count.
+  var shotClockOff = !shotOnly && gameTime > 0 && gameTime < shotTime;
+  if (shotClockOff) {
+    scEl.textContent = '—';
+  } else if (sSec <= 5 && sSec > 0 && running) {
     var tenth = Math.ceil(shotTime / 100);
     scEl.textContent = Math.floor(tenth/10) + '.' + (tenth%10);
   } else {
     scEl.textContent = Math.ceil(sSec);
   }
   var scCls = 'shot-clock';
-  if (!running) scCls += ' sc-off';
+  if (shotClockOff) scCls += ' sc-disabled';
+  else if (!running) scCls += ' sc-off';
   else if (sSec <= 5) scCls += ' sc-danger';
   else if (sSec <= 10) scCls += ' sc-warn';
   scEl.className = scCls;
