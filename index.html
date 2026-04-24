@@ -208,6 +208,40 @@ textarea#setInput::placeholder { color: #5a2020; }
 .sr-zone.z-z3, .prev-rep .pr-zone.z-z3 { background: #4a3810; color: #f0c860; }
 .sr-zone.z-z4, .prev-rep .pr-zone.z-z4 { background: #4a1820; color: #f08090; }
 .sr-zone.z-z5, .prev-rep .pr-zone.z-z5 { background: #4a1050; color: #e080f0; }
+/* Inline editor on parsed preview */
+.prev-rep {
+  align-items: center;
+}
+.pe-dist {
+  width: 58px; padding: 3px 6px; border-radius: 4px;
+  background: #2a1010; border: 1px solid #4a1818; color: #fff;
+  font-size: 0.82rem; font-weight: 800; text-align: right;
+  font-family: inherit;
+}
+.pe-dist:focus { outline: none; border-color: #c0392b; background: #3a1515; }
+.pe-zone {
+  padding: 3px 6px; border-radius: 4px;
+  background: #1a2a40; border: 1px solid #2a4060; color: #a8c4e8;
+  font-size: 0.65rem; font-weight: 700; cursor: pointer;
+}
+.pe-zone:focus { outline: none; border-color: #4a80c0; }
+.pe-rest {
+  width: 52px; padding: 3px 6px; border-radius: 4px;
+  background: #3a2810; border: 1px solid #5a3820; color: #e8b830;
+  font-size: 0.68rem; font-weight: 700; text-align: center;
+  font-family: inherit;
+}
+.pe-rest:focus { outline: none; border-color: #c09040; background: #4a3415; }
+.pe-btn {
+  border: none; background: transparent; color: #6a4040; cursor: pointer;
+  font-size: 0.9rem; font-weight: 800; padding: 0 4px; line-height: 1;
+}
+.pe-btn:hover { color: #c0392b; }
+.pe-btn.pe-dup { color: #5a7a4a; }
+.pe-btn.pe-dup:hover { color: #2ecc71; }
+.pe-edit-hint {
+  font-size: 0.65rem; color: #5a4020; padding: 4px 10px; font-style: italic;
+}
 .prev-item { font-size: 0.78rem; color: #d4b0b0; padding: 2px 8px; }
 .prev-warn {
   font-size: 0.72rem; color: #e8a020; padding: 6px 8px;
@@ -1470,7 +1504,9 @@ function launch() {
   USER_CSS[2] = parseFloat(document.getElementById('css2').value)||71;
   POOL_LEN = parseFloat(document.getElementById('poolLen').value)||36;
 
-  SECS = parseSet(txt);
+  // Use the inline-edited secs if they match the current text, otherwise
+  // parse fresh. This preserves any inline edits made in the preview.
+  SECS = (_EDITED_SECS && _EDITED_TEXT === txt) ? _EDITED_SECS : parseSet(txt);
   secIdx = 0;
 
   document.getElementById('tn0').textContent = '1';
@@ -2141,11 +2177,25 @@ function fmtShort(s) {
 }
 
 // ── Preview ─────────────────────────────────────────────────────────────────
+// Live editable copy of the parsed set. Persists across re-renders so
+// inline edits don't get blown away every time the user tweaks CSS/pool,
+// but gets re-parsed whenever the source text actually changes.
+var _EDITED_SECS = null;
+var _EDITED_TEXT = '';
+function _parseRestInput(v) {
+  if (v == null) return null;
+  v = String(v).trim().replace(/^:/, '');
+  if (!v) return null;
+  var m = v.match(/^(\d+):(\d{1,2})$/);
+  if (m) return parseInt(m[1])*60 + parseInt(m[2]);
+  var n = parseInt(v, 10);
+  return isNaN(n) ? null : n;
+}
 function renderPreview() {
   var txt = document.getElementById('setInput').value.trim();
   var card = document.getElementById('previewCard');
   var body = document.getElementById('previewBody');
-  if (!txt) { card.style.display='none'; return; }
+  if (!txt) { card.style.display='none'; _EDITED_SECS = null; _EDITED_TEXT = ''; return; }
 
   // Temporarily set USER_CSS from inputs
   var tmpCSS = [
@@ -2156,12 +2206,17 @@ function renderPreview() {
   USER_CSS[0]=tmpCSS[0]; USER_CSS[1]=tmpCSS[1]; USER_CSS[2]=tmpCSS[2];
   POOL_LEN = parseFloat(document.getElementById('poolLen').value)||36;
 
-  var secs;
-  try { secs = parseSet(txt); } catch(e) {
-    card.style.display='block';
-    body.innerHTML='<div class="prev-warn">⚠ Parse error: '+e.message+'</div>';
-    return;
+  // Only re-parse when the source text actually changed, so inline edits
+  // survive CSS/pool tweaks and other re-renders.
+  if (txt !== _EDITED_TEXT) {
+    try { _EDITED_SECS = parseSet(txt); _EDITED_TEXT = txt; }
+    catch(e) {
+      card.style.display='block';
+      body.innerHTML='<div class="prev-warn">⚠ Parse error: '+e.message+'</div>';
+      return;
+    }
   }
+  var secs = _EDITED_SECS;
 
   var html = '';
   var totalReps = 0, totalDist = 0, warnings = [];
@@ -2199,18 +2254,32 @@ function renderPreview() {
         var pace = getPace(0, repZ(sec, r), r.dist); // tier 1 for preview
         var rndTag = r.roundEnd ? '<span class="pr-rnd">round end</span>' : '';
         var effPrevZ = repZ(sec, r);
-        var zTag = ' <span class="pr-zone z-'+effPrevZ+'">Zone '+effPrevZ.slice(1)+'</span>';
         var effPrevRest = (r.rest != null) ? r.rest : sec.restBetween;
-        var restTag = (_prevAnyRest && effPrevRest) ? ' <span class="pr-rest">'+fmtRest(effPrevRest)+' rest</span>' : '';
-        html += '<div class="prev-rep">' +
+        // Zone dropdown — show Z1-Z5 options
+        var zoneOpts = '';
+        for (var _zi = 1; _zi <= 5; _zi++) {
+          var zVal = 'z' + _zi;
+          zoneOpts += '<option value="'+zVal+'"'+(zVal===effPrevZ?' selected':'')+'>Z'+_zi+'</option>';
+        }
+        // Rest field — empty means use section default
+        var restVal = r.rest != null ? fmtRest(r.rest).replace(/^:/, '') : '';
+        html += '<div class="prev-rep" data-si="'+si+'" data-ri="'+ri+'">' +
           '<span class="pr-idx">' + (ri+1) + '.</span>' +
-          '<span class="pr-dist">' + r.dist + 'm <span class="pr-laps-inline">('+r.laps+'L)</span>' + zTag + restTag + '</span>' +
+          '<input class="pe-dist" type="number" min="10" step="1" value="'+r.dist+'" data-field="dist" data-si="'+si+'" data-ri="'+ri+'" title="distance in meters">' +
+          '<span style="color:#888;font-size:0.72rem">m</span>' +
+          '<span class="pr-laps-inline">('+r.laps+'L)</span>' +
+          '<select class="pe-zone z-'+effPrevZ+'" data-field="zKey" data-si="'+si+'" data-ri="'+ri+'" title="zone">'+zoneOpts+'</select>' +
+          '<input class="pe-rest" type="text" value="'+restVal+'" placeholder=":20" data-field="rest" data-si="'+si+'" data-ri="'+ri+'" title="rest (e.g. :20 or 1:30)">' +
           '<span class="pr-target">' + fmtS(pace[0]) + '–' + fmtS(pace[1]) + '</span>' +
           rndTag +
+          '<button class="pe-btn pe-dup" data-action="dup" data-si="'+si+'" data-ri="'+ri+'" title="duplicate this rep">+</button>' +
+          '<button class="pe-btn pe-del" data-action="del" data-si="'+si+'" data-ri="'+ri+'" title="remove this rep">×</button>' +
         '</div>';
         totalReps++;
         totalDist += r.dist;
       });
+      // Add-rep hint at end of section
+      html += '<div class="pe-edit-hint">Edit distance · zone · rest directly. Double-click + to duplicate, × to remove. Changes apply when you Launch.</div>';
     } else {
       // Untimed items
       if (sec.items && sec.items.length) {
@@ -2248,6 +2317,55 @@ document.getElementById('setInput').addEventListener('input', function() {
     _prevTimer = setTimeout(renderPreview, 400);
   });
 });
+
+// ── Inline preview editor ────────────────────────────────────────────────────
+// Event delegation on the preview body so edits work even after re-render.
+(function() {
+  var body = document.getElementById('previewBody');
+  if (!body) return;
+  // Field edits (dist / zone / rest) — commit on change so the user keeps
+  // focus while typing and we only re-render once they're done with a field.
+  body.addEventListener('change', function(e) {
+    var t = e.target;
+    if (!t.dataset || !t.dataset.field || !_EDITED_SECS) return;
+    var si = parseInt(t.dataset.si), ri = parseInt(t.dataset.ri);
+    var sec = _EDITED_SECS[si]; if (!sec || !sec.reps || !sec.reps[ri]) return;
+    var rep = sec.reps[ri];
+    if (t.dataset.field === 'dist') {
+      var d = parseInt(t.value, 10);
+      if (d >= 10) {
+        rep.dist = d;
+        rep.laps = Math.max(1, Math.round(d / POOL_LEN));
+      }
+    } else if (t.dataset.field === 'zKey') {
+      rep.zKey = t.value;
+    } else if (t.dataset.field === 'rest') {
+      var sec_rest = _parseRestInput(t.value);
+      if (sec_rest == null) { delete rep.rest; }
+      else { rep.rest = sec_rest; }
+    }
+    renderPreview();
+  });
+  // Add / delete rep buttons
+  body.addEventListener('click', function(e) {
+    var t = e.target;
+    if (!t.dataset || !t.dataset.action || !_EDITED_SECS) return;
+    var si = parseInt(t.dataset.si), ri = parseInt(t.dataset.ri);
+    var sec = _EDITED_SECS[si]; if (!sec || !sec.reps) return;
+    if (t.dataset.action === 'del') {
+      if (sec.reps.length > 1) sec.reps.splice(ri, 1);
+    } else if (t.dataset.action === 'dup') {
+      // Duplicate current rep right after it
+      var orig = sec.reps[ri];
+      var clone = { dist: orig.dist, laps: orig.laps };
+      if (orig.zKey) clone.zKey = orig.zKey;
+      if (orig.rest != null) clone.rest = orig.rest;
+      if (orig.easy) clone.easy = true;
+      sec.reps.splice(ri + 1, 0, clone);
+    }
+    renderPreview();
+  });
+})();
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 </script>
