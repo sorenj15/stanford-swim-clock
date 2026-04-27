@@ -530,6 +530,74 @@ body.is-tv { background: #000 !important; overflow: hidden; }
 /* Red flash when shot clock hits 0 — full screen flash, digits turn white */
 .tv-app.tv-buzz { background: #d00; animation: tvFlash 0.18s linear infinite alternate; }
 .tv-app.tv-buzz .tv-num { color: #fff; text-shadow: 0 0 60px rgba(255,255,255,0.5); }
+
+/* Small secondary clock on TV (game clock when in shot-clock mode, or
+   shot clock when game clock is in the danger zone). Sits in a corner. */
+.tv-mini {
+  position: fixed;
+  font-family: 'DSEG7', 'Arial Black', 'Helvetica', sans-serif;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  font-size: 14vh;
+  line-height: 0.85;
+  letter-spacing: 0;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.tv-mini-game { top: 4vh; left: 4vh; }
+.tv-mini-shot { top: 4vh; right: 4vh; color: #FFB800; }
+/* When game clock < 30s, swap roles: game clock becomes huge primary,
+   shot clock becomes the corner mini. */
+.tv-app.tv-swap .tv-num { display: none; }
+.tv-app.tv-swap .tv-mini-game {
+  position: static;
+  font-size: 78vh;
+  opacity: 1;
+  text-shadow: 0 0 40px rgba(255,255,255,0.2);
+}
+.tv-app.tv-swap .tv-mini-shot {
+  /* still in corner, but a bit larger so it stays readable */
+  font-size: 16vh;
+  opacity: 0.9;
+}
+
+/* DRILLS mode: tv-style display tuned for practice drills. Big game
+   clock center, scores below. No shot clock. Activated via ?tv&drills. */
+.tv-app.tv-drills .tv-num,
+.tv-app.tv-drills .tv-mini-shot { display: none; }
+.tv-app.tv-drills {
+  flex-direction: column;
+  gap: 4vh;
+}
+.tv-app.tv-drills .tv-mini-game {
+  position: static;
+  font-size: 60vh;
+  opacity: 1;
+  text-shadow: 0 0 40px rgba(255,255,255,0.2);
+}
+.tv-scores {
+  display: none;
+  align-items: center; justify-content: center;
+  gap: 8vh;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.tv-app.tv-drills .tv-scores { display: flex; }
+.tv-team {
+  display: flex; flex-direction: column; align-items: center;
+  font-weight: 900;
+}
+.tv-team-lbl {
+  font-size: 3vh; letter-spacing: 0.3em;
+  margin-bottom: 1vh;
+}
+.tv-team-num {
+  font-family: 'DSEG7', 'Arial Black', sans-serif;
+  font-size: 18vh; line-height: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+.tv-team-w .tv-team-lbl, .tv-team-w .tv-team-num { color: #fff; }
+.tv-team-b .tv-team-lbl, .tv-team-b .tv-team-num { color: #888; }
 @keyframes tvFlash {
   from { background: #ff0000; }
   to   { background: #600000; }
@@ -548,7 +616,13 @@ body.is-tv { background: #000 !important; overflow: hidden; }
 
 <!-- ═══ TV VIEW (dedicated outdoor shot clock) ═══ -->
 <div class="tv-app" id="tvApp" style="display:none">
+  <div class="tv-mini tv-mini-game" id="tvMiniGame">8:00</div>
   <div class="tv-num" id="tvNum">30</div>
+  <div class="tv-mini tv-mini-shot" id="tvMiniShot">30</div>
+  <div class="tv-scores">
+    <div class="tv-team tv-team-w"><div class="tv-team-lbl">WHITE</div><div class="tv-team-num" id="tvScoreW">0</div></div>
+    <div class="tv-team tv-team-b"><div class="tv-team-lbl">BLACK</div><div class="tv-team-num" id="tvScoreB">0</div></div>
+  </div>
   <div class="tv-conn" id="tvConn">Disconnected</div>
 </div>
 
@@ -826,6 +900,7 @@ body.is-tv { background: #000 !important; overflow: hidden; }
 // ── Detect mode ─────────────────────────────────────────────────────────
 var IS_CONTROL = location.search.indexOf('control') >= 0;
 var IS_TV      = location.search.indexOf('tv') >= 0;
+var IS_DRILLS  = /[?&]drills(\b|=)/.test(location.search);
 // Court ID — used to namespace WebSocket so two scoreboards can run side
 // by side. Defaults to "1" if no ?court param. Stays in URL for the
 // controller's QR-code link generator.
@@ -839,6 +914,9 @@ if (IS_TV) {
   // Optional: ?tv&amber for amber digits instead of white
   if (/[?&]amber(\b|=)/.test(location.search)) {
     document.getElementById('tvApp').classList.add('tv-amber');
+  }
+  if (IS_DRILLS) {
+    document.getElementById('tvApp').classList.add('tv-drills');
   }
   document.getElementById('tvApp').style.display = 'flex';
   document.getElementById('displayApp').style.display = 'none';
@@ -987,13 +1065,36 @@ function ctrlToggleSplit() {
 function applyState(s) {
   if (IS_TV) {
     _lastRemoteState = s;
+    var tvApp = document.getElementById('tvApp');
+    var tvNum = document.getElementById('tvNum');
+    var tvMG  = document.getElementById('tvMiniGame');
+    var tvMS  = document.getElementById('tvMiniShot');
+    var tvScW = document.getElementById('tvScoreW');
+    var tvScB = document.getElementById('tvScoreB');
+
+    // Mini game-clock + scores are always rendered (used by both default
+    // and drills layouts).
+    if (tvMG) tvMG.textContent = fmtClock(s.gameTime || 0);
+    if (tvMS) tvMS.textContent = Math.max(0, Math.ceil((s.shotTime||0)/1000));
+    if (tvScW) tvScW.textContent = s.homeScore || 0;
+    if (tvScB) tvScB.textContent = s.awayScore || 0;
+
+    // DRILLS mode: TV is acting as a drill scoreboard. Just show the
+    // game clock big + scores. Skip the shot-clock specifics below.
+    if (IS_DRILLS) return;
+
+    // Default TV mode: shot clock big in center. Swap to game-clock-big
+    // when there's <30s left in the quarter so the game-clock is the
+    // dominant readout in the closing seconds of a period.
+    var swap = !s.shotOnly && s.gameTime > 0 && s.gameTime < 30000;
+    tvApp.classList.toggle('tv-swap', swap);
+
     // Shot clock is off when game time < shot time — quarter will end
     // before possession completes, so there's no shot clock to show.
     var shotClockOff = !s.shotOnly && s.gameTime > 0 && s.gameTime < s.shotTime;
-    var tvApp = document.getElementById('tvApp');
-    var tvNum = document.getElementById('tvNum');
     if (shotClockOff) {
       tvNum.textContent = '—';
+      if (tvMS) tvMS.textContent = '—';
       tvApp.classList.remove('tv-buzz');
       return;
     }
