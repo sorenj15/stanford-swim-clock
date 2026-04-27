@@ -303,7 +303,8 @@ textarea#setInput::placeholder { color: #5a2020; }
 .hi.done  { color: #3a9060; text-decoration: line-through; font-size: 0.95rem; }
 .hi.cur   { color: #fff; background: rgba(25,111,61,0.4); border: 1px solid rgba(46,204,113,0.6); font-weight: 800; font-size: 1.35rem; }
 .hi.plain { color: #c08080; }
-.hero-rest { font-size: 0.85rem; color: #e8b830; margin-left: 6px; font-weight: 600; }
+.hero-rest { font-size: 0.85rem; color: #e8b830; margin: 0 2px; font-weight: 600; opacity: 0.85; }
+.hero-rest-done { opacity: 0.3; }
 .hero-eq   { font-size: 0.8rem; color: #a06060; margin-left: 4px; font-style: italic; }
 .hero-items-wrap { font-size: 1.1rem; color: #d4b0b0; line-height: 2.1; white-space: pre-wrap; }
 
@@ -1944,17 +1945,27 @@ function renderHero() {
   var sub='';
   if (sec.timed) {
     var ri=TS[0].ri, ph=TS[0].phase;
-    var items=sec.reps.map(function(r,i){
-      var label='<small style="display:block;font-size:0.7em;font-weight:700;color:#e8b830;letter-spacing:0.06em">'+r.laps+' laps</small>'+r.dist+'m';
-      var isDone=(i<ri)||(ph==='done'||ph==='brk');
-      var isCur=(i===ri&&ph!=='brk'&&ph!=='done');
-      var cls=isDone?'done':isCur?'cur':'plain';
-      return '<span class="hi '+cls+'">'+label+'</span>';
-    }).join('');
-    var restNote=sec.restBetween?'<span class="hero-rest">'+fmtRest(sec.restBetween)+' rest</span>':'';
-    var eq=sec.equipment?'<span class="hero-eq">'+sec.equipment+'</span>':'';
-    var breakNote=sec.restAfterSec>0?'<span class="hero-rest" style="color:#e74c3c">→ '+(sec.restAfterLabel||(':'+pad(sec.restAfterSec)))+' set break</span>':'';
-    sub='<div class="hero-items">'+items+restNote+eq+breakNote+'</div>';
+    // Build rep + inline rest pills. Rest is shown BETWEEN each rep (not
+    // tacked onto the end) so you can see the actual interval structure
+    // at a glance — including per-rep rest overrides.
+    var pieces = [];
+    sec.reps.forEach(function(r, i) {
+      var label = '<small style="display:block;font-size:0.7em;font-weight:700;color:#e8b830;letter-spacing:0.06em">'+r.laps+' laps</small>'+r.dist+'m';
+      var isDone = (i<ri) || (ph==='done' || ph==='brk');
+      var isCur = (i===ri && ph!=='brk' && ph!=='done');
+      var cls = isDone ? 'done' : isCur ? 'cur' : 'plain';
+      pieces.push('<span class="hi '+cls+'">'+label+'</span>');
+      if (i < sec.reps.length - 1) {
+        var restSec = (r.rest != null) ? r.rest : sec.restBetween;
+        if (restSec) {
+          var restCls = isDone ? 'hero-rest hero-rest-done' : 'hero-rest';
+          pieces.push('<span class="'+restCls+'">'+fmtRest(restSec)+'</span>');
+        }
+      }
+    });
+    var eq = sec.equipment ? '<span class="hero-eq">'+sec.equipment+'</span>' : '';
+    var breakNote = sec.restAfterSec>0 ? '<span class="hero-rest" style="color:#e74c3c">→ '+(sec.restAfterLabel||(':'+pad(sec.restAfterSec)))+' set break</span>' : '';
+    sub = '<div class="hero-items">' + pieces.join('') + eq + breakNote + '</div>';
   } else if (sec.items&&sec.items.length) {
     sub='<div class="hero-items-wrap">'+sec.items.map(function(it){return '· '+it;}).join('\n')+'</div>';
   }
