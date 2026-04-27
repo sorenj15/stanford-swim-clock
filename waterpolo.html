@@ -397,6 +397,102 @@ body.is-control.is-split-ctrl #splitCtrl { display: block; }
 
 .rb-sub { display: block; font-size: 0.55rem; font-weight: 600; opacity: .6; margin-top: 2px; letter-spacing: 0.05em; }
 
+/* Bigger button variants */
+.rb-huge { padding: 36px 8px; font-size: 1.8rem; letter-spacing: 0.05em; }
+.rb-big  { padding: 26px 8px; font-size: 1.4rem; }
+.rb-compact { padding: 10px 4px; font-size: 0.85rem; }
+.rb-rest    { background: #0a2a2a; color: #00d4d4; border-color: #1a4a4a; font-size: 1.1rem; padding: 22px 4px; font-family: 'SF Mono', monospace; }
+.rb-settings { background: transparent; color: #c0392b; border: none; padding: 0; font-size: 1.6rem; cursor: pointer; }
+
+/* Header layout with settings gear */
+.ctrl-hdr-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ctrl-hdr-row h1 { flex: 1; }
+.ctrl-hdr-row .settings-btn,
+.ctrl-hdr-row .spacer { width: 36px; text-align: center; }
+.settings-btn {
+  background: transparent; border: 1px solid #3a1515;
+  color: #c0392b; font-size: 1.3rem;
+  width: 36px; height: 36px; border-radius: 8px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+
+/* Settings overlay (full-screen modal) */
+.settings-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.92);
+  z-index: 1500;
+  overflow-y: auto;
+}
+.settings-overlay.open { display: block; }
+.settings-box {
+  max-width: 480px; margin: 0 auto;
+  padding: 24px 18px 80px;
+}
+.settings-box h3 {
+  font-size: 1.2rem; font-weight: 900; color: #c0392b;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  text-align: center; margin: 8px 0 22px;
+}
+.settings-row { margin-bottom: 14px; }
+.settings-row label {
+  display: block;
+  font-size: 0.7rem; font-weight: 700; color: #8C1515;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  margin-bottom: 6px; padding-left: 4px;
+}
+.settings-inp {
+  width: 100%; padding: 14px 12px;
+  background: #0d0505; border: 2px solid #3a1515;
+  border-radius: 10px; color: #fff;
+  font-family: 'SF Mono', monospace; font-size: 1.5rem;
+  font-weight: 800; text-align: center; outline: none;
+}
+.settings-inp:focus { border-color: #8C1515; }
+.settings-actions {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px; margin-top: 18px;
+}
+.settings-close {
+  width: 100%; padding: 16px;
+  background: #1a0808; color: #aaa;
+  border: 1px solid #3a1515; border-radius: 10px;
+  font-size: 1rem; font-weight: 800; cursor: pointer;
+}
+.settings-apply {
+  width: 100%; padding: 16px;
+  background: #8C1515; color: #fff;
+  border: none; border-radius: 10px;
+  font-size: 1rem; font-weight: 900; cursor: pointer;
+}
+
+/* Display: REST overlay (between-quarter rest countdown) */
+.rest-overlay {
+  display: none; position: fixed; inset: 0;
+  background: #050a0a;
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 200;
+}
+body.is-rest .rest-overlay { display: flex; }
+body.is-rest .display-app,
+body.is-rest .split-app { display: none !important; }
+.rest-banner {
+  font-size: 2.4rem; font-weight: 900;
+  letter-spacing: 0.5em; color: #00d4d4;
+  text-shadow: 0 0 30px rgba(0,212,212,0.4);
+  margin-bottom: 24px;
+}
+.rest-clock {
+  font-family: 'SF Mono', 'Courier New', monospace;
+  font-size: 22rem; font-weight: 900;
+  color: #fff; line-height: 0.95;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 50px rgba(0,212,212,0.3);
+}
+.rest-clock.warn { color: #f39c12; }
+.rest-clock.danger { color: #e74c3c; animation: pulse-c .5s ease-in-out infinite; }
+.rest-sub { font-size: 1rem; color: #5a8080; letter-spacing: 0.2em; margin-top: 18px; }
+
 /* ═══════ TV VIEW (dedicated shot clock for outdoor TV) ═══════ */
 /* White-on-black by default — on a backlit LCD TV this maxes out peak
    luminance (all RGB subpixels fully on), which matters more in direct
@@ -530,10 +626,21 @@ body.is-tv { background: #000 !important; overflow: hidden; }
   </div>
 </div>
 
+<!-- ═══ REST overlay (between-quarter rest countdown) ═══ -->
+<div class="rest-overlay" id="restOverlay">
+  <div class="rest-banner">REST</div>
+  <div class="rest-clock" id="restClock">2:00</div>
+  <div class="rest-sub" id="restSub">tap remote to cancel</div>
+</div>
+
 <!-- ═══ CONTROL VIEW (iPhone) ═══ -->
 <div class="control-app" id="controlApp">
   <div class="ctrl-hdr">
-    <h1>Stanford Water Polo</h1>
+    <div class="ctrl-hdr-row">
+      <span class="spacer"></span>
+      <h1>Stanford Water Polo</h1>
+      <button class="settings-btn" onclick="openSettings()" aria-label="Settings">⚙</button>
+    </div>
     <div class="conn-status disconnected" id="connStatus">● Connecting…</div>
   </div>
 
@@ -557,13 +664,6 @@ body.is-tv { background: #000 !important; overflow: hidden; }
     <div class="cs-block">
       <div class="cs-label">Away</div>
       <div class="cs-val" id="csAway">0</div>
-    </div>
-  </div>
-
-  <!-- Split-screen toggle (always visible) -->
-  <div class="ctrl-section">
-    <div class="ctrl-grid">
-      <div class="rb rb-mode" id="rbSplitToggle" onclick="ctrlToggleSplit()">⊟ SPLIT SCREEN<span class="rb-sub">two clocks on one display</span></div>
     </div>
   </div>
 
@@ -616,63 +716,92 @@ body.is-tv { background: #000 !important; overflow: hidden; }
 
   <!-- Normal (single-screen) controls -->
   <div id="normalCtrl">
-  <div class="ctrl-section">
-    <div class="ctrl-section-title">Clock</div>
-    <div class="ctrl-grid g2">
-      <div class="rb rb-start" id="rbStartStop" onclick="cmd('toggle')">▶ START</div>
-      <div class="rb rb-shot" onclick="cmd('shot30')">↺ RESET</div>
+    <!-- BIG primary clock controls -->
+    <div class="ctrl-section">
+      <div class="ctrl-grid">
+        <div class="rb rb-start rb-huge" id="rbStartStop" onclick="cmd('toggle')">▶ START</div>
+      </div>
+      <div class="ctrl-grid g2" style="margin-top:10px">
+        <div class="rb rb-shot rb-big" onclick="cmd('shot30')">↺ 30</div>
+        <div class="rb rb-shot rb-big" onclick="cmd('shot20')">↺ 20</div>
+      </div>
     </div>
-  </div>
 
-  <div class="ctrl-section">
-    <div class="ctrl-section-title">Shot Clock</div>
-    <div class="ctrl-grid g3">
-      <div class="rb rb-shot" onclick="cmd('shot30')">↺ 30</div>
-      <div class="rb rb-shot" onclick="cmd('shot20')">↺ 20</div>
-      <div class="rb rb-mode" onclick="cmd('toggleMode')">SHOT ONLY<span class="rb-sub">toggle</span></div>
+    <!-- REST timer between quarters -->
+    <div class="ctrl-section">
+      <div class="ctrl-section-title">Rest Timer</div>
+      <div class="ctrl-grid g4">
+        <div class="rb rb-rest" onclick="cmd('restStart',{ms:60000})">1:00</div>
+        <div class="rb rb-rest" onclick="cmd('restStart',{ms:120000})">2:00</div>
+        <div class="rb rb-rest" onclick="cmd('restStart',{ms:180000})">3:00</div>
+        <div class="rb rb-rest" onclick="cmd('restStart',{ms:300000})">5:00</div>
+      </div>
+      <div class="ctrl-grid" style="margin-top:8px">
+        <div class="rb rb-reset" onclick="cmd('restCancel')">✕ CANCEL REST</div>
+      </div>
     </div>
-  </div>
 
-  <div class="ctrl-section">
-    <div class="ctrl-section-title">Score — White</div>
-    <div class="ctrl-grid g2">
-      <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:1})">+ GOAL</div>
-      <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:-1})">− UNDO</div>
+    <!-- Quarter / horn -->
+    <div class="ctrl-section">
+      <div class="ctrl-grid g2">
+        <div class="rb rb-qtr" onclick="cmd('nextQtr')">▶ NEXT QTR</div>
+        <div class="rb rb-horn" onclick="cmd('horn')">📯 HORN</div>
+      </div>
     </div>
-  </div>
 
-  <div class="ctrl-section">
-    <div class="ctrl-section-title">Score — Black</div>
-    <div class="ctrl-grid g2">
-      <div class="rb rb-score-a" onclick="cmd('score',{t:'away',d:1})">+ GOAL</div>
-      <div class="rb rb-score-a" onclick="cmd('score',{t:'away',d:-1})">− UNDO</div>
+    <!-- Goals (compact, at bottom) -->
+    <div class="ctrl-section">
+      <div class="ctrl-section-title">Goals</div>
+      <div class="ctrl-grid g4">
+        <div class="rb rb-score-h rb-compact" onclick="cmd('score',{t:'home',d:1})">+ W</div>
+        <div class="rb rb-score-h rb-compact" onclick="cmd('score',{t:'home',d:-1})">− W</div>
+        <div class="rb rb-score-a rb-compact" onclick="cmd('score',{t:'away',d:1})">+ B</div>
+        <div class="rb rb-score-a rb-compact" onclick="cmd('score',{t:'away',d:-1})">− B</div>
+      </div>
     </div>
-  </div>
-
-  <div class="ctrl-section">
-    <div class="ctrl-section-title">Quarter</div>
-    <div class="ctrl-grid g2">
-      <div class="rb rb-qtr" onclick="cmd('nextQtr')">▶ NEXT QTR</div>
-      <div class="rb rb-horn" onclick="cmd('horn')">📯 HORN</div>
-    </div>
-  </div>
-
-  <div class="ctrl-section">
-    <div class="ctrl-section-title">Set Time</div>
-    <div class="ctrl-grid g2">
-      <div class="rb rb-time" onclick="openTimeEdit('game')">SET GAME<span class="rb-sub">tap to edit</span></div>
-      <div class="rb rb-time" onclick="openTimeEdit('shot')">SET SHOT<span class="rb-sub">tap to edit</span></div>
-    </div>
-  </div>
-
-  <div class="ctrl-section">
-    <div class="ctrl-section-title">Manage</div>
-    <div class="ctrl-grid g2">
-      <div class="rb rb-poss" onclick="cmd('swapPoss')">⇄ POSS</div>
-      <div class="rb rb-reset" onclick="cmd('resetGame')">↺ RESET ALL</div>
-    </div>
-  </div>
   </div><!-- /#normalCtrl -->
+</div>
+
+<!-- Settings overlay (gear icon → modal) -->
+<div class="settings-overlay" id="settingsOverlay">
+  <div class="settings-box">
+    <h3>Settings</h3>
+
+    <div class="settings-row">
+      <label>Quarter Length (minutes)</label>
+      <input class="settings-inp" id="setQtrMin" type="number" min="1" max="20" value="8">
+    </div>
+
+    <div class="settings-row">
+      <label>Shot Clock (seconds)</label>
+      <input class="settings-inp" id="setShotSec" type="number" min="5" max="60" value="30">
+    </div>
+
+    <div class="settings-row">
+      <label>Display Mode</label>
+      <div class="rb rb-mode" id="rbSplitToggle" onclick="ctrlToggleSplit()">⊟ TWO COURTS<span class="rb-sub">split scoreboard</span></div>
+    </div>
+
+    <div class="settings-row">
+      <label>Other</label>
+      <div class="ctrl-grid g2">
+        <div class="rb rb-mode" onclick="cmd('toggleMode')">SHOT-ONLY<span class="rb-sub">toggle</span></div>
+        <div class="rb rb-poss" onclick="cmd('swapPoss')">⇄ POSS</div>
+      </div>
+      <div class="ctrl-grid g2" style="margin-top:8px">
+        <div class="rb rb-time" onclick="openTimeEdit('game');closeSettings()">SET GAME CLOCK</div>
+        <div class="rb rb-time" onclick="openTimeEdit('shot');closeSettings()">SET SHOT CLOCK</div>
+      </div>
+      <div class="ctrl-grid" style="margin-top:8px">
+        <div class="rb rb-reset" onclick="if(confirm('Reset everything?')){cmd('resetGame');closeSettings();}">↺ RESET ALL</div>
+      </div>
+    </div>
+
+    <div class="settings-actions">
+      <button class="settings-close" onclick="closeSettings()">CLOSE</button>
+      <button class="settings-apply" onclick="applySettings()">APPLY</button>
+    </div>
+  </div>
 </div>
 
 <!-- Time edit overlay -->
@@ -832,7 +961,11 @@ function sendState() {
     bShotTime: bShotTime,
     bRunning: bRunning,
     bHomeScore: bHomeScoreVal,
-    bAwayScore: bAwayScoreVal
+    bAwayScore: bAwayScoreVal,
+    restMode: restMode,
+    restTime: restTime,
+    qtrLen: CFG.qtrLen,
+    shotLen: CFG.shotLen
   });
 }
 
@@ -847,7 +980,7 @@ function ctrlToggleSplit() {
   _ctrlSplit = !_ctrlSplit;
   document.body.classList.toggle('is-split-ctrl', _ctrlSplit);
   var sb = document.getElementById('rbSplitToggle');
-  if (sb) sb.textContent = _ctrlSplit ? '☐ SINGLE SCREEN' : '⊟ SPLIT SCREEN';
+  if (sb && sb.firstChild) sb.firstChild.textContent = _ctrlSplit ? '☐ ONE COURT' : '⊟ TWO COURTS';
   cmd('setSplit', {on: _ctrlSplit});
 }
 
@@ -881,7 +1014,10 @@ function applyState(s) {
   }
   if (!IS_CONTROL) return;
   _lastRemoteState = s;
-  document.getElementById('csGame').textContent = fmtClock(s.gameTime);
+  // If a rest countdown is active, show it in the Game cell instead
+  document.getElementById('csGame').textContent = s.restMode
+    ? '⏸ ' + fmtClock(s.restTime)
+    : fmtClock(s.gameTime);
   document.getElementById('csShot').textContent = Math.ceil(s.shotTime / 1000);
   document.getElementById('csQtr').textContent = 'Q' + (s.quarter + 1);
   document.getElementById('csHome').textContent = s.homeScore;
@@ -948,6 +1084,14 @@ var bLastTs = null;
 var bRaf = null;
 var bHomeScoreVal = 0;
 var bAwayScoreVal = 0;
+
+// Rest timer (between-quarter break) — independent countdown that takes
+// over the display until it expires or is cancelled.
+var restMode = false;
+var restTime = 0;
+var restRaf = null;
+var restLastTs = null;
+var restLastSentMs = 0;
 
 var Q_LABELS = ['1ST QUARTER','2ND QUARTER','3RD QUARTER','4TH QUARTER','OVERTIME'];
 
@@ -1154,6 +1298,33 @@ function handleCmd(action, data) {
         if (!running) { renderDisplay(); renderSplit(); }
       }
       break;
+    case 'restStart':
+      _stop(); _stopB();
+      restMode = true;
+      restTime = data.ms || 120000;
+      restLastTs = null;
+      document.body.classList.add('is-rest');
+      renderRest();
+      restRaf = requestAnimationFrame(restLoop);
+      break;
+    case 'restCancel':
+      restMode = false;
+      if (restRaf) { cancelAnimationFrame(restRaf); restRaf = null; }
+      document.body.classList.remove('is-rest');
+      break;
+    case 'setDefaults':
+      if (data.qtrMs && data.qtrMs > 0) {
+        CFG.qtrLen = data.qtrMs;
+        if (!running) gameTime = data.qtrMs;
+        if (!bRunning && splitMode) bGameTime = data.qtrMs;
+      }
+      if (data.shotMs && data.shotMs > 0) {
+        CFG.shotLen = data.shotMs;
+        if (!running) shotTime = data.shotMs;
+        if (!bRunning && splitMode) bShotTime = data.shotMs;
+      }
+      renderDisplay(); renderSplit();
+      break;
     case 'setShot':
       if (side === 'B') {
         bShotTime = data.ms;
@@ -1264,6 +1435,41 @@ function loop(ts) {
   // Send state to controller ~4x per second
   if (Math.floor(ts / 250) !== Math.floor((lastTs||ts) / 250)) sendState();
   raf = requestAnimationFrame(loop);
+}
+
+// ── Rest timer loop & render ───────────────────────────────────────────
+function restLoop(ts) {
+  if (!restMode) return;
+  if (restLastTs !== null) {
+    var dt = ts - restLastTs;
+    restTime -= dt;
+    if (restTime <= 0) {
+      restTime = 0;
+      restMode = false;
+      document.body.classList.remove('is-rest');
+      soundHorn();
+      renderRest();
+      sendState();
+      return;
+    }
+  }
+  restLastTs = ts;
+  renderRest();
+  // Throttle state sends to ~4Hz
+  if (ts - restLastSentMs >= 250) { restLastSentMs = ts; sendState(); }
+  restRaf = requestAnimationFrame(restLoop);
+}
+
+function renderRest() {
+  if (IS_CONTROL || IS_TV) return;
+  var el = document.getElementById('restClock');
+  if (!el) return;
+  el.textContent = fmtClock(restTime);
+  var sec = restTime / 1000;
+  var cls = 'rest-clock';
+  if (sec <= 5 && sec > 0) cls += ' danger';
+  else if (sec <= 15) cls += ' warn';
+  el.className = cls;
 }
 
 // Render the split-screen panels (side A uses top-level state, side B uses b*)
@@ -1461,6 +1667,29 @@ function saveTimeEdit() {
 
 function closeTimeEdit() {
   document.getElementById('timeEditOverlay').classList.remove('open');
+}
+
+// ── Settings overlay ────────────────────────────────────────────────────
+function openSettings() {
+  if (!IS_CONTROL) return;
+  // Prefill from last known display defaults
+  var qtrMs = _lastRemoteState.qtrLen || 8*60*1000;
+  var shotMs = _lastRemoteState.shotLen || 30*1000;
+  document.getElementById('setQtrMin').value = Math.round(qtrMs / 60000);
+  document.getElementById('setShotSec').value = Math.round(shotMs / 1000);
+  // Reflect current split state on the toggle button label
+  var sb = document.getElementById('rbSplitToggle');
+  if (sb) sb.firstChild.textContent = _ctrlSplit ? '☐ ONE COURT' : '⊟ TWO COURTS';
+  document.getElementById('settingsOverlay').classList.add('open');
+}
+function closeSettings() {
+  document.getElementById('settingsOverlay').classList.remove('open');
+}
+function applySettings() {
+  var m = parseInt(document.getElementById('setQtrMin').value, 10) || 8;
+  var s = parseInt(document.getElementById('setShotSec').value, 10) || 30;
+  cmd('setDefaults', { qtrMs: m * 60 * 1000, shotMs: s * 1000 });
+  closeSettings();
 }
 
 // ── Team name editing ───────────────────────────────────────────────────
