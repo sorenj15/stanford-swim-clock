@@ -1972,7 +1972,7 @@ function renderHero() {
   el.innerHTML = '<span class="hero-title">'+sec.title+'</span>'
     + (sec.equipment?'<span class="hero-eq">'+sec.equipment+'</span>':'')
     + sub
-    + (sec.timed ? '<button class="live-edit-toggle'+(_LIVE_EDIT_OPEN?' lt-on':'')+'" onclick="toggleLiveEdit()">'+(_LIVE_EDIT_OPEN?'✕ Close':'✏ Edit Set')+'</button>' : '');
+    + (sec.timed ? '<button class="live-edit-toggle'+(_LIVE_EDIT_OPEN?' lt-on':'')+'" data-le-toggle="1">'+(_LIVE_EDIT_OPEN?'✕ Close':'✏ Edit Set')+'</button>' : '');
   // Re-render the live editor panel ONLY when the rep index moves (rep
   // finished, new rep started). Otherwise typing into a field would get
   // wiped 60 times a second. Edit-action handlers re-render explicitly.
@@ -2171,6 +2171,15 @@ function renderTierBtns(ti, tb) {
 
 // Event delegation for tier buttons — mousedown fires before next RAF can rebuild DOM
 document.addEventListener('mousedown', function(e) {
+  // Edit-set toggle button — same root cause as tier buttons: 60Hz hero
+  // rebuild destroys the button between mousedown and click. Catch
+  // mousedown directly via delegation.
+  if (e.target.closest('[data-le-toggle]')) {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleLiveEdit();
+    return;
+  }
   var btn = e.target.closest('.tier-btn');
   if (!btn) return;
   var ti = parseInt(btn.getAttribute('data-ti'));
@@ -2184,6 +2193,11 @@ document.addEventListener('mousedown', function(e) {
 });
 // Also handle touch for mobile
 document.addEventListener('touchstart', function(e) {
+  if (e.target.closest('[data-le-toggle]')) {
+    e.preventDefault();
+    toggleLiveEdit();
+    return;
+  }
   var btn = e.target.closest('.tier-btn');
   if (!btn) return;
   var ti = parseInt(btn.getAttribute('data-ti'));
