@@ -857,6 +857,11 @@ body.is-tv { background: #000 !important; overflow: hidden; }
     </div>
 
     <div class="settings-row">
+      <label>TV Display</label>
+      <div class="rb rb-mode" id="rbDrillsToggle" onclick="ctrlToggleDrills()">⏱ DRILL SCOREBOARD<span class="rb-sub">TV: big game clock + scores, no shot clock</span></div>
+    </div>
+
+    <div class="settings-row">
       <label>Other</label>
       <div class="ctrl-grid g2">
         <div class="rb rb-mode" onclick="cmd('toggleMode')">SHOT-ONLY<span class="rb-sub">toggle</span></div>
@@ -914,9 +919,6 @@ if (IS_TV) {
   // Optional: ?tv&amber for amber digits instead of white
   if (/[?&]amber(\b|=)/.test(location.search)) {
     document.getElementById('tvApp').classList.add('tv-amber');
-  }
-  if (IS_DRILLS) {
-    document.getElementById('tvApp').classList.add('tv-drills');
   }
   document.getElementById('tvApp').style.display = 'flex';
   document.getElementById('displayApp').style.display = 'none';
@@ -1043,7 +1045,8 @@ function sendState() {
     restMode: restMode,
     restTime: restTime,
     qtrLen: CFG.qtrLen,
-    shotLen: CFG.shotLen
+    shotLen: CFG.shotLen,
+    drillsMode: drillsMode
   });
 }
 
@@ -1060,6 +1063,15 @@ function ctrlToggleSplit() {
   var sb = document.getElementById('rbSplitToggle');
   if (sb && sb.firstChild) sb.firstChild.textContent = _ctrlSplit ? '☐ ONE COURT' : '⊟ TWO COURTS';
   cmd('setSplit', {on: _ctrlSplit});
+}
+
+// Drills layout for TV — local toggle, sent to display via setDrills cmd.
+var _ctrlDrills = false;
+function ctrlToggleDrills() {
+  _ctrlDrills = !_ctrlDrills;
+  var b = document.getElementById('rbDrillsToggle');
+  if (b && b.firstChild) b.firstChild.textContent = _ctrlDrills ? '✕ NORMAL TV' : '⏱ DRILL SCOREBOARD';
+  cmd('setDrills', {on: _ctrlDrills});
 }
 
 function applyState(s) {
@@ -1081,7 +1093,10 @@ function applyState(s) {
 
     // DRILLS mode: TV is acting as a drill scoreboard. Just show the
     // game clock big + scores. Skip the shot-clock specifics below.
-    if (IS_DRILLS) return;
+    // Driven by remote setting (or ?drills URL param as a fallback).
+    var inDrills = !!s.drillsMode || IS_DRILLS;
+    tvApp.classList.toggle('tv-drills', inDrills);
+    if (inDrills) return;
 
     // Default TV mode: shot clock big in center. Swap to game-clock-big
     // when there's <30s left in the quarter so the game-clock is the
@@ -1185,6 +1200,11 @@ var bLastTs = null;
 var bRaf = null;
 var bHomeScoreVal = 0;
 var bAwayScoreVal = 0;
+
+// Drills layout for the TV display — toggled from the remote settings.
+// TV reads this from incoming state messages and switches its layout to
+// big game clock + scores instead of the default shot-clock-big.
+var drillsMode = false;
 
 // Rest timer (between-quarter break) — independent countdown that takes
 // over the display until it expires or is cancelled.
@@ -1398,6 +1418,9 @@ function handleCmd(action, data) {
         gameTime = data.ms;
         if (!running) { renderDisplay(); renderSplit(); }
       }
+      break;
+    case 'setDrills':
+      drillsMode = !!data.on;
       break;
     case 'restStart':
       _stop(); _stopB();
@@ -1780,7 +1803,11 @@ function openSettings() {
   document.getElementById('setShotSec').value = Math.round(shotMs / 1000);
   // Reflect current split state on the toggle button label
   var sb = document.getElementById('rbSplitToggle');
-  if (sb) sb.firstChild.textContent = _ctrlSplit ? '☐ ONE COURT' : '⊟ TWO COURTS';
+  if (sb && sb.firstChild) sb.firstChild.textContent = _ctrlSplit ? '☐ ONE COURT' : '⊟ TWO COURTS';
+  // Reflect drills state from latest received state
+  _ctrlDrills = !!_lastRemoteState.drillsMode;
+  var db = document.getElementById('rbDrillsToggle');
+  if (db && db.firstChild) db.firstChild.textContent = _ctrlDrills ? '✕ NORMAL TV' : '⏱ DRILL SCOREBOARD';
   document.getElementById('settingsOverlay').classList.add('open');
 }
 function closeSettings() {
