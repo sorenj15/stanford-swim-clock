@@ -536,7 +536,7 @@ body.is-tv { background: #000 !important; overflow: hidden; }
   <!-- Split-screen toggle (always visible) -->
   <div class="ctrl-section">
     <div class="ctrl-grid">
-      <div class="rb rb-mode" id="rbSplitToggle" onclick="cmd('toggleSplit')">⊟ SPLIT SCREEN<span class="rb-sub">two clocks on one display</span></div>
+      <div class="rb rb-mode" id="rbSplitToggle" onclick="ctrlToggleSplit()">⊟ SPLIT SCREEN<span class="rb-sub">two clocks on one display</span></div>
     </div>
   </div>
 
@@ -773,6 +773,18 @@ function sendState() {
 // Controller receives state
 var _lastRemoteState = { gameTime: 8*60*1000, shotTime: 30*1000 };
 
+// Controller's local split-mode flag — owned by the remote so the layout
+// never flips based on incoming state messages. Set by the user tapping
+// the SPLIT SCREEN / SINGLE SCREEN button.
+var _ctrlSplit = false;
+function ctrlToggleSplit() {
+  _ctrlSplit = !_ctrlSplit;
+  document.body.classList.toggle('is-split-ctrl', _ctrlSplit);
+  var sb = document.getElementById('rbSplitToggle');
+  if (sb) sb.textContent = _ctrlSplit ? '☐ SINGLE SCREEN' : '⊟ SPLIT SCREEN';
+  cmd('setSplit', {on: _ctrlSplit});
+}
+
 function applyState(s) {
   if (IS_TV) {
     _lastRemoteState = s;
@@ -815,11 +827,11 @@ function applyState(s) {
     btn.textContent = '▶ START'; btn.className = 'rb rb-start';
   }
 
-  // Split mode reflection
-  document.body.classList.toggle('is-split-ctrl', !!s.splitMode);
-  var sb = document.getElementById('rbSplitToggle');
-  if (sb) sb.textContent = s.splitMode ? '☐ SINGLE SCREEN' : '⊟ SPLIT SCREEN';
-  if (s.splitMode) {
+  // Split mode: the remote's layout is driven by its OWN local flag
+  // (_ctrlSplit), not by state messages — otherwise multiple displays or
+  // brief races would make the remote flicker between layouts. We DO use
+  // state to update the per-side run buttons + clock readouts.
+  if (_ctrlSplit) {
     var bA = document.getElementById('rbStartA');
     if (bA) {
       if (s.running) { bA.textContent = '⏸ STOP'; bA.className = 'rb rb-stop'; }
@@ -977,7 +989,10 @@ function handleCmd(action, data) {
       }
       break;
     case 'toggleSplit':
-      splitMode = !splitMode;
+    case 'setSplit':
+      var want = (action === 'setSplit') ? !!data.on : !splitMode;
+      if (want === splitMode) break;
+      splitMode = want;
       document.body.classList.toggle('is-split', splitMode);
       // Stop both clocks when entering/exiting split mode for safety
       _stop(); _stopB();
