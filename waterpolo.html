@@ -201,6 +201,25 @@ body.is-split .split-app { display: flex; }
 .sp-shot.sp-warn { color: #e67e22; }
 .sp-shot.sp-danger { color: #e74c3c; animation: pulse-c .35s ease-in-out infinite; }
 .sp-shot.sp-off { color: #f1c40f; }
+.sp-score-row {
+  position: absolute; top: 12px; right: 24px;
+  display: flex; gap: 22px;
+  font-family: 'SF Mono', 'Courier New', monospace;
+}
+.sp-score {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 1.6rem; font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.sp-score-lbl {
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.18em;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.sp-score-w .sp-score-lbl { color: #fff; }
+.sp-score-w .sp-score-num { color: #fff; }
+.sp-score-b .sp-score-lbl { color: #888; }
+.sp-score-b .sp-score-num { color: #aaa; }
+.sp-score-num { font-size: 2.2rem; line-height: 1; min-width: 38px; text-align: center; }
 
 /* Controller: hide non-split sections, show split sections, when split mode is on */
 body.is-control.is-split-ctrl #normalCtrl { display: none; }
@@ -489,6 +508,10 @@ body.is-tv { background: #000 !important; overflow: hidden; }
 <div class="split-app" id="splitApp">
   <div class="sp-panel">
     <div class="sp-label">SIDE A</div>
+    <div class="sp-score-row">
+      <div class="sp-score sp-score-w"><span class="sp-score-lbl">WHITE</span><span class="sp-score-num" id="spHomeA">0</span></div>
+      <div class="sp-score sp-score-b"><span class="sp-score-lbl">BLACK</span><span class="sp-score-num" id="spAwayA">0</span></div>
+    </div>
     <div class="sp-row">
       <div class="sp-game" id="spGameA" onclick="openTimeEdit('game','A')">8:00</div>
       <div class="sp-shot" id="spShotA" onclick="openTimeEdit('shot','A')">30</div>
@@ -496,6 +519,10 @@ body.is-tv { background: #000 !important; overflow: hidden; }
   </div>
   <div class="sp-panel">
     <div class="sp-label">SIDE B</div>
+    <div class="sp-score-row">
+      <div class="sp-score sp-score-w"><span class="sp-score-lbl">WHITE</span><span class="sp-score-num" id="spHomeB">0</span></div>
+      <div class="sp-score sp-score-b"><span class="sp-score-lbl">BLACK</span><span class="sp-score-num" id="spAwayB">0</span></div>
+    </div>
     <div class="sp-row">
       <div class="sp-game" id="spGameB" onclick="openTimeEdit('game','B')">8:00</div>
       <div class="sp-shot" id="spShotB" onclick="openTimeEdit('shot','B')">30</div>
@@ -542,7 +569,7 @@ body.is-tv { background: #000 !important; overflow: hidden; }
 
   <!-- Split-mode controls (one set per side) -->
   <div id="splitCtrl">
-    <div class="cs-side-hdr first">Side A</div>
+    <div class="cs-side-hdr first">Side A — <span id="csScoreA" style="color:#fff">0–0</span></div>
     <div class="ctrl-section">
       <div class="ctrl-grid g2">
         <div class="rb rb-start" id="rbStartA" onclick="cmd('toggle',{side:'A'})">▶ START</div>
@@ -552,13 +579,19 @@ body.is-tv { background: #000 !important; overflow: hidden; }
         <div class="rb rb-shot" onclick="cmd('shot30',{side:'A'})">↺ 30</div>
         <div class="rb rb-shot" onclick="cmd('shot20',{side:'A'})">↺ 20</div>
       </div>
+      <div class="ctrl-grid g4" style="margin-top:8px">
+        <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:1,side:'A'})">+ W</div>
+        <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:-1,side:'A'})">− W</div>
+        <div class="rb rb-score-a" onclick="cmd('score',{t:'away',d:1,side:'A'})">+ B</div>
+        <div class="rb rb-score-a" onclick="cmd('score',{t:'away',d:-1,side:'A'})">− B</div>
+      </div>
       <div class="ctrl-grid g2" style="margin-top:8px">
         <div class="rb rb-time" onclick="openTimeEdit('game','A')">SET GAME<span class="rb-sub" id="csGameA">8:00</span></div>
         <div class="rb rb-time" onclick="openTimeEdit('shot','A')">SET SHOT<span class="rb-sub" id="csShotA">30</span></div>
       </div>
     </div>
 
-    <div class="cs-side-hdr">Side B</div>
+    <div class="cs-side-hdr">Side B — <span id="csScoreB" style="color:#fff">0–0</span></div>
     <div class="ctrl-section">
       <div class="ctrl-grid g2">
         <div class="rb rb-start" id="rbStartB" onclick="cmd('toggle',{side:'B'})">▶ START</div>
@@ -567,6 +600,12 @@ body.is-tv { background: #000 !important; overflow: hidden; }
       <div class="ctrl-grid g2" style="margin-top:8px">
         <div class="rb rb-shot" onclick="cmd('shot30',{side:'B'})">↺ 30</div>
         <div class="rb rb-shot" onclick="cmd('shot20',{side:'B'})">↺ 20</div>
+      </div>
+      <div class="ctrl-grid g4" style="margin-top:8px">
+        <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:1,side:'B'})">+ W</div>
+        <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:-1,side:'B'})">− W</div>
+        <div class="rb rb-score-a" onclick="cmd('score',{t:'away',d:1,side:'B'})">+ B</div>
+        <div class="rb rb-score-a" onclick="cmd('score',{t:'away',d:-1,side:'B'})">− B</div>
       </div>
       <div class="ctrl-grid g2" style="margin-top:8px">
         <div class="rb rb-time" onclick="openTimeEdit('game','B')">SET GAME<span class="rb-sub" id="csGameB">8:00</span></div>
@@ -766,7 +805,9 @@ function sendState() {
     splitMode: splitMode,
     bGameTime: bGameTime,
     bShotTime: bShotTime,
-    bRunning: bRunning
+    bRunning: bRunning,
+    bHomeScore: bHomeScoreVal,
+    bAwayScore: bAwayScoreVal
   });
 }
 
@@ -846,6 +887,8 @@ function applyState(s) {
     var csA = document.getElementById('csShotA'); if (csA) csA.textContent = Math.ceil(s.shotTime/1000);
     var cgB = document.getElementById('csGameB'); if (cgB) cgB.textContent = fmtClock(s.bGameTime != null ? s.bGameTime : 8*60*1000);
     var csB = document.getElementById('csShotB'); if (csB) csB.textContent = Math.ceil((s.bShotTime != null ? s.bShotTime : 30*1000)/1000);
+    var sA = document.getElementById('csScoreA'); if (sA) sA.textContent = (s.homeScore||0) + '–' + (s.awayScore||0);
+    var sB = document.getElementById('csScoreB'); if (sB) sB.textContent = (s.bHomeScore||0) + '–' + (s.bAwayScore||0);
   }
 }
 
@@ -878,6 +921,8 @@ var bRunning = false;
 var bShotOnly = false;
 var bLastTs = null;
 var bRaf = null;
+var bHomeScoreVal = 0;
+var bAwayScoreVal = 0;
 
 var Q_LABELS = ['1ST QUARTER','2ND QUARTER','3RD QUARTER','4TH QUARTER','OVERTIME'];
 
@@ -981,11 +1026,15 @@ function handleCmd(action, data) {
       if (side === 'B') {
         _stopB();
         bGameTime = CFG.qtrLen; bShotTime = CFG.shotLen;
-        renderSplit();
+        bHomeScoreVal = 0; bAwayScoreVal = 0;
+        renderSplit(); renderSplitScores();
       } else {
         _stop();
         gameTime = CFG.qtrLen; shotTime = CFG.shotLen;
-        renderDisplay(); renderSplit();
+        homeScoreVal = 0; awayScoreVal = 0;
+        document.getElementById('homeScore').textContent = '0';
+        document.getElementById('awayScore').textContent = '0';
+        renderDisplay(); renderSplit(); renderSplitScores();
       }
       break;
     case 'toggleSplit':
@@ -1009,12 +1058,19 @@ function handleCmd(action, data) {
       soundHorn();
       break;
     case 'score':
-      if (data.t === 'home') {
-        homeScoreVal = Math.max(0, homeScoreVal + data.d);
-        document.getElementById('homeScore').textContent = homeScoreVal;
+      if (side === 'B') {
+        if (data.t === 'home') bHomeScoreVal = Math.max(0, bHomeScoreVal + data.d);
+        else bAwayScoreVal = Math.max(0, bAwayScoreVal + data.d);
+        renderSplitScores();
       } else {
-        awayScoreVal = Math.max(0, awayScoreVal + data.d);
-        document.getElementById('awayScore').textContent = awayScoreVal;
+        if (data.t === 'home') {
+          homeScoreVal = Math.max(0, homeScoreVal + data.d);
+          document.getElementById('homeScore').textContent = homeScoreVal;
+        } else {
+          awayScoreVal = Math.max(0, awayScoreVal + data.d);
+          document.getElementById('awayScore').textContent = awayScoreVal;
+        }
+        if (splitMode) renderSplitScores();
       }
       break;
     case 'excl':
@@ -1191,6 +1247,15 @@ function renderSplit() {
   if (!splitMode) return;
   _renderSidePanel('A', gameTime, shotTime, running);
   _renderSidePanel('B', bGameTime, bShotTime, bRunning);
+  renderSplitScores();
+}
+
+function renderSplitScores() {
+  if (IS_CONTROL || IS_TV) return;
+  var hA = document.getElementById('spHomeA'); if (hA) hA.textContent = homeScoreVal;
+  var aA = document.getElementById('spAwayA'); if (aA) aA.textContent = awayScoreVal;
+  var hB = document.getElementById('spHomeB'); if (hB) hB.textContent = bHomeScoreVal;
+  var aB = document.getElementById('spAwayB'); if (aB) aB.textContent = bAwayScoreVal;
 }
 
 function _renderSidePanel(which, gt, st, isRun) {
