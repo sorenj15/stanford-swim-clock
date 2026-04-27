@@ -513,7 +513,14 @@ textarea#setInput::placeholder { color: #5a2020; }
 .section-flash { animation: sectionFlash .4s ease 2; }
 
 /* ═══ TV VIEW (minimal time-keeper for 43" TV) ═══ */
-/* Three big numbers, no zones, no targets, no distractions. */
+/* Tier identity is the column header bar's color. Big seven-segment
+   digits in white during swim, amber during rest, red flash for last
+   5 sec of a swim — readable across a full pool deck. */
+@font-face {
+  font-family: 'DSEG7TV';
+  src: url('https://cdn.jsdelivr.net/gh/keshikan/DSEG@v0.46/fonts/DSEG7-Classic/DSEG7Classic-Bold.woff2') format('woff2');
+  font-display: swap;
+}
 body.is-tv { background: #000 !important; overflow: hidden; }
 #tvView { display: none; }
 body.is-tv #tvView { display: flex; }
@@ -528,47 +535,67 @@ body.is-tv #setupView, body.is-tv #clockView { display: none !important; }
 .tv-col {
   flex: 1 1 0; min-width: 0;
   display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  border-right: 2px solid #111;
-  padding: 20px;
+  align-items: stretch; justify-content: stretch;
   background: #000;
+  position: relative;
+  overflow: hidden;
 }
-.tv-col:last-child { border-right: none; }
-.tv-col.tv-t1 .tv-label { color: #2ecc71; }
-.tv-col.tv-t2 .tv-label { color: #4b7bf5; }
-.tv-col.tv-t3 .tv-label { color: #e74c3c; }
-.tv-label {
+/* Tier-colored header bar (full-width, bold). This is the tier identity
+   you read first when glancing up from the pool. */
+.tv-col .tv-label {
   font-family: 'Arial Black', sans-serif;
-  font-size: 4vh; font-weight: 900;
-  letter-spacing: 0.2em;
-  margin-bottom: 2vh;
+  font-size: 5vh; font-weight: 900;
+  letter-spacing: 0.25em;
   text-transform: uppercase;
+  text-align: center;
+  padding: 1.4vh 0;
+  color: #fff;
+  flex-shrink: 0;
+}
+.tv-col.tv-t1 .tv-label { background: #196f3d; }      /* deep green */
+.tv-col.tv-t2 .tv-label { background: #1e3a8a; }      /* deep navy blue */
+.tv-col.tv-t3 .tv-label { background: #8b0000; }      /* Stanford cardinal */
+.tv-col.tv-t1 .tv-num-wrap { box-shadow: inset 6px 0 0 0 rgba(46,204,113,0.18); }
+.tv-col.tv-t2 .tv-num-wrap { box-shadow: inset 6px 0 0 0 rgba(75,123,245,0.18); }
+.tv-col.tv-t3 .tv-num-wrap { box-shadow: inset 6px 0 0 0 rgba(231,76,60,0.18); }
+.tv-num-wrap {
+  flex: 1 1 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
 }
 .tv-time {
-  font-family: 'Arial Black', sans-serif;
+  font-family: 'DSEG7TV', 'Arial Black', sans-serif;
   font-weight: 900;
-  font-size: 28vh;
-  line-height: 0.9;
+  font-size: 30vh;
+  line-height: 0.85;
   color: #fff;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
+  text-shadow: 0 0 30px rgba(255,255,255,0.18);
+  transition: color 0.15s ease;
 }
-.tv-time.tv-rest { color: #e8b830; }
-.tv-time.tv-green { color: #2ecc71; }
-.tv-time.tv-red { color: #e74c3c; }
-.tv-time.tv-cd { color: #fff; }
+/* Phase-driven coloring — the digit color tells you what the swimmer
+   is doing without reading the label. */
+.tv-time.tv-swim   { color: #ffffff; }                                  /* swim → bright white */
+.tv-time.tv-rest   { color: #f5b800; text-shadow: 0 0 30px rgba(245,184,0,0.25); }   /* rest → amber */
+.tv-time.tv-break  { color: #f5b800; text-shadow: 0 0 30px rgba(245,184,0,0.25); }   /* set break → amber */
+.tv-time.tv-cd     { color: #ffffff; }                                  /* countdown → white */
+.tv-time.tv-danger { color: #ff3030; text-shadow: 0 0 40px rgba(255,48,48,0.4); animation: tvBlink 0.6s steps(2) infinite; }
+.tv-time.tv-done   { color: #555; font-size: 14vh; }                    /* done → dim, smaller */
+@keyframes tvBlink { from { opacity: 1; } to { opacity: 0.65; } }
 .tv-phase {
   font-family: 'Arial Black', sans-serif;
-  font-size: 3.5vh; font-weight: 900;
-  color: #888;
-  margin-top: 2vh;
-  letter-spacing: 0.15em;
+  font-size: 2.6vh; font-weight: 800;
+  color: #999;
+  margin-top: 1.5vh;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
+  text-align: center;
 }
-.tv-phase.tv-swim { color: #2ecc71; }
-.tv-phase.tv-rest-p { color: #e8b830; }
-.tv-phase.tv-break { color: #e74c3c; }
+.tv-phase.tv-swim   { color: #fff; }
+.tv-phase.tv-rest-p { color: #f5b800; }
+.tv-phase.tv-break  { color: #ff7050; }
 /* Disconnected indicator */
 .tv-conn {
   position: fixed; top: 8px; right: 12px;
@@ -715,9 +742,18 @@ body.is-tv #setupView, body.is-tv #clockView { display: none !important; }
 
 <!-- ═══ TV VIEW (for secondary 43" time-keeper display) ═══ -->
 <div id="tvView">
-  <div class="tv-col tv-t1"><div class="tv-label" id="tvl0">Tier 1</div><div class="tv-time" id="tvt0">—</div><div class="tv-phase" id="tvp0">READY</div></div>
-  <div class="tv-col tv-t2"><div class="tv-label" id="tvl1">Tier 2</div><div class="tv-time" id="tvt1">—</div><div class="tv-phase" id="tvp1">READY</div></div>
-  <div class="tv-col tv-t3"><div class="tv-label" id="tvl2">Tier 3</div><div class="tv-time" id="tvt2">—</div><div class="tv-phase" id="tvp2">READY</div></div>
+  <div class="tv-col tv-t1">
+    <div class="tv-label" id="tvl0">TIER 1</div>
+    <div class="tv-num-wrap"><div class="tv-time" id="tvt0">—</div><div class="tv-phase" id="tvp0">READY</div></div>
+  </div>
+  <div class="tv-col tv-t2">
+    <div class="tv-label" id="tvl1">TIER 2</div>
+    <div class="tv-num-wrap"><div class="tv-time" id="tvt1">—</div><div class="tv-phase" id="tvp1">READY</div></div>
+  </div>
+  <div class="tv-col tv-t3">
+    <div class="tv-label" id="tvl2">TIER 3</div>
+    <div class="tv-num-wrap"><div class="tv-time" id="tvt2">—</div><div class="tv-phase" id="tvp2">READY</div></div>
+  </div>
   <div class="tv-conn" id="tvConn">Disconnected</div>
 </div>
 
@@ -897,24 +933,28 @@ function applyTvState(msg) {
       phaseEl.className = 'tv-phase tv-break';
     } else if (t.phase === 'swim') {
       timeEl.textContent = fmtMs(t.elapsed);
-      timeEl.className = 'tv-time tv-green';
+      // Last 5 seconds of the rest counterpart approaches → red flash to
+      // signal next push-off. We use restDur of NEXT rep approximation,
+      // but during swim there's no countdown — keep white throughout.
+      timeEl.className = 'tv-time tv-swim';
       phaseEl.textContent = 'SWIM · REP ' + ((t.repIdx||0)+1) + '/' + (t.repCount||0);
       phaseEl.className = 'tv-phase tv-swim';
     } else if (t.phase === 'rest') {
       var restRem = Math.max(0, (t.restDur - t.elapsed)/1000);
       timeEl.textContent = fmtS(restRem);
-      timeEl.className = 'tv-time tv-rest';
+      // Last 5 seconds of rest → red flash so swimmers know push-off is coming
+      timeEl.className = 'tv-time ' + (restRem <= 5 && restRem > 0 ? 'tv-danger' : 'tv-rest');
       phaseEl.textContent = 'REST';
       phaseEl.className = 'tv-phase tv-rest-p';
     } else if (t.phase === 'brk') {
       var brkRem = Math.max(0, (t.restDur - t.elapsed)/1000);
       timeEl.textContent = fmtS(brkRem);
-      timeEl.className = 'tv-time tv-rest';
+      timeEl.className = 'tv-time ' + (brkRem <= 5 && brkRem > 0 ? 'tv-danger' : 'tv-break');
       phaseEl.textContent = 'SET BREAK';
       phaseEl.className = 'tv-phase tv-break';
     } else if (t.phase === 'done') {
       timeEl.textContent = 'DONE';
-      timeEl.className = 'tv-time';
+      timeEl.className = 'tv-time tv-done';
       phaseEl.textContent = 'COMPLETE';
       phaseEl.className = 'tv-phase';
     } else {
