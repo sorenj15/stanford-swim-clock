@@ -1973,7 +1973,16 @@ function renderHero() {
     + (sec.equipment?'<span class="hero-eq">'+sec.equipment+'</span>':'')
     + sub
     + (sec.timed ? '<button class="live-edit-toggle'+(_LIVE_EDIT_OPEN?' lt-on':'')+'" onclick="toggleLiveEdit()">'+(_LIVE_EDIT_OPEN?'✕ Close':'✏ Edit Set')+'</button>' : '');
-  renderLiveEdit();
+  // Re-render the live editor panel ONLY when the rep index moves (rep
+  // finished, new rep started). Otherwise typing into a field would get
+  // wiped 60 times a second. Edit-action handlers re-render explicitly.
+  var newRi = TS[0] ? TS[0].ri : 0;
+  var newSi = secIdx;
+  if (_LIVE_EDIT_OPEN && (newRi !== _LIVE_LAST_RI || newSi !== _LIVE_LAST_SI)) {
+    _LIVE_LAST_RI = newRi;
+    _LIVE_LAST_SI = newSi;
+    renderLiveEdit();
+  }
 }
 
 function pad(n){return n<10?'0'+n:''+n;}
@@ -1983,11 +1992,23 @@ function pad(n){return n<10?'0'+n:''+n;}
 // distance / zone / rest, duplicate or remove future reps, append new
 // reps at the end. Past + current reps are read-only.
 var _LIVE_EDIT_OPEN = false;
+var _LIVE_LAST_RI = -1;  // last rep index the panel was rendered for
+var _LIVE_LAST_SI = -1;  // last section index the panel was rendered for
 function toggleLiveEdit() {
   _LIVE_EDIT_OPEN = !_LIVE_EDIT_OPEN;
   document.getElementById('liveEditPanel').style.display = _LIVE_EDIT_OPEN ? 'block' : 'none';
-  renderHero();
-  renderLiveEdit();
+  if (_LIVE_EDIT_OPEN) {
+    _LIVE_LAST_RI = TS[0] ? TS[0].ri : 0;
+    _LIVE_LAST_SI = secIdx;
+    renderLiveEdit();
+  }
+  // Update only the toggle button text on the hero — full hero re-render
+  // happens 60x/sec from the loop anyway, this just keeps the label in sync.
+  var btn = document.querySelector('.live-edit-toggle');
+  if (btn) {
+    btn.textContent = _LIVE_EDIT_OPEN ? '✕ Close' : '✏ Edit Set';
+    btn.classList.toggle('lt-on', _LIVE_EDIT_OPEN);
+  }
 }
 function renderLiveEdit() {
   if (!_LIVE_EDIT_OPEN) return;
@@ -2057,7 +2078,6 @@ document.addEventListener('change', function(e) {
     else rep.rest = v;
   }
   renderLiveEdit();
-  renderHero();
 });
 document.addEventListener('click', function(e) {
   var t = e.target;
@@ -2083,7 +2103,6 @@ document.addEventListener('click', function(e) {
     }
   }
   renderLiveEdit();
-  renderHero();
 });
 
 function renderControls() {
