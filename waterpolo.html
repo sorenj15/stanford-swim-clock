@@ -157,6 +157,67 @@ body {
 .shot-clock.sc-off    { color: #f1c40f; }
 .shot-clock.sc-disabled { color: #555; }
 
+/* ═══ SPLIT-SCREEN MODE (two scoreboards on one display) ═══ */
+body.is-split .qtr-bar,
+body.is-split .score-row,
+body.is-split .clock-area,
+body.is-split .display-strip { display: none !important; }
+.split-app {
+  display: none;
+  flex-direction: column;
+  height: 100vh; width: 100vw;
+}
+body.is-split .split-app { display: flex; }
+.sp-panel {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 6px;
+  position: relative;
+  border-bottom: 4px solid #8C1515;
+  min-height: 0;
+}
+.sp-panel:last-child { border-bottom: none; }
+.sp-label {
+  position: absolute; top: 14px; left: 24px;
+  font-size: 1.4rem; font-weight: 900; color: #c0392b;
+  letter-spacing: 0.25em;
+}
+.sp-row { display: flex; align-items: center; gap: 50px; }
+.sp-game {
+  font-family: 'SF Mono', 'Courier New', monospace;
+  font-size: 11rem; font-weight: 900; color: #fff;
+  line-height: 0.95;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.sp-game.sp-warn { color: #f39c12; }
+.sp-game.sp-danger { color: #e74c3c; animation: pulse-c .5s ease-in-out infinite; }
+.sp-game.sp-stopped { color: #fff; }
+.sp-shot {
+  font-family: 'SF Mono', 'Courier New', monospace;
+  font-size: 8rem; font-weight: 900; color: #f1c40f;
+  line-height: 0.95;
+  font-variant-numeric: tabular-nums;
+  min-width: 140px; text-align: center;
+  cursor: pointer;
+}
+.sp-shot.sp-warn { color: #e67e22; }
+.sp-shot.sp-danger { color: #e74c3c; animation: pulse-c .35s ease-in-out infinite; }
+.sp-shot.sp-off { color: #f1c40f; }
+
+/* Controller: hide non-split sections, show split sections, when split mode is on */
+body.is-control.is-split-ctrl #normalCtrl { display: none; }
+#splitCtrl { display: none; }
+body.is-control.is-split-ctrl #splitCtrl { display: block; }
+.cs-side-hdr {
+  font-size: 0.95rem; font-weight: 900; color: #c0392b;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  padding: 4px 0 6px; margin-top: 4px;
+  text-align: center;
+  border-top: 2px solid #2a0a0a;
+}
+.cs-side-hdr.first { border-top: none; }
+
 /* Exclusion row */
 .excl-row {
   display: flex; gap: 10px; justify-content: center;
@@ -427,6 +488,24 @@ body.is-tv { background: #000 !important; overflow: hidden; }
   </div>
 </div>
 
+<!-- ═══ SPLIT-SCREEN DISPLAY (two clocks on one TV) ═══ -->
+<div class="split-app" id="splitApp">
+  <div class="sp-panel">
+    <div class="sp-label">SIDE A</div>
+    <div class="sp-row">
+      <div class="sp-game" id="spGameA" onclick="openTimeEdit('game','A')">8:00</div>
+      <div class="sp-shot" id="spShotA" onclick="openTimeEdit('shot','A')">30</div>
+    </div>
+  </div>
+  <div class="sp-panel">
+    <div class="sp-label">SIDE B</div>
+    <div class="sp-row">
+      <div class="sp-game" id="spGameB" onclick="openTimeEdit('game','B')">8:00</div>
+      <div class="sp-shot" id="spShotB" onclick="openTimeEdit('shot','B')">30</div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ CONTROL VIEW (iPhone) ═══ -->
 <div class="control-app" id="controlApp">
   <div class="ctrl-hdr">
@@ -457,6 +536,50 @@ body.is-tv { background: #000 !important; overflow: hidden; }
     </div>
   </div>
 
+  <!-- Split-screen toggle (always visible) -->
+  <div class="ctrl-section">
+    <div class="ctrl-grid">
+      <div class="rb rb-mode" id="rbSplitToggle" onclick="cmd('toggleSplit')">⊟ SPLIT SCREEN<span class="rb-sub">two clocks on one display</span></div>
+    </div>
+  </div>
+
+  <!-- Split-mode controls (one set per side) -->
+  <div id="splitCtrl">
+    <div class="cs-side-hdr first">Side A</div>
+    <div class="ctrl-section">
+      <div class="ctrl-grid g2">
+        <div class="rb rb-start" id="rbStartA" onclick="cmd('toggle',{side:'A'})">▶ START</div>
+        <div class="rb rb-reset" onclick="cmd('resetSide',{side:'A'})">↺ RESET</div>
+      </div>
+      <div class="ctrl-grid g2" style="margin-top:8px">
+        <div class="rb rb-shot" onclick="cmd('shot30',{side:'A'})">↺ 30</div>
+        <div class="rb rb-shot" onclick="cmd('shot20',{side:'A'})">↺ 20</div>
+      </div>
+      <div class="ctrl-grid g2" style="margin-top:8px">
+        <div class="rb rb-time" onclick="openTimeEdit('game','A')">SET GAME<span class="rb-sub" id="csGameA">8:00</span></div>
+        <div class="rb rb-time" onclick="openTimeEdit('shot','A')">SET SHOT<span class="rb-sub" id="csShotA">30</span></div>
+      </div>
+    </div>
+
+    <div class="cs-side-hdr">Side B</div>
+    <div class="ctrl-section">
+      <div class="ctrl-grid g2">
+        <div class="rb rb-start" id="rbStartB" onclick="cmd('toggle',{side:'B'})">▶ START</div>
+        <div class="rb rb-reset" onclick="cmd('resetSide',{side:'B'})">↺ RESET</div>
+      </div>
+      <div class="ctrl-grid g2" style="margin-top:8px">
+        <div class="rb rb-shot" onclick="cmd('shot30',{side:'B'})">↺ 30</div>
+        <div class="rb rb-shot" onclick="cmd('shot20',{side:'B'})">↺ 20</div>
+      </div>
+      <div class="ctrl-grid g2" style="margin-top:8px">
+        <div class="rb rb-time" onclick="openTimeEdit('game','B')">SET GAME<span class="rb-sub" id="csGameB">8:00</span></div>
+        <div class="rb rb-time" onclick="openTimeEdit('shot','B')">SET SHOT<span class="rb-sub" id="csShotB">30</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Normal (single-screen) controls -->
+  <div id="normalCtrl">
   <div class="ctrl-section">
     <div class="ctrl-section-title">Clock</div>
     <div class="ctrl-grid g2">
@@ -513,6 +636,7 @@ body.is-tv { background: #000 !important; overflow: hidden; }
       <div class="rb rb-reset" onclick="cmd('resetGame')">↺ RESET ALL</div>
     </div>
   </div>
+  </div><!-- /#normalCtrl -->
 </div>
 
 <!-- Time edit overlay -->
@@ -641,7 +765,11 @@ function sendState() {
     awayScore: awayScoreVal,
     running: running,
     shotOnly: shotOnly,
-    exclusions: exclusions.map(function(e){ return {team:e.team, remaining:e.remaining, id:e.id}; })
+    exclusions: exclusions.map(function(e){ return {team:e.team, remaining:e.remaining, id:e.id}; }),
+    splitMode: splitMode,
+    bGameTime: bGameTime,
+    bShotTime: bShotTime,
+    bRunning: bRunning
   });
 }
 
@@ -689,6 +817,27 @@ function applyState(s) {
   } else {
     btn.textContent = '▶ START'; btn.className = 'rb rb-start';
   }
+
+  // Split mode reflection
+  document.body.classList.toggle('is-split-ctrl', !!s.splitMode);
+  var sb = document.getElementById('rbSplitToggle');
+  if (sb) sb.textContent = s.splitMode ? '☐ SINGLE SCREEN' : '⊟ SPLIT SCREEN';
+  if (s.splitMode) {
+    var bA = document.getElementById('rbStartA');
+    if (bA) {
+      if (s.running) { bA.textContent = '⏸ STOP'; bA.className = 'rb rb-stop'; }
+      else { bA.textContent = '▶ START'; bA.className = 'rb rb-start'; }
+    }
+    var bB = document.getElementById('rbStartB');
+    if (bB) {
+      if (s.bRunning) { bB.textContent = '⏸ STOP'; bB.className = 'rb rb-stop'; }
+      else { bB.textContent = '▶ START'; bB.className = 'rb rb-start'; }
+    }
+    var cgA = document.getElementById('csGameA'); if (cgA) cgA.textContent = fmtClock(s.gameTime);
+    var csA = document.getElementById('csShotA'); if (csA) csA.textContent = Math.ceil(s.shotTime/1000);
+    var cgB = document.getElementById('csGameB'); if (cgB) cgB.textContent = fmtClock(s.bGameTime != null ? s.bGameTime : 8*60*1000);
+    var csB = document.getElementById('csShotB'); if (csB) csB.textContent = Math.ceil((s.bShotTime != null ? s.bShotTime : 30*1000)/1000);
+  }
 }
 
 // ── Config ──────────────────────────────────────────────────────────────
@@ -711,6 +860,15 @@ var homeScoreVal = 0;
 var awayScoreVal = 0;
 var exclusions = [];
 var exclCounter = 0;
+
+// Split-screen state — independent side-B clock
+var splitMode = false;
+var bGameTime = CFG.qtrLen;
+var bShotTime = CFG.shotLen;
+var bRunning = false;
+var bShotOnly = false;
+var bLastTs = null;
+var bRaf = null;
 
 var Q_LABELS = ['1ST QUARTER','2ND QUARTER','3RD QUARTER','4TH QUARTER','OVERTIME'];
 
@@ -789,19 +947,51 @@ function cmd(action, data) {
 
 function handleCmd(action, data) {
   if (IS_CONTROL) return; // only display handles commands
+  data = data || {};
+  var side = data.side || 'A';
   switch(action) {
     case 'toggle':
-      if (running) _stop(); else _start();
+      if (side === 'B') { if (bRunning) _stopB(); else _startB(); }
+      else { if (running) _stop(); else _start(); }
       break;
-    case 'start': _start(); break;
-    case 'stop': _stop(); break;
+    case 'start':
+      if (side === 'B') _startB(); else _start();
+      break;
+    case 'stop':
+      if (side === 'B') _stopB(); else _stop();
+      break;
     case 'shot30':
-      shotTime = CFG.shotLen;
-      renderDisplay();
+      if (side === 'B') { bShotTime = CFG.shotLen; renderSplit(); }
+      else { shotTime = CFG.shotLen; renderDisplay(); }
       break;
     case 'shot20':
-      shotTime = CFG.shotShort;
-      renderDisplay();
+      if (side === 'B') { bShotTime = CFG.shotShort; renderSplit(); }
+      else { shotTime = CFG.shotShort; renderDisplay(); }
+      break;
+    case 'resetSide':
+      if (side === 'B') {
+        _stopB();
+        bGameTime = CFG.qtrLen; bShotTime = CFG.shotLen;
+        renderSplit();
+      } else {
+        _stop();
+        gameTime = CFG.qtrLen; shotTime = CFG.shotLen;
+        renderDisplay(); renderSplit();
+      }
+      break;
+    case 'toggleSplit':
+      splitMode = !splitMode;
+      document.body.classList.toggle('is-split', splitMode);
+      // Stop both clocks when entering/exiting split mode for safety
+      _stop(); _stopB();
+      if (splitMode) {
+        // Reset both sides to clean defaults
+        gameTime = CFG.qtrLen; shotTime = CFG.shotLen;
+        bGameTime = CFG.qtrLen; bShotTime = CFG.shotLen;
+        renderSplit();
+      } else {
+        renderDisplay();
+      }
       break;
     case 'horn':
       soundHorn();
@@ -863,12 +1053,22 @@ function handleCmd(action, data) {
       openTimeEdit('shot');
       break;
     case 'setGame':
-      gameTime = data.ms;
-      if (!running) renderDisplay();
+      if (side === 'B') {
+        bGameTime = data.ms;
+        if (!bRunning) renderSplit();
+      } else {
+        gameTime = data.ms;
+        if (!running) { renderDisplay(); renderSplit(); }
+      }
       break;
     case 'setShot':
-      shotTime = data.ms;
-      if (!running) renderDisplay();
+      if (side === 'B') {
+        bShotTime = data.ms;
+        if (!bRunning) renderSplit();
+      } else {
+        shotTime = data.ms;
+        if (!running) { renderDisplay(); renderSplit(); }
+      }
       break;
   }
   sendState();
@@ -890,6 +1090,44 @@ function _stop() {
   if (raf) { cancelAnimationFrame(raf); raf = null; }
   renderStartBtn();
   renderDisplay();
+  if (splitMode) renderSplit();
+}
+
+// ── Side B clock (split-screen only) ────────────────────────────────────
+function _startB() {
+  if (IS_TV) return;
+  if (bRunning) return;
+  if (bGameTime <= 0 && !bShotOnly) return;
+  if (bShotTime <= 0 && bShotOnly) return;
+  bRunning = true; bLastTs = null;
+  bRaf = requestAnimationFrame(loopB);
+}
+function _stopB() {
+  bRunning = false;
+  if (bRaf) { cancelAnimationFrame(bRaf); bRaf = null; }
+  if (splitMode) renderSplit();
+}
+function loopB(ts) {
+  if (!bRunning) return;
+  if (bLastTs !== null) {
+    var dt = ts - bLastTs;
+    if (!bShotOnly) {
+      bGameTime -= dt;
+      if (bGameTime <= 0) {
+        bGameTime = 0; _stopB(); soundHorn();
+        renderSplit(); sendState(); return;
+      }
+    }
+    bShotTime -= dt;
+    if (bShotTime <= 0) {
+      bShotTime = 0; _stopB(); soundHorn();
+      renderSplit(); sendState(); return;
+    }
+  }
+  bLastTs = ts;
+  renderSplit();
+  if (Math.floor(ts / 250) !== Math.floor((bLastTs||ts) / 250)) sendState();
+  bRaf = requestAnimationFrame(loopB);
 }
 
 function renderStartBtn() {
@@ -929,9 +1167,46 @@ function loop(ts) {
   }
   lastTs = ts;
   renderDisplay();
+  if (splitMode) renderSplit();
   // Send state to controller ~4x per second
   if (Math.floor(ts / 250) !== Math.floor((lastTs||ts) / 250)) sendState();
   raf = requestAnimationFrame(loop);
+}
+
+// Render the split-screen panels (side A uses top-level state, side B uses b*)
+function renderSplit() {
+  if (IS_CONTROL || IS_TV) return;
+  if (!splitMode) return;
+  _renderSidePanel('A', gameTime, shotTime, running);
+  _renderSidePanel('B', bGameTime, bShotTime, bRunning);
+}
+
+function _renderSidePanel(which, gt, st, isRun) {
+  var gEl = document.getElementById('spGame' + which);
+  var sEl = document.getElementById('spShot' + which);
+  if (!gEl || !sEl) return;
+  gEl.textContent = fmtClock(gt);
+  var gSec = gt / 1000;
+  var gCls = 'sp-game';
+  if (!isRun) gCls += ' sp-stopped';
+  else if (gSec <= 10) gCls += ' sp-danger';
+  else if (gSec <= 60) gCls += ' sp-warn';
+  gEl.className = gCls;
+
+  var shotOff = gt > 0 && gt < st;
+  var sSec = st / 1000;
+  if (shotOff) sEl.textContent = '—';
+  else if (sSec <= 5 && sSec > 0 && isRun) {
+    var tenth = Math.ceil(st / 100);
+    sEl.textContent = Math.floor(tenth/10) + '.' + (tenth%10);
+  } else {
+    sEl.textContent = Math.ceil(sSec);
+  }
+  var sCls = 'sp-shot';
+  if (!isRun) sCls += ' sp-off';
+  else if (sSec <= 5) sCls += ' sp-danger';
+  else if (sSec <= 10) sCls += ' sp-warn';
+  sEl.className = sCls;
 }
 
 // ── Render ──────────────────────────────────────────────────────────────
@@ -1017,19 +1292,36 @@ function removeExcl(id) {
 
 // ── Time edit ───────────────────────────────────────────────────────────
 var _teTarget = 'game'; // 'game' or 'shot'
+var _teSide = 'A';      // 'A' or 'B' (used in split-screen mode)
 
-function openTimeEdit(target) {
-  if (!IS_CONTROL && running) _stop();
-  if (IS_CONTROL) cmd('stop'); // stop the clock while editing
+function openTimeEdit(target, side) {
+  side = side || 'A';
+  // Stop the relevant clock while editing
+  if (IS_CONTROL) {
+    cmd('stop', {side: side});
+  } else {
+    if (side === 'B') { if (bRunning) _stopB(); }
+    else if (running) _stop();
+  }
   _teTarget = target;
+  _teSide = side;
   var ms;
   if (IS_CONTROL) {
-    ms = target === 'game' ? _lastRemoteState.gameTime : _lastRemoteState.shotTime;
+    if (side === 'B') {
+      ms = target === 'game' ? (_lastRemoteState.bGameTime || CFG.qtrLen) : (_lastRemoteState.bShotTime || CFG.shotLen);
+    } else {
+      ms = target === 'game' ? _lastRemoteState.gameTime : _lastRemoteState.shotTime;
+    }
   } else {
-    ms = target === 'game' ? gameTime : shotTime;
+    if (side === 'B') {
+      ms = target === 'game' ? bGameTime : bShotTime;
+    } else {
+      ms = target === 'game' ? gameTime : shotTime;
+    }
   }
   var totalSec = Math.ceil(ms / 1000);
-  document.getElementById('teTitle').textContent = target === 'game' ? 'Set Game Clock' : 'Set Shot Clock';
+  var sideLbl = (splitMode || (IS_CONTROL && _lastRemoteState.splitMode)) ? ' (Side ' + side + ')' : '';
+  document.getElementById('teTitle').textContent = (target === 'game' ? 'Set Game Clock' : 'Set Shot Clock') + sideLbl;
   document.getElementById('teMin').value = Math.floor(totalSec / 60);
   document.getElementById('teSec').value = pad(totalSec % 60);
   document.getElementById('timeEditOverlay').classList.add('open');
@@ -1043,16 +1335,23 @@ function saveTimeEdit() {
   var ms = (m * 60 + Math.min(s, 59)) * 1000;
   if (IS_CONTROL) {
     // Send the time value to the display
-    cmd(_teTarget === 'game' ? 'setGame' : 'setShot', {ms: ms});
+    cmd(_teTarget === 'game' ? 'setGame' : 'setShot', {ms: ms, side: _teSide});
   } else {
-    if (_teTarget === 'game') {
-      gameTime = ms;
-      CFG.qtrLen = ms;
+    if (_teSide === 'B') {
+      if (_teTarget === 'game') bGameTime = ms;
+      else bShotTime = ms;
+      renderSplit();
     } else {
-      shotTime = ms;
-      CFG.shotLen = ms;
+      if (_teTarget === 'game') {
+        gameTime = ms;
+        if (!splitMode) CFG.qtrLen = ms;
+      } else {
+        shotTime = ms;
+        if (!splitMode) CFG.shotLen = ms;
+      }
+      renderDisplay();
+      if (splitMode) renderSplit();
     }
-    renderDisplay();
     sendState();
   }
   closeTimeEdit();
@@ -1125,6 +1424,7 @@ setInterval(function() {
 renderDisplay();
 renderQtr();
 renderExcl();
+renderSplit();
 showRemoteURL();
 connectWS();
 </script>
