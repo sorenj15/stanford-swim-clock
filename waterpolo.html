@@ -748,6 +748,14 @@ if (!IS_CONTROL && COURT !== '1') {
 var ws = null;
 var wsReady = false;
 
+// Each display tab gets a unique id + birth timestamp. If another display
+// is open in the same court, the newer-born one takes over and the older
+// one stops sending state (avoids the remote flickering between two
+// displays' values).
+var DISPLAY_ID = Math.random().toString(36).slice(2, 10);
+var DISPLAY_BORN = Date.now();
+var _displayDeposed = false;
+
 function connectWS() {
   try {
     var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -771,7 +779,21 @@ function connectWS() {
         if (IS_TV) return; // TV is receive-only, ignores commands
         handleCmd(msg.action, msg.data);
       }
-      else if (msg.type === 'state') applyState(msg);
+      else if (msg.type === 'state') {
+        // Display-vs-display conflict detection: if I am the display
+        // (not control, not TV) and I'm receiving a state msg, another
+        // display is in my court. Newer-born wins.
+        if (!IS_CONTROL && !IS_TV && msg.displayId && msg.displayId !== DISPLAY_ID) {
+          if (msg.displayBorn > DISPLAY_BORN) {
+            // The other tab is newer — I bow out.
+            _displayDeposed = true;
+            _showDeposedBanner();
+            _stop(); _stopB();
+          }
+          return; // displays don't apply each other's state
+        }
+        applyState(msg);
+      }
     };
     ws.onclose = function() {
       wsReady = false;
@@ -792,8 +814,11 @@ function wsSend(obj) {
 }
 
 function sendState() {
+  if (_displayDeposed) return;
   wsSend({
     type: 'state',
+    displayId: DISPLAY_ID,
+    displayBorn: DISPLAY_BORN,
     gameTime: gameTime,
     shotTime: shotTime,
     quarter: quarter,
@@ -1494,8 +1519,20 @@ function showRemoteURL() {
 
 // ── State sync interval (controller gets updates even when clock stopped) ──
 setInterval(function() {
-  if (!IS_CONTROL && wsReady) sendState();
+  if (!IS_CONTROL && wsReady && !_displayDeposed) sendState();
 }, 1000);
+
+// Banner shown to the older display when a newer one takes over.
+function _showDeposedBanner() {
+  if (document.getElementById('deposedBanner')) return;
+  var b = document.createElement('div');
+  b.id = 'deposedBanner';
+  b.style.cssText = 'position:fixed;inset:0;background:rgba(10,4,4,0.95);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;font-family:-apple-system,BlinkMacSystemFont,sans-serif;text-align:center;padding:40px';
+  b.innerHTML = '<div style="font-size:2.4rem;font-weight:900;color:#c0392b;letter-spacing:0.1em;margin-bottom:18px">SCOREBOARD INACTIVE</div>'+
+    '<div style="font-size:1.1rem;color:#aaa;max-width:560px;line-height:1.5">Another scoreboard tab is open in this court. This tab has stopped sending updates so the remote stays in sync. Close one tab.</div>'+
+    '<button onclick="location.reload()" style="margin-top:24px;padding:12px 28px;background:#8C1515;color:#fff;border:none;border-radius:8px;font-weight:800;font-size:1rem;cursor:pointer">RECLAIM THIS TAB</button>';
+  document.body.appendChild(b);
+}
 
 // ── Init ────────────────────────────────────────────────────────────────
 renderDisplay();
