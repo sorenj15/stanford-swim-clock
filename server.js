@@ -174,18 +174,30 @@ COOL-DOWN
 
 app.use(express.static(__dirname));
 
-// Track all connected clients
+// ── Court-aware WebSocket relay ─────────────────────────────────────────────
+// Each client connects with ?court=N (default "1"). The server tags the
+// socket with that court and only relays messages to other sockets in the
+// same court. This lets two scoreboards run simultaneously without bleed.
+// Swim clock TV uses the same mechanism — defaults to court "swim".
 const clients = new Set();
 
-wss.on('connection', (ws) => {
+function parseCourt(req) {
+  try {
+    var url = new URL(req.url, 'http://x');
+    return url.searchParams.get('court') || '1';
+  } catch(e) { return '1'; }
+}
+
+wss.on('connection', (ws, req) => {
+  ws._court = parseCourt(req);
   clients.add(ws);
-  console.log(`Client connected (${clients.size} total)`);
+  console.log(`Client connected to court "${ws._court}" (${clients.size} total)`);
 
   ws.on('message', (data) => {
-    // Relay message to all OTHER clients
     const msg = data.toString();
     for (const client of clients) {
-      if (client !== ws && client.readyState === 1) {
+      // Same-court only relay
+      if (client !== ws && client._court === ws._court && client.readyState === 1) {
         client.send(msg);
       }
     }
@@ -193,7 +205,7 @@ wss.on('connection', (ws) => {
 
   ws.on('close', () => {
     clients.delete(ws);
-    console.log(`Client disconnected (${clients.size} total)`);
+    console.log(`Client disconnected from court "${ws._court}" (${clients.size} total)`);
   });
 });
 

@@ -381,6 +381,7 @@ body.is-tv { background: #000 !important; overflow: hidden; }
 
 <!-- ═══ DISPLAY VIEW (big screen) ═══ -->
 <div class="display-app" id="displayApp">
+  <div id="courtBadge" style="display:none;position:fixed;top:10px;left:10px;background:#7a0000;color:#fff;padding:4px 12px;border-radius:6px;font-weight:800;letter-spacing:0.1em;font-size:0.9rem;z-index:10">COURT —</div>
   <div class="qtr-bar">
     <div class="qtr-dot q-active" id="qd0"></div>
     <div class="qtr-dot" id="qd1"></div>
@@ -536,6 +537,13 @@ body.is-tv { background: #000 !important; overflow: hidden; }
 // ── Detect mode ─────────────────────────────────────────────────────────
 var IS_CONTROL = location.search.indexOf('control') >= 0;
 var IS_TV      = location.search.indexOf('tv') >= 0;
+// Court ID — used to namespace WebSocket so two scoreboards can run side
+// by side. Defaults to "1" if no ?court param. Stays in URL for the
+// controller's QR-code link generator.
+var COURT = (function() {
+  try { return new URL(location.href).searchParams.get('court') || '1'; }
+  catch(e) { return '1'; }
+})();
 
 if (IS_TV) {
   document.body.classList.add('is-tv');
@@ -566,6 +574,15 @@ if (IS_TV) {
   document.getElementById('displayApp').style.display = 'flex';
   document.getElementById('controlApp').style.display = 'none';
 }
+// Show court badge when running on a non-default court so it's obvious
+// which scoreboard you're looking at
+if (!IS_CONTROL && COURT !== '1') {
+  var cb = document.getElementById('courtBadge');
+  if (cb) {
+    cb.textContent = 'COURT ' + COURT;
+    cb.style.display = 'block';
+  }
+}
 
 // ── WebSocket ───────────────────────────────────────────────────────────
 var ws = null;
@@ -574,7 +591,7 @@ var wsReady = false;
 function connectWS() {
   try {
     var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws = new WebSocket(proto + '//' + location.host);
+    ws = new WebSocket(proto + '//' + location.host + '/?court=' + encodeURIComponent(COURT));
     ws.onopen = function() {
       wsReady = true;
       if (IS_CONTROL) {
@@ -1094,7 +1111,8 @@ document.addEventListener('keydown', function(e) {
 // ── Show remote URL on display ──────────────────────────────────────────
 function showRemoteURL() {
   if (IS_CONTROL) return;
-  var url = location.protocol + '//' + location.host + '/waterpolo.html?control';
+  var url = location.protocol + '//' + location.host + '/waterpolo.html?control'
+            + (COURT !== '1' ? '&court=' + encodeURIComponent(COURT) : '');
   document.getElementById('remoteUrl').textContent = url;
 }
 

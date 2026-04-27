@@ -242,6 +242,12 @@ textarea#setInput::placeholder { color: #5a2020; }
 .pe-edit-hint {
   font-size: 0.65rem; color: #5a4020; padding: 4px 10px; font-style: italic;
 }
+.pe-add-btn {
+  border: 1px solid #2a4020; background: #14200c; color: #8fcc6a;
+  padding: 4px 10px; border-radius: 4px; font-weight: 700; font-size: 0.7rem;
+  cursor: pointer; letter-spacing: 0.05em;
+}
+.pe-add-btn:hover { background: #1f3015; color: #b0e090; border-color: #3a6030; }
 .prev-item { font-size: 0.78rem; color: #d4b0b0; padding: 2px 8px; }
 .prev-warn {
   font-size: 0.72rem; color: #e8a020; padding: 6px 8px;
@@ -816,7 +822,9 @@ var _ws = null, _wsReady = false, _wsLastSend = 0;
 function tvConnect() {
   try {
     var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    _ws = new WebSocket(proto + '//' + location.host);
+    // Swim clock uses its own court namespace so it can't accidentally
+    // cross-wire with a water polo scoreboard sharing the same server.
+    _ws = new WebSocket(proto + '//' + location.host + '/?court=swim');
     _ws.onopen = function() {
       _wsReady = true;
       if (IS_TV) document.getElementById('tvConn').classList.remove('off');
@@ -2230,15 +2238,21 @@ function renderPreview() {
       var zones = {};
       sec.reps.forEach(function(r){ zones[(r.zKey||sec.zKey)] = 1; });
       var zoneList = Object.keys(zones).sort().map(function(z){ return z.slice(1); });
-      // Meta info
-      var meta = [];
-      meta.push('<span>Zone ' + zoneList.join('/') + '</span>');
-      if (sec.restBetween) meta.push('<span>:' + pad(sec.restBetween) + ' rest</span>');
-      if (sec.rounds > 1) meta.push('<span>' + sec.rounds + ' rounds</span>');
-      if (sec.roundBreakRest > 0) meta.push('<span>:' + pad(sec.roundBreakRest) + ' between rounds</span>');
-      if (sec.equipment) meta.push('<span>' + sec.equipment + '</span>');
-      if (sec.restAfterSec > 0) meta.push('<span>' + sec.restAfterLabel + ' set break</span>');
-      html += '<div class="prev-sec-meta">' + meta.join(' ') + '</div>';
+      // Editable section-level controls
+      var sb = sec.restAfterSec > 0 ? (sec.restAfterLabel || fmtRest(sec.restAfterSec)).replace(/^:/,'') : '';
+      var rb = sec.restBetween ? fmtRest(sec.restBetween).replace(/^:/,'') : '';
+      var brr = sec.roundBreakRest > 0 ? fmtRest(sec.roundBreakRest).replace(/^:/,'') : '';
+      var rounds = sec.rounds > 1 ? sec.rounds : '';
+      html += '<div class="prev-sec-meta" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">';
+      html += '<span style="color:#aaa">Zone '+zoneList.join('/')+'</span>';
+      html += '<label style="font-size:0.66rem;color:#888">rest <input class="pe-rest" type="text" value="'+rb+'" placeholder=":20" data-sfield="restBetween" data-si="'+si+'" style="width:46px"></label>';
+      html += '<label style="font-size:0.66rem;color:#888">set break <input class="pe-rest" type="text" value="'+sb+'" placeholder="1:30" data-sfield="restAfterSec" data-si="'+si+'" style="width:50px"></label>';
+      html += '<label style="font-size:0.66rem;color:#888">rounds <input class="pe-dist" type="number" min="1" max="20" value="'+(rounds||'')+'" placeholder="1" data-sfield="rounds" data-si="'+si+'" style="width:46px;text-align:center"></label>';
+      if (sec.rounds > 1) {
+        html += '<label style="font-size:0.66rem;color:#888">between rounds <input class="pe-rest" type="text" value="'+brr+'" placeholder="1:00" data-sfield="roundBreakRest" data-si="'+si+'" style="width:50px"></label>';
+      }
+      if (sec.equipment) html += '<span style="color:#a06060;font-style:italic">'+sec.equipment+'</span>';
+      html += '</div>';
 
       // Reps
       if (sec.reps.length === 0) {
@@ -2278,8 +2292,11 @@ function renderPreview() {
         totalReps++;
         totalDist += r.dist;
       });
-      // Add-rep hint at end of section
-      html += '<div class="pe-edit-hint">Edit distance · zone · rest directly. Double-click + to duplicate, × to remove. Changes apply when you Launch.</div>';
+      // Add-rep button at end of section
+      html += '<div class="pe-edit-hint" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+        '<button class="pe-add-btn" data-action="addrep" data-si="'+si+'" type="button">+ Add Rep</button>' +
+        '<span>Edit distance · zone · rest directly. + duplicates, × removes. Changes apply when you Launch.</span>' +
+      '</div>';
     } else {
       // Untimed items
       if (sec.items && sec.items.length) {
@@ -2323,13 +2340,37 @@ document.getElementById('setInput').addEventListener('input', function() {
 (function() {
   var body = document.getElementById('previewBody');
   if (!body) return;
-  // Field edits (dist / zone / rest) — commit on change so the user keeps
-  // focus while typing and we only re-render once they're done with a field.
+  // Per-rep field edits (dist / zone / rest) AND section-level edits
+  // (restBetween / restAfterSec / rounds / roundBreakRest). Commits on
+  // change so the user keeps focus while typing.
   body.addEventListener('change', function(e) {
     var t = e.target;
-    if (!t.dataset || !t.dataset.field || !_EDITED_SECS) return;
-    var si = parseInt(t.dataset.si), ri = parseInt(t.dataset.ri);
-    var sec = _EDITED_SECS[si]; if (!sec || !sec.reps || !sec.reps[ri]) return;
+    if (!t.dataset || !_EDITED_SECS) return;
+    var si = parseInt(t.dataset.si);
+    var sec = _EDITED_SECS[si]; if (!sec) return;
+    // Section-level fields
+    if (t.dataset.sfield) {
+      if (t.dataset.sfield === 'restBetween') {
+        var rb = _parseRestInput(t.value);
+        sec.restBetween = rb || 0;
+      } else if (t.dataset.sfield === 'restAfterSec') {
+        var ras = _parseRestInput(t.value);
+        sec.restAfterSec = ras || 0;
+        sec.restAfterLabel = ras ? fmtRest(ras) : '';
+      } else if (t.dataset.sfield === 'roundBreakRest') {
+        var brr = _parseRestInput(t.value);
+        sec.roundBreakRest = brr || 0;
+      } else if (t.dataset.sfield === 'rounds') {
+        var rn = parseInt(t.value, 10);
+        sec.rounds = (rn >= 1 && rn <= 20) ? rn : 1;
+      }
+      renderPreview();
+      return;
+    }
+    // Per-rep fields
+    if (!t.dataset.field || !sec.reps) return;
+    var ri = parseInt(t.dataset.ri);
+    if (!sec.reps[ri]) return;
     var rep = sec.reps[ri];
     if (t.dataset.field === 'dist') {
       var d = parseInt(t.value, 10);
@@ -2346,22 +2387,33 @@ document.getElementById('setInput').addEventListener('input', function() {
     }
     renderPreview();
   });
-  // Add / delete rep buttons
+  // Buttons: add / dup / del
   body.addEventListener('click', function(e) {
     var t = e.target;
     if (!t.dataset || !t.dataset.action || !_EDITED_SECS) return;
-    var si = parseInt(t.dataset.si), ri = parseInt(t.dataset.ri);
+    var si = parseInt(t.dataset.si);
     var sec = _EDITED_SECS[si]; if (!sec || !sec.reps) return;
-    if (t.dataset.action === 'del') {
-      if (sec.reps.length > 1) sec.reps.splice(ri, 1);
-    } else if (t.dataset.action === 'dup') {
-      // Duplicate current rep right after it
-      var orig = sec.reps[ri];
-      var clone = { dist: orig.dist, laps: orig.laps };
-      if (orig.zKey) clone.zKey = orig.zKey;
-      if (orig.rest != null) clone.rest = orig.rest;
-      if (orig.easy) clone.easy = true;
-      sec.reps.splice(ri + 1, 0, clone);
+    if (t.dataset.action === 'addrep') {
+      // Append a fresh rep using last rep as template (or sane defaults)
+      var last = sec.reps[sec.reps.length - 1];
+      var nu = last
+        ? { dist: last.dist, laps: last.laps }
+        : { dist: 100, laps: Math.max(1, Math.round(100 / POOL_LEN)) };
+      if (last && last.zKey) nu.zKey = last.zKey;
+      if (last && last.rest != null) nu.rest = last.rest;
+      sec.reps.push(nu);
+    } else {
+      var ri = parseInt(t.dataset.ri);
+      if (t.dataset.action === 'del') {
+        if (sec.reps.length > 1) sec.reps.splice(ri, 1);
+      } else if (t.dataset.action === 'dup') {
+        var orig = sec.reps[ri];
+        var clone = { dist: orig.dist, laps: orig.laps };
+        if (orig.zKey) clone.zKey = orig.zKey;
+        if (orig.rest != null) clone.rest = orig.rest;
+        if (orig.easy) clone.easy = true;
+        sec.reps.splice(ri + 1, 0, clone);
+      }
     }
     renderPreview();
   });
