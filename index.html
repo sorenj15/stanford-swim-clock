@@ -512,6 +512,77 @@ textarea#setInput::placeholder { color: #5a2020; }
 @keyframes sectionFlash { 0%{opacity:1} 50%{opacity:.5} 100%{opacity:1} }
 .section-flash { animation: sectionFlash .4s ease 2; }
 
+/* ═══ Live in-set editor (running clock view) ═══ */
+.live-edit-toggle {
+  position: absolute; top: 6px; right: 10px;
+  background: #14200c; border: 1px solid #2a4020; color: #8fcc6a;
+  padding: 4px 10px; border-radius: 5px; font-weight: 700; font-size: 0.7rem;
+  cursor: pointer; letter-spacing: 0.05em; z-index: 5;
+}
+.live-edit-toggle:hover { background: #1f3015; color: #b0e090; border-color: #3a6030; }
+.live-edit-toggle.lt-on { background: #2a4020; color: #fff; }
+#liveEditPanel {
+  background: #0a0808; border-bottom: 2px solid #2a1010;
+  padding: 10px 14px; max-height: 38vh; overflow-y: auto;
+  flex-shrink: 0;
+}
+.le-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.78rem; font-weight: 800; color: #e8b830;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  padding-bottom: 6px; border-bottom: 1px solid #2a1010; margin-bottom: 6px;
+}
+.le-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 6px; border-radius: 4px; margin-bottom: 3px;
+  font-size: 0.8rem;
+}
+.le-row.le-done { opacity: 0.4; }
+.le-row.le-cur { background: rgba(46,204,113,0.12); border-left: 3px solid #2ecc71; }
+.le-row.le-future { background: rgba(255,255,255,0.02); }
+.le-idx { color: #5a4040; min-width: 24px; text-align: right; font-size: 0.7rem; }
+.le-dist {
+  width: 60px; padding: 3px 6px; border-radius: 4px;
+  background: #2a1010; border: 1px solid #4a1818; color: #fff;
+  font-size: 0.85rem; font-weight: 800; text-align: right; font-family: inherit;
+}
+.le-dist:disabled { background: #1a0a0a; color: #888; cursor: not-allowed; }
+.le-dist:focus { outline: none; border-color: #c0392b; background: #3a1515; }
+.le-zone {
+  padding: 3px 6px; border-radius: 4px;
+  background: #1a2a40; border: 1px solid #2a4060; color: #a8c4e8;
+  font-size: 0.7rem; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.le-zone:disabled { opacity: 0.5; cursor: not-allowed; }
+.le-rest {
+  width: 56px; padding: 3px 6px; border-radius: 4px;
+  background: #3a2810; border: 1px solid #5a3820; color: #e8b830;
+  font-size: 0.72rem; font-weight: 700; text-align: center; font-family: inherit;
+}
+.le-rest:disabled { background: #1a1208; color: #5a4020; cursor: not-allowed; }
+.le-target { color: #2ecc71; font-family: 'SF Mono', monospace; font-size: 0.72rem; min-width: 80px; text-align: right; }
+.le-btn {
+  border: none; background: transparent; cursor: pointer;
+  font-size: 1rem; font-weight: 800; padding: 0 4px; line-height: 1;
+}
+.le-btn.le-dup { color: #5a7a4a; }
+.le-btn.le-dup:hover { color: #2ecc71; }
+.le-btn.le-del { color: #6a4040; }
+.le-btn.le-del:hover { color: #c0392b; }
+.le-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.le-add {
+  width: 100%; margin-top: 6px;
+  background: #14200c; border: 1px dashed #2a4020; color: #8fcc6a;
+  padding: 6px; border-radius: 5px; font-weight: 700; font-size: 0.78rem;
+  cursor: pointer; letter-spacing: 0.05em;
+}
+.le-add:hover { background: #1f3015; color: #b0e090; border-color: #3a6030; border-style: solid; }
+.le-tag-current {
+  font-size: 0.6rem; font-weight: 800; color: #2ecc71;
+  background: rgba(46,204,113,0.2); padding: 2px 6px; border-radius: 3px;
+  letter-spacing: 0.08em;
+}
+
 /* ═══ TV VIEW (minimal time-keeper for 43" TV) ═══ */
 /* Tier identity is the column header bar's color. Big seven-segment
    digits in white during swim, amber during rest, red flash for last
@@ -711,6 +782,7 @@ body.is-tv #setupView, body.is-tv #clockView { display: none !important; }
 <div id="clockView">
   <div class="top-bar" id="topBar"></div>
   <div class="hero" id="hero"></div>
+  <div id="liveEditPanel" style="display:none"></div>
   <div class="clocks-area">
     <div class="clock-col t1">
       <div class="tier-hdr">
@@ -1886,10 +1958,122 @@ function renderHero() {
   } else if (sec.items&&sec.items.length) {
     sub='<div class="hero-items-wrap">'+sec.items.map(function(it){return '· '+it;}).join('\n')+'</div>';
   }
-  el.innerHTML='<span class="hero-title">'+sec.title+'</span>'+(sec.equipment?'<span class="hero-eq">'+sec.equipment+'</span>':'')+sub;
+  el.innerHTML = '<span class="hero-title">'+sec.title+'</span>'
+    + (sec.equipment?'<span class="hero-eq">'+sec.equipment+'</span>':'')
+    + sub
+    + (sec.timed ? '<button class="live-edit-toggle'+(_LIVE_EDIT_OPEN?' lt-on':'')+'" onclick="toggleLiveEdit()">'+(_LIVE_EDIT_OPEN?'✕ Close':'✏ Edit Set')+'</button>' : '');
+  renderLiveEdit();
 }
 
 function pad(n){return n<10?'0'+n:''+n;}
+
+// ── Live in-set editor ──────────────────────────────────────────────────────
+// Lets the coach edit the upcoming reps of the running section: change
+// distance / zone / rest, duplicate or remove future reps, append new
+// reps at the end. Past + current reps are read-only.
+var _LIVE_EDIT_OPEN = false;
+function toggleLiveEdit() {
+  _LIVE_EDIT_OPEN = !_LIVE_EDIT_OPEN;
+  document.getElementById('liveEditPanel').style.display = _LIVE_EDIT_OPEN ? 'block' : 'none';
+  renderHero();
+  renderLiveEdit();
+}
+function renderLiveEdit() {
+  if (!_LIVE_EDIT_OPEN) return;
+  var panel = document.getElementById('liveEditPanel');
+  if (!panel) return;
+  var sec = SECS[secIdx];
+  if (!sec || !sec.timed) {
+    panel.innerHTML = '<div class="le-hdr">Editor available on timed sections only</div>';
+    return;
+  }
+  // The current rep index for tier 0 is our reference point. Reps before
+  // this are read-only (already swum), the current rep is read-only
+  // (mid-flight), reps after are fully editable.
+  var curRi = TS[0] ? TS[0].ri : 0;
+  var curPhase = TS[0] ? TS[0].phase : 'ready';
+  var html = '<div class="le-hdr"><span>'+sec.title+' — Edit upcoming reps</span><span style="color:#888;font-weight:600">past + current locked</span></div>';
+  sec.reps.forEach(function(r, ri) {
+    var isPast = ri < curRi;
+    var isCur = ri === curRi && (curPhase === 'swim' || curPhase === 'rest');
+    var locked = isPast || isCur;
+    var cls = 'le-row ' + (isPast?'le-done':isCur?'le-cur':'le-future');
+    var effZ = repZ(sec, r);
+    var pace = getPace(0, effZ, r.dist);
+    var zoneOpts = '';
+    for (var zi = 1; zi <= 5; zi++) {
+      var zVal = 'z'+zi;
+      zoneOpts += '<option value="'+zVal+'"'+(zVal===effZ?' selected':'')+'>Z'+zi+'</option>';
+    }
+    var restVal = r.rest != null ? fmtRest(r.rest).replace(/^:/, '') : '';
+    html += '<div class="'+cls+'">'
+      + '<span class="le-idx">'+(ri+1)+'.</span>'
+      + (isCur ? '<span class="le-tag-current">CURRENT</span>' : '')
+      + '<input class="le-dist" type="number" min="10" step="1" value="'+r.dist+'" data-le-field="dist" data-ri="'+ri+'"'+(locked?' disabled':'')+'>'
+      + '<span style="color:#888;font-size:0.7rem">m</span>'
+      + '<span style="color:#aaa;font-size:0.7rem">('+r.laps+'L)</span>'
+      + '<select class="le-zone" data-le-field="zKey" data-ri="'+ri+'"'+(locked?' disabled':'')+'>'+zoneOpts+'</select>'
+      + '<input class="le-rest" type="text" value="'+restVal+'" placeholder="'+(sec.restBetween?fmtRest(sec.restBetween):'(default)')+'" data-le-field="rest" data-ri="'+ri+'"'+(locked?' disabled':'')+'>'
+      + '<span class="le-target">'+fmtS(pace[0])+'–'+fmtS(pace[1])+'</span>'
+      + '<button class="le-btn le-dup" data-le-action="dup" data-ri="'+ri+'" title="duplicate"'+(isPast?' disabled':'')+'>+</button>'
+      + '<button class="le-btn le-del" data-le-action="del" data-ri="'+ri+'" title="remove"'+(locked?' disabled':'')+'>×</button>'
+      + '</div>';
+  });
+  html += '<button class="le-add" data-le-action="add">+ Add Rep at End</button>';
+  panel.innerHTML = html;
+}
+// Event delegation for the live editor — same handler pattern as setup
+document.addEventListener('change', function(e) {
+  var t = e.target;
+  if (!t.dataset || !t.dataset.leField) return;
+  var sec = SECS[secIdx]; if (!sec || !sec.reps) return;
+  var ri = parseInt(t.dataset.ri);
+  var rep = sec.reps[ri]; if (!rep) return;
+  if (t.dataset.leField === 'dist') {
+    var d = parseInt(t.value, 10);
+    if (d >= 10) { rep.dist = d; rep.laps = Math.max(1, Math.round(d / POOL_LEN)); }
+  } else if (t.dataset.leField === 'zKey') {
+    rep.zKey = t.value;
+  } else if (t.dataset.leField === 'rest') {
+    var v = _parseRestInput ? _parseRestInput(t.value) : (function(x){
+      x = String(x||'').trim().replace(/^:/, '');
+      if (!x) return null;
+      var m = x.match(/^(\d+):(\d{1,2})$/);
+      if (m) return parseInt(m[1])*60 + parseInt(m[2]);
+      var n = parseInt(x, 10); return isNaN(n) ? null : n;
+    })(t.value);
+    if (v == null) delete rep.rest;
+    else rep.rest = v;
+  }
+  renderLiveEdit();
+  renderHero();
+});
+document.addEventListener('click', function(e) {
+  var t = e.target;
+  if (!t.dataset || !t.dataset.leAction) return;
+  var sec = SECS[secIdx]; if (!sec || !sec.reps) return;
+  if (t.dataset.leAction === 'add') {
+    var last = sec.reps[sec.reps.length - 1];
+    var nu = last ? { dist: last.dist, laps: last.laps } : { dist: 100, laps: Math.max(1, Math.round(100 / POOL_LEN)) };
+    if (last && last.zKey) nu.zKey = last.zKey;
+    if (last && last.rest != null) nu.rest = last.rest;
+    sec.reps.push(nu);
+  } else {
+    var ri = parseInt(t.dataset.ri);
+    if (t.dataset.leAction === 'dup') {
+      var orig = sec.reps[ri]; if (!orig) return;
+      var clone = { dist: orig.dist, laps: orig.laps };
+      if (orig.zKey) clone.zKey = orig.zKey;
+      if (orig.rest != null) clone.rest = orig.rest;
+      if (orig.easy) clone.easy = true;
+      sec.reps.splice(ri + 1, 0, clone);
+    } else if (t.dataset.leAction === 'del') {
+      if (sec.reps.length > 1) sec.reps.splice(ri, 1);
+    }
+  }
+  renderLiveEdit();
+  renderHero();
+});
 
 function renderControls() {
   var sec=SECS[secIdx]; if(!sec) return;
