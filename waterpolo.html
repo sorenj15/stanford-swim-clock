@@ -1452,6 +1452,7 @@ function handleCmd(action, data) {
       // Hide shot clock label since it's the only clock now
       document.querySelector('.sc-lbl').style.display = shotOnly ? 'none' : '';
       renderDisplay();
+      renderSplit(); // shot-only also affects split layout
       break;
     case 'swapPoss':
       shotTime = CFG.shotLen;
@@ -1686,6 +1687,16 @@ function _renderSidePanel(which, gt, st, isRun) {
   var gEl = document.getElementById('spGame' + which);
   var sEl = document.getElementById('spShot' + which);
   if (!gEl || !sEl) return;
+  // In shot-only mode, hide the game clock entirely and let the shot
+  // clock fill the panel. shotOnly is the same global flag used in
+  // single-court mode — toggle it from the controller's SHOT-ONLY button.
+  if (shotOnly) {
+    gEl.style.display = 'none';
+    sEl.style.fontSize = '14rem';
+  } else {
+    gEl.style.display = '';
+    sEl.style.fontSize = '';
+  }
   gEl.textContent = fmtClock(gt);
   var gSec = gt / 1000;
   var gCls = 'sp-game';
@@ -1694,7 +1705,9 @@ function _renderSidePanel(which, gt, st, isRun) {
   else if (gSec <= 60) gCls += ' sp-warn';
   gEl.className = gCls;
 
-  var shotOff = gt > 0 && gt < st;
+  // In shot-only mode there is no game clock to be "less than", so the
+  // shot clock can never be off via the gameTime < shotTime rule.
+  var shotOff = !shotOnly && gt > 0 && gt < st;
   var sSec = st / 1000;
   if (shotOff) sEl.textContent = '—';
   else if (sSec <= 5 && sSec > 0 && isRun) {
