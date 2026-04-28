@@ -658,26 +658,30 @@ body.is-tv-sideB .tv-side-badge { display: block; }
   <div class="tv-side-badge">SIDE B</div>
 </div>
 
+<!-- Rep counter badges (sit at body level — position:fixed; outside both
+     #displayApp and #splitApp so they appear in either layout. Inside
+     #displayApp they were hidden by `body.is-split .display-app{display:none}`
+     which kills all descendants regardless of their own positioning). -->
+<div id="repCounterBadge" style="display:none;position:fixed;top:14px;right:18px;background:#1a0a0a;border:3px solid #8C1515;color:#fff;padding:10px 18px 12px;border-radius:12px;font-weight:800;letter-spacing:0.1em;z-index:10;text-align:center;line-height:1;box-shadow:0 4px 18px rgba(140,21,21,0.35)">
+  <div style="font-size:0.85rem;color:#c0392b;letter-spacing:0.22em;margin-bottom:6px"><span id="repCounterLblA">REPS</span></div>
+  <div id="repCounterNum" style="font-size:4rem;font-weight:900;cursor:pointer;padding:4px 22px;font-variant-numeric:tabular-nums" data-rep-action="inc" title="tap to +1">0</div>
+  <div style="display:flex;gap:10px;justify-content:center;margin-top:8px">
+    <button data-rep-action="dec" style="background:#2a0a0a;border:1px solid #5a1818;color:#aaa;width:42px;height:32px;border-radius:5px;font-weight:800;cursor:pointer;font-size:1.2rem">−</button>
+    <button data-rep-action="reset" style="background:#2a0a0a;border:1px solid #5a1818;color:#aaa;width:42px;height:32px;border-radius:5px;font-weight:800;cursor:pointer;font-size:0.95rem" title="reset to 0">↺</button>
+  </div>
+</div>
+<div id="repCounterBadgeB" style="display:none;position:fixed;bottom:14px;right:18px;background:#1a0a0a;border:3px solid #8C1515;color:#fff;padding:10px 18px 12px;border-radius:12px;font-weight:800;letter-spacing:0.1em;z-index:10;text-align:center;line-height:1;box-shadow:0 4px 18px rgba(140,21,21,0.35)">
+  <div style="font-size:0.85rem;color:#c0392b;letter-spacing:0.22em;margin-bottom:6px">REPS · B</div>
+  <div id="repCounterNumB" style="font-size:4rem;font-weight:900;cursor:pointer;padding:4px 22px;font-variant-numeric:tabular-nums" data-rep-action="inc" data-rep-side="B" title="tap to +1">0</div>
+  <div style="display:flex;gap:10px;justify-content:center;margin-top:8px">
+    <button data-rep-action="dec" data-rep-side="B" style="background:#2a0a0a;border:1px solid #5a1818;color:#aaa;width:42px;height:32px;border-radius:5px;font-weight:800;cursor:pointer;font-size:1.2rem">−</button>
+    <button data-rep-action="reset" data-rep-side="B" style="background:#2a0a0a;border:1px solid #5a1818;color:#aaa;width:42px;height:32px;border-radius:5px;font-weight:800;cursor:pointer;font-size:0.95rem" title="reset to 0">↺</button>
+  </div>
+</div>
+
 <!-- ═══ DISPLAY VIEW (big screen) ═══ -->
 <div class="display-app" id="displayApp">
   <div id="courtBadge" style="display:none;position:fixed;top:10px;left:10px;background:#7a0000;color:#fff;padding:4px 12px;border-radius:6px;font-weight:800;letter-spacing:0.1em;font-size:0.9rem;z-index:10">COURT —</div>
-  <div id="repCounterBadge" style="display:none;position:fixed;top:14px;right:18px;background:#1a0a0a;border:3px solid #8C1515;color:#fff;padding:10px 18px 12px;border-radius:12px;font-weight:800;letter-spacing:0.1em;z-index:10;text-align:center;line-height:1;box-shadow:0 4px 18px rgba(140,21,21,0.35)">
-    <div style="font-size:0.85rem;color:#c0392b;letter-spacing:0.22em;margin-bottom:6px"><span id="repCounterLblA">REPS</span></div>
-    <div id="repCounterNum" style="font-size:4rem;font-weight:900;cursor:pointer;padding:4px 22px;font-variant-numeric:tabular-nums" data-rep-action="inc" title="tap to +1">0</div>
-    <div style="display:flex;gap:10px;justify-content:center;margin-top:8px">
-      <button data-rep-action="dec" style="background:#2a0a0a;border:1px solid #5a1818;color:#aaa;width:42px;height:32px;border-radius:5px;font-weight:800;cursor:pointer;font-size:1.2rem">−</button>
-      <button data-rep-action="reset" style="background:#2a0a0a;border:1px solid #5a1818;color:#aaa;width:42px;height:32px;border-radius:5px;font-weight:800;cursor:pointer;font-size:0.95rem" title="reset to 0">↺</button>
-    </div>
-  </div>
-  <!-- Side B rep counter badge (only visible in split mode) -->
-  <div id="repCounterBadgeB" style="display:none;position:fixed;bottom:14px;right:18px;background:#1a0a0a;border:3px solid #8C1515;color:#fff;padding:10px 18px 12px;border-radius:12px;font-weight:800;letter-spacing:0.1em;z-index:10;text-align:center;line-height:1;box-shadow:0 4px 18px rgba(140,21,21,0.35)">
-    <div style="font-size:0.85rem;color:#c0392b;letter-spacing:0.22em;margin-bottom:6px">REPS · B</div>
-    <div id="repCounterNumB" style="font-size:4rem;font-weight:900;cursor:pointer;padding:4px 22px;font-variant-numeric:tabular-nums" data-rep-action="inc" data-rep-side="B" title="tap to +1">0</div>
-    <div style="display:flex;gap:10px;justify-content:center;margin-top:8px">
-      <button data-rep-action="dec" data-rep-side="B" style="background:#2a0a0a;border:1px solid #5a1818;color:#aaa;width:42px;height:32px;border-radius:5px;font-weight:800;cursor:pointer;font-size:1.2rem">−</button>
-      <button data-rep-action="reset" data-rep-side="B" style="background:#2a0a0a;border:1px solid #5a1818;color:#aaa;width:42px;height:32px;border-radius:5px;font-weight:800;cursor:pointer;font-size:0.95rem" title="reset to 0">↺</button>
-    </div>
-  </div>
   <div class="qtr-bar">
     <div class="qtr-dot q-active" id="qd0"></div>
     <div class="qtr-dot" id="qd1"></div>
@@ -1519,6 +1523,9 @@ function handleCmd(action, data) {
       } else {
         renderDisplay();
       }
+      // The rep counter badges depend on splitMode (Side B badge only
+      // appears in split mode), so refresh them here.
+      renderRepCounter();
       break;
     case 'horn':
       soundHorn();
