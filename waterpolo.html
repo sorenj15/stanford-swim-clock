@@ -228,6 +228,23 @@ body.is-split .split-app { display: flex; }
 body.is-control.is-split-ctrl #normalCtrl { display: none; }
 #splitCtrl { display: none; }
 body.is-control.is-split-ctrl #splitCtrl { display: block; }
+
+/* Solo-side display: when ?solo=A or ?solo=B is set, force the split-app
+   to show, hide the inactive panel, let the active one fill the screen,
+   and bump the clock/score sizes so it owns the whole big board. */
+body.is-solo-A .display-app, body.is-solo-B .display-app { display: none !important; }
+body.is-solo-A .split-app, body.is-solo-B .split-app { display: flex; }
+body.is-solo-A .sp-panel:nth-child(2),
+body.is-solo-B .sp-panel:nth-child(1) { display: none !important; }
+body.is-solo-A .sp-panel:nth-child(1),
+body.is-solo-B .sp-panel:nth-child(2) {
+  flex: 1; border-bottom: none;
+}
+body.is-solo-A .sp-game, body.is-solo-B .sp-game { font-size: 22rem; }
+body.is-solo-A .sp-shot, body.is-solo-B .sp-shot { font-size: 14rem; }
+body.is-solo-A .sp-score-num, body.is-solo-B .sp-score-num { font-size: 7rem; min-width: 110px; }
+body.is-solo-A .sp-score-lbl, body.is-solo-B .sp-score-lbl { font-size: 1.5rem; }
+body.is-solo-A .sp-label, body.is-solo-B .sp-label { font-size: 1.8rem; }
 .cs-side-hdr {
   font-size: 0.95rem; font-weight: 900; color: #c0392b;
   letter-spacing: 0.18em; text-transform: uppercase;
@@ -645,11 +662,20 @@ body.is-tv-sideB .tv-side-badge { display: block; }
 <div class="display-app" id="displayApp">
   <div id="courtBadge" style="display:none;position:fixed;top:10px;left:10px;background:#7a0000;color:#fff;padding:4px 12px;border-radius:6px;font-weight:800;letter-spacing:0.1em;font-size:0.9rem;z-index:10">COURT —</div>
   <div id="repCounterBadge" style="display:none;position:fixed;top:14px;right:18px;background:#1a0a0a;border:3px solid #8C1515;color:#fff;padding:10px 18px 12px;border-radius:12px;font-weight:800;letter-spacing:0.1em;z-index:10;text-align:center;line-height:1;box-shadow:0 4px 18px rgba(140,21,21,0.35)">
-    <div style="font-size:0.85rem;color:#c0392b;letter-spacing:0.22em;margin-bottom:6px">REPS</div>
+    <div style="font-size:0.85rem;color:#c0392b;letter-spacing:0.22em;margin-bottom:6px"><span id="repCounterLblA">REPS</span></div>
     <div id="repCounterNum" style="font-size:4rem;font-weight:900;cursor:pointer;padding:4px 22px;font-variant-numeric:tabular-nums" data-rep-action="inc" title="tap to +1">0</div>
     <div style="display:flex;gap:10px;justify-content:center;margin-top:8px">
       <button data-rep-action="dec" style="background:#2a0a0a;border:1px solid #5a1818;color:#aaa;width:42px;height:32px;border-radius:5px;font-weight:800;cursor:pointer;font-size:1.2rem">−</button>
       <button data-rep-action="reset" style="background:#2a0a0a;border:1px solid #5a1818;color:#aaa;width:42px;height:32px;border-radius:5px;font-weight:800;cursor:pointer;font-size:0.95rem" title="reset to 0">↺</button>
+    </div>
+  </div>
+  <!-- Side B rep counter badge (only visible in split mode) -->
+  <div id="repCounterBadgeB" style="display:none;position:fixed;bottom:14px;right:18px;background:#1a0a0a;border:3px solid #8C1515;color:#fff;padding:10px 18px 12px;border-radius:12px;font-weight:800;letter-spacing:0.1em;z-index:10;text-align:center;line-height:1;box-shadow:0 4px 18px rgba(140,21,21,0.35)">
+    <div style="font-size:0.85rem;color:#c0392b;letter-spacing:0.22em;margin-bottom:6px">REPS · B</div>
+    <div id="repCounterNumB" style="font-size:4rem;font-weight:900;cursor:pointer;padding:4px 22px;font-variant-numeric:tabular-nums" data-rep-action="inc" data-rep-side="B" title="tap to +1">0</div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:8px">
+      <button data-rep-action="dec" data-rep-side="B" style="background:#2a0a0a;border:1px solid #5a1818;color:#aaa;width:42px;height:32px;border-radius:5px;font-weight:800;cursor:pointer;font-size:1.2rem">−</button>
+      <button data-rep-action="reset" data-rep-side="B" style="background:#2a0a0a;border:1px solid #5a1818;color:#aaa;width:42px;height:32px;border-radius:5px;font-weight:800;cursor:pointer;font-size:0.95rem" title="reset to 0">↺</button>
     </div>
   </div>
   <div class="qtr-bar">
@@ -859,13 +885,22 @@ body.is-tv-sideB .tv-side-badge { display: block; }
   </div><!-- /#normalCtrl -->
 
   <!-- Rep counter (sits OUTSIDE normalCtrl/splitCtrl so it shows in BOTH
-       normal and split modes when enabled) -->
+       normal and split modes when enabled). In split mode a second
+       Side-B section appears below this one. -->
   <div class="ctrl-section" id="ctrlRepSec" style="display:none">
-    <div class="ctrl-section-title">Reps · <span id="ctrlRepCount" style="color:#fff;font-size:1.6rem;font-weight:900">0</span></div>
+    <div class="ctrl-section-title"><span id="ctrlRepLblA">Reps</span> · <span id="ctrlRepCount" style="color:#fff;font-size:1.6rem;font-weight:900">0</span></div>
     <div class="ctrl-grid g3">
-      <div class="rb rb-rep-plus" onclick="cmd('repInc')" style="background:#1a3a2a;color:#8fcc6a;border:1px solid #2a4020;font-size:1.6rem;font-weight:900">+1</div>
-      <div class="rb rb-rep-minus" onclick="cmd('repDec')" style="background:#3a1a1a;color:#cc8f8f;border:1px solid #5a2020">−1</div>
-      <div class="rb rb-rep-reset" onclick="cmd('repReset')" style="background:#1a1a1a;color:#888;border:1px solid #333">↺ RESET</div>
+      <div class="rb rb-rep-plus" onclick="cmd('repInc',{side:'A'})" style="background:#1a3a2a;color:#8fcc6a;border:1px solid #2a4020;font-size:1.6rem;font-weight:900">+1</div>
+      <div class="rb rb-rep-minus" onclick="cmd('repDec',{side:'A'})" style="background:#3a1a1a;color:#cc8f8f;border:1px solid #5a2020">−1</div>
+      <div class="rb rb-rep-reset" onclick="cmd('repReset',{side:'A'})" style="background:#1a1a1a;color:#888;border:1px solid #333">↺ RESET</div>
+    </div>
+  </div>
+  <div class="ctrl-section" id="ctrlRepSecB" style="display:none">
+    <div class="ctrl-section-title">Reps · B · <span id="ctrlRepCountB" style="color:#fff;font-size:1.6rem;font-weight:900">0</span></div>
+    <div class="ctrl-grid g3">
+      <div class="rb rb-rep-plus" onclick="cmd('repInc',{side:'B'})" style="background:#1a3a2a;color:#8fcc6a;border:1px solid #2a4020;font-size:1.6rem;font-weight:900">+1</div>
+      <div class="rb rb-rep-minus" onclick="cmd('repDec',{side:'B'})" style="background:#3a1a1a;color:#cc8f8f;border:1px solid #5a2020">−1</div>
+      <div class="rb rb-rep-reset" onclick="cmd('repReset',{side:'B'})" style="background:#1a1a1a;color:#888;border:1px solid #333">↺ RESET</div>
     </div>
   </div>
 </div>
@@ -958,6 +993,17 @@ var COURT = (function() {
   try { return new URL(location.href).searchParams.get('court') || '1'; }
   catch(e) { return '1'; }
 })();
+// Solo-side display: ?solo=A or ?solo=B on the big board makes that
+// display show only one of the two split-mode panels full-screen while
+// both clocks continue to tick + broadcast normally. Lets you put Side
+// A on the big board and Side B on a TV (?tv&side=B) at the same time.
+var SOLO_SIDE = (function() {
+  var m = location.search.match(/[?&]solo=([AB])/i);
+  return m ? m[1].toUpperCase() : null;
+})();
+if (SOLO_SIDE && !IS_TV && !IS_CONTROL) {
+  document.body.classList.add('is-solo-' + SOLO_SIDE);
+}
 
 if (IS_TV) {
   document.body.classList.add('is-tv');
@@ -1096,7 +1142,8 @@ function sendState() {
     shotLen: CFG.shotLen,
     drillsMode: drillsMode,
     repCounterEnabled: repCounterEnabled,
-    repCount: repCount
+    repCount: repCount,
+    bRepCount: bRepCount
   });
 }
 
@@ -1113,6 +1160,11 @@ function ctrlToggleSplit() {
   var sb = document.getElementById('rbSplitToggle');
   if (sb && sb.firstChild) sb.firstChild.textContent = _ctrlSplit ? '☐ ONE COURT' : '⊟ TWO COURTS';
   cmd('setSplit', {on: _ctrlSplit});
+  // Show/hide Side B rep section to match new split state
+  var secB = document.getElementById('ctrlRepSecB');
+  if (secB) secB.style.display = (_ctrlRepCounter && _ctrlSplit) ? 'block' : 'none';
+  var lblA = document.getElementById('ctrlRepLblA');
+  if (lblA) lblA.textContent = (_ctrlRepCounter && _ctrlSplit) ? 'Reps · A' : 'Reps';
 }
 
 // Drills layout for TV — local toggle, sent to display via setDrills cmd.
@@ -1134,6 +1186,12 @@ function ctrlToggleRepCounter() {
   // round-trips state back to us.
   var sec = document.getElementById('ctrlRepSec');
   if (sec) sec.style.display = _ctrlRepCounter ? 'block' : 'none';
+  // Side B rep section appears only when ALSO in split mode
+  var secB = document.getElementById('ctrlRepSecB');
+  if (secB) secB.style.display = (_ctrlRepCounter && _ctrlSplit) ? 'block' : 'none';
+  // Repaint label for the A panel so it says "Reps · A" or just "Reps"
+  var lblA = document.getElementById('ctrlRepLblA');
+  if (lblA) lblA.textContent = (_ctrlRepCounter && _ctrlSplit) ? 'Reps · A' : 'Reps';
   cmd('setRepCounter', {on: _ctrlRepCounter});
 }
 
@@ -1216,11 +1274,18 @@ function applyState(s) {
   document.getElementById('csQtr').textContent = 'Q' + (s.quarter + 1);
   document.getElementById('csHome').textContent = s.homeScore;
   document.getElementById('csAway').textContent = s.awayScore;
-  // Rep counter section visibility + count
+  // Rep counter section(s) visibility + count
   var repSec = document.getElementById('ctrlRepSec');
   if (repSec) repSec.style.display = s.repCounterEnabled ? 'block' : 'none';
   var repNum = document.getElementById('ctrlRepCount');
   if (repNum) repNum.textContent = s.repCount || 0;
+  var repLblA = document.getElementById('ctrlRepLblA');
+  if (repLblA) repLblA.textContent = (s.repCounterEnabled && s.splitMode) ? 'Reps · A' : 'Reps';
+  // Side B rep counter only relevant when split mode is active
+  var repSecB = document.getElementById('ctrlRepSecB');
+  if (repSecB) repSecB.style.display = (s.repCounterEnabled && s.splitMode) ? 'block' : 'none';
+  var repNumB = document.getElementById('ctrlRepCountB');
+  if (repNumB) repNumB.textContent = s.bRepCount || 0;
   var btn = document.getElementById('rbStartStop');
   if (s.running) {
     btn.textContent = '⏸ STOP'; btn.className = 'rb rb-stop';
@@ -1291,9 +1356,10 @@ var drillsMode = false;
 
 // Rep counter — small badge at the top of the display, manual +/-/reset
 // from the controller. `repCounterEnabled` toggles whether the badge
-// shows at all.
+// shows at all. In split-screen mode each side gets its own count.
 var repCounterEnabled = false;
 var repCount = 0;
+var bRepCount = 0;
 
 // Rest timer (between-quarter break) — independent countdown that takes
 // over the display until it expires or is cancelled.
@@ -1517,15 +1583,18 @@ function handleCmd(action, data) {
       renderRepCounter(); sendState();
       break;
     case 'repInc':
-      repCount = Math.max(0, repCount + 1);
+      if ((data && data.side) === 'B') bRepCount = Math.max(0, bRepCount + 1);
+      else repCount = Math.max(0, repCount + 1);
       renderRepCounter(); sendState();
       break;
     case 'repDec':
-      repCount = Math.max(0, repCount - 1);
+      if ((data && data.side) === 'B') bRepCount = Math.max(0, bRepCount - 1);
+      else repCount = Math.max(0, repCount - 1);
       renderRepCounter(); sendState();
       break;
     case 'repReset':
-      repCount = 0;
+      if ((data && data.side) === 'B') bRepCount = 0;
+      else repCount = 0;
       renderRepCounter(); sendState();
       break;
     case 'restStart':
@@ -1759,35 +1828,50 @@ function _renderSidePanel(which, gt, st, isRun) {
   sEl.className = sCls;
 }
 
-// Rep counter badge — top-right of display, tap big number to +1.
-// Hidden unless `repCounterEnabled` is true (toggled from controller settings).
+// Rep counter badges — main (Side A) top-right, Side B bottom-right.
+// Side A is always shown when enabled; Side B only appears in split mode.
 function renderRepCounter() {
   if (IS_CONTROL || IS_TV) return;
   var badge = document.getElementById('repCounterBadge');
-  if (!badge) return;
-  badge.style.display = repCounterEnabled ? 'block' : 'none';
+  if (badge) {
+    badge.style.display = repCounterEnabled ? 'block' : 'none';
+    // Re-label the main badge "REPS · A" when split mode is on so coaches
+    // can tell the two badges apart.
+    var lbl = document.getElementById('repCounterLblA');
+    if (lbl) lbl.textContent = (repCounterEnabled && splitMode) ? 'REPS · A' : 'REPS';
+  }
   var n = document.getElementById('repCounterNum');
   if (n) n.textContent = repCount;
+  var badgeB = document.getElementById('repCounterBadgeB');
+  if (badgeB) badgeB.style.display = (repCounterEnabled && splitMode) ? 'block' : 'none';
+  var nB = document.getElementById('repCounterNumB');
+  if (nB) nB.textContent = bRepCount;
 }
-// Tap actions on the badge (+1, -1, reset). Document-level mousedown
-// delegation so the handler doesn't get torn off by display re-renders.
-function _handleRepAction(action) {
-  if (action === 'inc')   repCount = Math.max(0, repCount + 1);
-  else if (action === 'dec')   repCount = Math.max(0, repCount - 1);
-  else if (action === 'reset') repCount = 0;
+// Tap actions on either badge (+1, -1, reset). Each button can carry
+// data-rep-side="B" to target Side B; default is Side A.
+function _handleRepAction(action, side) {
+  if (side === 'B') {
+    if (action === 'inc')        bRepCount = Math.max(0, bRepCount + 1);
+    else if (action === 'dec')   bRepCount = Math.max(0, bRepCount - 1);
+    else if (action === 'reset') bRepCount = 0;
+  } else {
+    if (action === 'inc')        repCount = Math.max(0, repCount + 1);
+    else if (action === 'dec')   repCount = Math.max(0, repCount - 1);
+    else if (action === 'reset') repCount = 0;
+  }
   renderRepCounter(); sendState();
 }
 document.addEventListener('mousedown', function(e) {
   var t = e.target.closest('[data-rep-action]');
   if (!t) return;
   e.preventDefault(); e.stopPropagation();
-  _handleRepAction(t.getAttribute('data-rep-action'));
+  _handleRepAction(t.getAttribute('data-rep-action'), t.getAttribute('data-rep-side'));
 });
 document.addEventListener('touchstart', function(e) {
   var t = e.target.closest('[data-rep-action]');
   if (!t) return;
   e.preventDefault();
-  _handleRepAction(t.getAttribute('data-rep-action'));
+  _handleRepAction(t.getAttribute('data-rep-action'), t.getAttribute('data-rep-side'));
 }, {passive: false});
 
 // ── Render ──────────────────────────────────────────────────────────────
@@ -2045,6 +2129,13 @@ function _showDeposedBanner() {
 }
 
 // ── Init ────────────────────────────────────────────────────────────────
+// If this big board is a solo-side mirror (?solo=A/B), force splitMode on
+// so both clocks tick locally and broadcast (the other TV reads B from
+// state). Without this, only Side A's clock would run.
+if (SOLO_SIDE && !IS_TV && !IS_CONTROL) {
+  splitMode = true;
+  document.body.classList.add('is-split');
+}
 renderDisplay();
 renderQtr();
 renderExcl();
