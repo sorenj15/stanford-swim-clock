@@ -848,6 +848,9 @@ body.is-tv-sideB .tv-side-badge { display: block; }
         <div class="rb rb-shot rb-big" id="rbShot30" onclick="cmd('shot30')">↺ 30</div>
         <div class="rb rb-shot rb-big" id="rbShot20" onclick="cmd('shot20')">↺ 20</div>
       </div>
+      <div class="ctrl-grid" style="margin-top:8px">
+        <div class="rb rb-reset" onclick="cmd('resetSide')">↺ RESET<span class="rb-sub">to current default · keeps running</span></div>
+      </div>
     </div>
 
     <!-- REST timer between quarters -->
@@ -1488,18 +1491,16 @@ function handleCmd(action, data) {
       else { shotTime = CFG.shotShort; renderDisplay(); }
       break;
     case 'resetSide':
+      // Shot-clock-only reset to the sticky default (CFG.shotLen). Does
+      // NOT pause the clock — if the game was running, it keeps running
+      // from the new shot value. Does NOT touch the game clock or scores.
+      // For a full reset of a side, use Settings → RESET ALL.
       if (side === 'B') {
-        _stopB();
-        bGameTime = CFG.qtrLen; bShotTime = CFG.shotLen;
-        bHomeScoreVal = 0; bAwayScoreVal = 0;
-        renderSplit(); renderSplitScores();
+        bShotTime = CFG.shotLen;
+        renderSplit();
       } else {
-        _stop();
-        gameTime = CFG.qtrLen; shotTime = CFG.shotLen;
-        homeScoreVal = 0; awayScoreVal = 0;
-        document.getElementById('homeScore').textContent = '0';
-        document.getElementById('awayScore').textContent = '0';
-        renderDisplay(); renderSplit(); renderSplitScores();
+        shotTime = CFG.shotLen;
+        renderDisplay(); renderSplit();
       }
       break;
     case 'toggleSplit':
