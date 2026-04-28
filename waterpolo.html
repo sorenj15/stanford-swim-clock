@@ -799,8 +799,8 @@ body.is-tv-sideB .tv-side-badge { display: block; }
         <div class="rb rb-reset" onclick="cmd('resetSide',{side:'A'})">↺ RESET</div>
       </div>
       <div class="ctrl-grid g2" style="margin-top:8px">
-        <div class="rb rb-shot" onclick="cmd('shot30',{side:'A'})">↺ 30</div>
-        <div class="rb rb-shot" onclick="cmd('shot20',{side:'A'})">↺ 20</div>
+        <div class="rb rb-shot" id="rbShot30A" onclick="cmd('shot30',{side:'A'})">↺ 30</div>
+        <div class="rb rb-shot" id="rbShot20A" onclick="cmd('shot20',{side:'A'})">↺ 20</div>
       </div>
       <div class="ctrl-grid g4" style="margin-top:8px">
         <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:1,side:'A'})">+ W</div>
@@ -821,8 +821,8 @@ body.is-tv-sideB .tv-side-badge { display: block; }
         <div class="rb rb-reset" onclick="cmd('resetSide',{side:'B'})">↺ RESET</div>
       </div>
       <div class="ctrl-grid g2" style="margin-top:8px">
-        <div class="rb rb-shot" onclick="cmd('shot30',{side:'B'})">↺ 30</div>
-        <div class="rb rb-shot" onclick="cmd('shot20',{side:'B'})">↺ 20</div>
+        <div class="rb rb-shot" id="rbShot30B" onclick="cmd('shot30',{side:'B'})">↺ 30</div>
+        <div class="rb rb-shot" id="rbShot20B" onclick="cmd('shot20',{side:'B'})">↺ 20</div>
       </div>
       <div class="ctrl-grid g4" style="margin-top:8px">
         <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:1,side:'B'})">+ W</div>
@@ -845,8 +845,8 @@ body.is-tv-sideB .tv-side-badge { display: block; }
         <div class="rb rb-start rb-huge" id="rbStartStop" onclick="cmd('toggle')">▶ START</div>
       </div>
       <div class="ctrl-grid g2" style="margin-top:10px">
-        <div class="rb rb-shot rb-big" onclick="cmd('shot30')">↺ 30</div>
-        <div class="rb rb-shot rb-big" onclick="cmd('shot20')">↺ 20</div>
+        <div class="rb rb-shot rb-big" id="rbShot30" onclick="cmd('shot30')">↺ 30</div>
+        <div class="rb rb-shot rb-big" id="rbShot20" onclick="cmd('shot20')">↺ 20</div>
       </div>
     </div>
 
@@ -1274,6 +1274,14 @@ function applyState(s) {
   document.getElementById('csQtr').textContent = 'Q' + (s.quarter + 1);
   document.getElementById('csHome').textContent = s.homeScore;
   document.getElementById('csAway').textContent = s.awayScore;
+  // Update shot-reset button labels to reflect current default. The
+  // "↺ 30" button actually resets to whatever CFG.shotLen is, so when
+  // the coach sets a different default (e.g. 12s for press drills) the
+  // label tracks it instead of misleading-ly saying 30.
+  var defShot = Math.round((s.shotLen || 30000) / 1000);
+  ['rbShot30','rbShot30A','rbShot30B'].forEach(function(id) {
+    var b = document.getElementById(id); if (b) b.textContent = '↺ ' + defShot;
+  });
   // Rep counter section(s) visibility + count
   var repSec = document.getElementById('ctrlRepSec');
   if (repSec) repSec.style.display = s.repCounterEnabled ? 'block' : 'none';
@@ -1625,6 +1633,9 @@ function handleCmd(action, data) {
       renderDisplay(); renderSplit();
       break;
     case 'setShot':
+      // Treat the inline "Set Shot Clock" popup as setting the new default —
+      // future ↺ resets return to this value too. Saves the coach a trip
+      // to Settings every time they want a different clock for a drill.
       if (side === 'B') {
         bShotTime = data.ms;
         if (!bRunning) renderSplit();
@@ -1632,6 +1643,8 @@ function handleCmd(action, data) {
         shotTime = data.ms;
         if (!running) { renderDisplay(); renderSplit(); }
       }
+      // Sticky default — both sides share CFG.shotLen.
+      if (data.ms && data.ms > 0) CFG.shotLen = data.ms;
       break;
   }
   sendState();
