@@ -202,24 +202,27 @@ body.is-split .split-app { display: flex; }
 .sp-shot.sp-danger { color: #e74c3c; animation: pulse-c .35s ease-in-out infinite; }
 .sp-shot.sp-off { color: #f1c40f; }
 .sp-score-row {
-  position: absolute; top: 12px; right: 24px;
-  display: flex; gap: 22px;
+  position: absolute; top: 18px; right: 36px;
+  display: flex; gap: 40px;
   font-family: 'SF Mono', 'Courier New', monospace;
+  align-items: center;
 }
 .sp-score {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 1.6rem; font-weight: 900;
+  display: flex; align-items: center; gap: 14px;
+  font-weight: 900;
   font-variant-numeric: tabular-nums;
 }
 .sp-score-lbl {
-  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.18em;
+  font-size: 1.1rem; font-weight: 900; letter-spacing: 0.22em;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
 }
 .sp-score-w .sp-score-lbl { color: #fff; }
 .sp-score-w .sp-score-num { color: #fff; }
-.sp-score-b .sp-score-lbl { color: #888; }
-.sp-score-b .sp-score-num { color: #aaa; }
-.sp-score-num { font-size: 2.2rem; line-height: 1; min-width: 38px; text-align: center; }
+.sp-score-b .sp-score-lbl { color: #999; }
+.sp-score-b .sp-score-num { color: #ccc; }
+.sp-score-num {
+  font-size: 5rem; line-height: 1; min-width: 80px; text-align: center;
+}
 
 /* Controller: hide non-split sections, show split sections, when split mode is on */
 body.is-control.is-split-ctrl #normalCtrl { display: none; }
