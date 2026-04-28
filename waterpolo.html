@@ -613,6 +613,17 @@ body.is-tv { background: #000 !important; overflow: hidden; }
   display: none;
 }
 .tv-conn.off { display: block; color: #e74c3c; }
+/* "SIDE B" corner badge — only shown when this TV is configured via
+   ?tv&side=B URL param so coaches know which court each TV is paired to. */
+.tv-side-badge {
+  position: fixed; top: 14px; left: 18px;
+  font-size: 1.6rem; font-weight: 900; letter-spacing: 0.15em;
+  color: #c0392b; background: rgba(140,21,21,0.18);
+  border: 2px solid #5a1818; padding: 6px 14px; border-radius: 8px;
+  font-family: 'Arial Black', sans-serif;
+  display: none;
+}
+body.is-tv-sideB .tv-side-badge { display: block; }
 </style>
 </head>
 <body>
@@ -627,6 +638,7 @@ body.is-tv { background: #000 !important; overflow: hidden; }
     <div class="tv-team tv-team-b"><div class="tv-team-lbl">BLACK</div><div class="tv-team-num" id="tvScoreB">0</div></div>
   </div>
   <div class="tv-conn" id="tvConn">Disconnected</div>
+  <div class="tv-side-badge">SIDE B</div>
 </div>
 
 <!-- ═══ DISPLAY VIEW (big screen) ═══ -->
@@ -933,6 +945,12 @@ body.is-tv { background: #000 !important; overflow: hidden; }
 var IS_CONTROL = location.search.indexOf('control') >= 0;
 var IS_TV      = location.search.indexOf('tv') >= 0;
 var IS_DRILLS  = /[?&]drills(\b|=)/.test(location.search);
+// Which side this TV mirrors when the scoreboard is in split mode.
+// ?tv&side=B → shows Side B's clocks/scores. Default "A".
+var TV_SIDE = (function() {
+  var m = location.search.match(/[?&]side=([AB])/i);
+  return m ? m[1].toUpperCase() : 'A';
+})();
 // Court ID — used to namespace WebSocket so two scoreboards can run side
 // by side. Defaults to "1" if no ?court param. Stays in URL for the
 // controller's QR-code link generator.
@@ -943,6 +961,9 @@ var COURT = (function() {
 
 if (IS_TV) {
   document.body.classList.add('is-tv');
+  // If a specific side was requested, mark it on the body so we can show
+  // a corner badge confirming which side this TV is mirroring.
+  if (TV_SIDE === 'B') document.body.classList.add('is-tv-sideB');
   // Optional: ?tv&amber for amber digits instead of white
   if (/[?&]amber(\b|=)/.test(location.search)) {
     document.getElementById('tvApp').classList.add('tv-amber');
@@ -1119,6 +1140,21 @@ function ctrlToggleRepCounter() {
 function applyState(s) {
   if (IS_TV) {
     _lastRemoteState = s;
+    // If the scoreboard is in split mode and this TV is configured for
+    // Side B, remap the state we read so the rest of the TV render code
+    // doesn't have to care.
+    if (s.splitMode && TV_SIDE === 'B') {
+      s = {
+        gameTime:  s.bGameTime,
+        shotTime:  s.bShotTime,
+        running:   s.bRunning,
+        shotOnly:  s.shotOnly,
+        homeScore: s.bHomeScore,
+        awayScore: s.bAwayScore,
+        drillsMode: s.drillsMode,
+        splitMode: s.splitMode
+      };
+    }
     var tvApp = document.getElementById('tvApp');
     var tvNum = document.getElementById('tvNum');
     var tvMG  = document.getElementById('tvMiniGame');
