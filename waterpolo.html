@@ -801,7 +801,6 @@ body.is-tv-sideB .tv-side-badge { display: block; }
       <div class="ctrl-grid g2" style="margin-top:8px">
         <div class="rb rb-shot" id="rbShot30A" onclick="cmd('shot30',{side:'A'})">↺ 30</div>
         <div class="rb rb-shot" id="rbShot20A" onclick="cmd('shot20',{side:'A'})">↺ 20</div>
-        <div class="rb rb-shot" id="rbShotCA" onclick="cmd('shotCustom',{side:'A'})" style="display:none;background:#1a3a2a;color:#8fcc6a;border:1px solid #2a4020">↺ —</div>
       </div>
       <div class="ctrl-grid g4" style="margin-top:8px">
         <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:1,side:'A'})">+ W</div>
@@ -824,7 +823,6 @@ body.is-tv-sideB .tv-side-badge { display: block; }
       <div class="ctrl-grid g2" style="margin-top:8px">
         <div class="rb rb-shot" id="rbShot30B" onclick="cmd('shot30',{side:'B'})">↺ 30</div>
         <div class="rb rb-shot" id="rbShot20B" onclick="cmd('shot20',{side:'B'})">↺ 20</div>
-        <div class="rb rb-shot" id="rbShotCB" onclick="cmd('shotCustom',{side:'B'})" style="display:none;background:#1a3a2a;color:#8fcc6a;border:1px solid #2a4020">↺ —</div>
       </div>
       <div class="ctrl-grid g4" style="margin-top:8px">
         <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:1,side:'B'})">+ W</div>
@@ -849,7 +847,6 @@ body.is-tv-sideB .tv-side-badge { display: block; }
       <div class="ctrl-grid g2" style="margin-top:10px">
         <div class="rb rb-shot rb-big" id="rbShot30" onclick="cmd('shot30')">↺ 30</div>
         <div class="rb rb-shot rb-big" id="rbShot20" onclick="cmd('shot20')">↺ 20</div>
-        <div class="rb rb-shot rb-big" id="rbShotC" onclick="cmd('shotCustom')" style="display:none;background:#1a3a2a;color:#8fcc6a;border:1px solid #2a4020">↺ —</div>
       </div>
     </div>
 
@@ -1119,8 +1116,26 @@ function wsSend(obj) {
   if (ws && wsReady) ws.send(JSON.stringify(obj));
 }
 
-function sendState() {
+// Throttle sendState so we're not flooding the WebSocket at 60Hz from
+// the clock loop. The controller and TVs only need second-level
+// resolution most of the time; tenths-level updates kick in for the
+// last minute of the game and the last 5 seconds of the shot clock,
+// which is when the higher rate actually matters.
+var _lastSendTs = 0;
+function sendState(force) {
   if (_displayDeposed) return;
+  var now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  if (!force) {
+    // Default throttle: 8 Hz — invisible to humans, kind to mobile.
+    // Bump to 30 Hz only when sub-second display matters.
+    var minGap = 125;
+    if ((gameTime > 0 && gameTime <= 60000) || (shotTime > 0 && shotTime <= 5000) ||
+        (bGameTime > 0 && bGameTime <= 60000) || (bShotTime > 0 && bShotTime <= 5000)) {
+      minGap = 33;
+    }
+    if (now - _lastSendTs < minGap) return;
+  }
+  _lastSendTs = now;
   wsSend({
     type: 'state',
     displayId: DISPLAY_ID,
@@ -1269,65 +1284,55 @@ function applyState(s) {
   }
   if (!IS_CONTROL) return;
   _lastRemoteState = s;
-  // If a rest countdown is active, show it in the Game cell instead
-  document.getElementById('csGame').textContent = s.restMode
-    ? '⏸ ' + fmtClock(s.restTime)
-    : fmtClock(s.gameTime);
-  document.getElementById('csShot').textContent = Math.ceil(s.shotTime / 1000);
-  document.getElementById('csQtr').textContent = 'Q' + (s.quarter + 1);
-  document.getElementById('csHome').textContent = s.homeScore;
-  document.getElementById('csAway').textContent = s.awayScore;
-  // ↺ Custom button label + visibility — only show when the coach has
-  // set a non-standard shot clock default (so the button isn't redundant
-  // with ↺ 30 or ↺ 20). The button resets to CFG.shotLen via shotCustom.
-  var defShot = Math.round((s.shotLen || 30000) / 1000);
-  var showCustom = (defShot !== 30 && defShot !== 20);
-  ['rbShotC', 'rbShotCA', 'rbShotCB'].forEach(function(id) {
-    var b = document.getElementById(id);
-    if (!b) return;
-    b.textContent = '↺ ' + defShot;
-    b.style.display = showCustom ? '' : 'none';
-  });
-  // Rep counter section(s) visibility + count
-  var repSec = document.getElementById('ctrlRepSec');
-  if (repSec) repSec.style.display = s.repCounterEnabled ? 'block' : 'none';
-  var repNum = document.getElementById('ctrlRepCount');
-  if (repNum) repNum.textContent = s.repCount || 0;
-  var repLblA = document.getElementById('ctrlRepLblA');
-  if (repLblA) repLblA.textContent = (s.repCounterEnabled && s.splitMode) ? 'Reps · A' : 'Reps';
-  // Side B rep counter only relevant when split mode is active
-  var repSecB = document.getElementById('ctrlRepSecB');
-  if (repSecB) repSecB.style.display = (s.repCounterEnabled && s.splitMode) ? 'block' : 'none';
-  var repNumB = document.getElementById('ctrlRepCountB');
-  if (repNumB) repNumB.textContent = s.bRepCount || 0;
-  var btn = document.getElementById('rbStartStop');
-  if (s.running) {
-    btn.textContent = '⏸ STOP'; btn.className = 'rb rb-stop';
-  } else {
-    btn.textContent = '▶ START'; btn.className = 'rb rb-start';
+  // Diff-aware setters — only touch the DOM when the value actually
+  // changed. Browsers will repaint a node every time you assign to
+  // textContent (even with the same string), and at 60 state msgs/sec
+  // that's what was causing the controller to feel "glitchy".
+  function setText(id, val) {
+    var el = document.getElementById(id);
+    if (el && el.textContent !== val) el.textContent = val;
+  }
+  function setDisplay(id, on) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var want = on ? '' : 'none';
+    if (el.style.display !== want) el.style.display = want;
+  }
+  function setStartBtn(id, isRun) {
+    var b = document.getElementById(id); if (!b) return;
+    var wantText = isRun ? '⏸ STOP' : '▶ START';
+    var wantClass = isRun ? 'rb rb-stop' : 'rb rb-start';
+    if (b.textContent !== wantText) b.textContent = wantText;
+    if (b.className   !== wantClass) b.className   = wantClass;
   }
 
+  setText('csGame',  s.restMode ? '⏸ ' + fmtClock(s.restTime) : fmtClock(s.gameTime));
+  setText('csShot',  String(Math.ceil(s.shotTime / 1000)));
+  setText('csQtr',   'Q' + (s.quarter + 1));
+  setText('csHome',  String(s.homeScore));
+  setText('csAway',  String(s.awayScore));
+
+  // Rep counter section(s)
+  setDisplay('ctrlRepSec',  !!s.repCounterEnabled);
+  setText('ctrlRepCount',   String(s.repCount || 0));
+  setText('ctrlRepLblA',    (s.repCounterEnabled && s.splitMode) ? 'Reps · A' : 'Reps');
+  setDisplay('ctrlRepSecB', !!(s.repCounterEnabled && s.splitMode));
+  setText('ctrlRepCountB',  String(s.bRepCount || 0));
+
+  setStartBtn('rbStartStop', s.running);
+
   // Split mode: the remote's layout is driven by its OWN local flag
-  // (_ctrlSplit), not by state messages — otherwise multiple displays or
-  // brief races would make the remote flicker between layouts. We DO use
-  // state to update the per-side run buttons + clock readouts.
+  // (_ctrlSplit), not by state messages, but the per-side readouts
+  // and run-buttons need state-driven updates.
   if (_ctrlSplit) {
-    var bA = document.getElementById('rbStartA');
-    if (bA) {
-      if (s.running) { bA.textContent = '⏸ STOP'; bA.className = 'rb rb-stop'; }
-      else { bA.textContent = '▶ START'; bA.className = 'rb rb-start'; }
-    }
-    var bB = document.getElementById('rbStartB');
-    if (bB) {
-      if (s.bRunning) { bB.textContent = '⏸ STOP'; bB.className = 'rb rb-stop'; }
-      else { bB.textContent = '▶ START'; bB.className = 'rb rb-start'; }
-    }
-    var cgA = document.getElementById('csGameA'); if (cgA) cgA.textContent = fmtClock(s.gameTime);
-    var csA = document.getElementById('csShotA'); if (csA) csA.textContent = Math.ceil(s.shotTime/1000);
-    var cgB = document.getElementById('csGameB'); if (cgB) cgB.textContent = fmtClock(s.bGameTime != null ? s.bGameTime : 8*60*1000);
-    var csB = document.getElementById('csShotB'); if (csB) csB.textContent = Math.ceil((s.bShotTime != null ? s.bShotTime : 30*1000)/1000);
-    var sA = document.getElementById('csScoreA'); if (sA) sA.textContent = (s.homeScore||0) + '–' + (s.awayScore||0);
-    var sB = document.getElementById('csScoreB'); if (sB) sB.textContent = (s.bHomeScore||0) + '–' + (s.bAwayScore||0);
+    setStartBtn('rbStartA', s.running);
+    setStartBtn('rbStartB', s.bRunning);
+    setText('csGameA', fmtClock(s.gameTime));
+    setText('csShotA', String(Math.ceil(s.shotTime/1000)));
+    setText('csGameB', fmtClock(s.bGameTime != null ? s.bGameTime : 8*60*1000));
+    setText('csShotB', String(Math.ceil((s.bShotTime != null ? s.bShotTime : 30*1000)/1000)));
+    setText('csScoreA', (s.homeScore||0) + '–' + (s.awayScore||0));
+    setText('csScoreB', (s.bHomeScore||0) + '–' + (s.bAwayScore||0));
   }
 }
 
@@ -1474,17 +1479,9 @@ function handleCmd(action, data) {
       if (side === 'B') _stopB(); else _stop();
       break;
     case 'shot30':
-      // ↺ 30 button is always exactly 30 seconds — a fixed convention
-      // button so coaches always have the standard shot clock available
-      // even when they've set a custom default for a drill.
+      // ↺ 30 button is always exactly 30 seconds — fixed convention.
       if (side === 'B') { bShotTime = 30000; renderSplit(); }
       else { shotTime = 30000; renderDisplay(); }
-      break;
-    case 'shotCustom':
-      // ↺ Custom uses whatever the current default (CFG.shotLen) is —
-      // sticky to the value you last set via the Set Shot Clock popup.
-      if (side === 'B') { bShotTime = CFG.shotLen; renderSplit(); }
-      else { shotTime = CFG.shotLen; renderDisplay(); }
       break;
     case 'shot20':
       if (side === 'B') { bShotTime = CFG.shotShort; renderSplit(); }
@@ -1674,6 +1671,7 @@ function _start() {
   running = true; lastTs = null;
   raf = requestAnimationFrame(loop);
   renderStartBtn();
+  sendState(true); // force immediate broadcast so the controller reflects the new state at once
 }
 
 function _stop() {
@@ -1682,6 +1680,7 @@ function _stop() {
   renderStartBtn();
   renderDisplay();
   if (splitMode) renderSplit();
+  sendState(true);
 }
 
 // ── Side B clock (split-screen only) ────────────────────────────────────
@@ -1692,11 +1691,13 @@ function _startB() {
   if (bShotTime <= 0 && bShotOnly) return;
   bRunning = true; bLastTs = null;
   bRaf = requestAnimationFrame(loopB);
+  sendState(true);
 }
 function _stopB() {
   bRunning = false;
   if (bRaf) { cancelAnimationFrame(bRaf); bRaf = null; }
   if (splitMode) renderSplit();
+  sendState(true);
 }
 function loopB(ts) {
   if (!bRunning) return;
