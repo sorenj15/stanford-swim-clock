@@ -841,17 +841,18 @@ body.is-tv { background: #000 !important; overflow: hidden; }
         <div class="rb rb-score-a rb-compact" onclick="cmd('score',{t:'away',d:-1})">− B</div>
       </div>
     </div>
-
-    <!-- Rep counter (only visible when enabled in Settings) -->
-    <div class="ctrl-section" id="ctrlRepSec" style="display:none">
-      <div class="ctrl-section-title">Reps · <span id="ctrlRepCount" style="color:#fff;font-size:1.4rem;font-weight:900">0</span></div>
-      <div class="ctrl-grid g3">
-        <div class="rb rb-rep-plus" onclick="cmd('repInc')" style="background:#1a3a2a;color:#8fcc6a;border:1px solid #2a4020;font-size:1.5rem;font-weight:900">+1</div>
-        <div class="rb rb-rep-minus" onclick="cmd('repDec')" style="background:#3a1a1a;color:#cc8f8f;border:1px solid #5a2020">−1</div>
-        <div class="rb rb-rep-reset" onclick="cmd('repReset')" style="background:#1a1a1a;color:#888;border:1px solid #333">↺ RESET</div>
-      </div>
-    </div>
   </div><!-- /#normalCtrl -->
+
+  <!-- Rep counter (sits OUTSIDE normalCtrl/splitCtrl so it shows in BOTH
+       normal and split modes when enabled) -->
+  <div class="ctrl-section" id="ctrlRepSec" style="display:none">
+    <div class="ctrl-section-title">Reps · <span id="ctrlRepCount" style="color:#fff;font-size:1.6rem;font-weight:900">0</span></div>
+    <div class="ctrl-grid g3">
+      <div class="rb rb-rep-plus" onclick="cmd('repInc')" style="background:#1a3a2a;color:#8fcc6a;border:1px solid #2a4020;font-size:1.6rem;font-weight:900">+1</div>
+      <div class="rb rb-rep-minus" onclick="cmd('repDec')" style="background:#3a1a1a;color:#cc8f8f;border:1px solid #5a2020">−1</div>
+      <div class="rb rb-rep-reset" onclick="cmd('repReset')" style="background:#1a1a1a;color:#888;border:1px solid #333">↺ RESET</div>
+    </div>
+  </div>
 </div>
 
 <!-- Settings overlay (gear icon → modal) -->
@@ -1105,6 +1106,10 @@ function ctrlToggleRepCounter() {
   _ctrlRepCounter = !_ctrlRepCounter;
   var b = document.getElementById('rbRepCounterToggle');
   if (b && b.firstChild) b.firstChild.textContent = _ctrlRepCounter ? '✕ HIDE REP COUNTER' : '🔢 REP COUNTER';
+  // Apply locally so the panel appears immediately, even before the display
+  // round-trips state back to us.
+  var sec = document.getElementById('ctrlRepSec');
+  if (sec) sec.style.display = _ctrlRepCounter ? 'block' : 'none';
   cmd('setRepCounter', {on: _ctrlRepCounter});
 }
 
