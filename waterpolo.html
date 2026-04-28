@@ -629,6 +629,14 @@ body.is-tv { background: #000 !important; overflow: hidden; }
 <!-- ═══ DISPLAY VIEW (big screen) ═══ -->
 <div class="display-app" id="displayApp">
   <div id="courtBadge" style="display:none;position:fixed;top:10px;left:10px;background:#7a0000;color:#fff;padding:4px 12px;border-radius:6px;font-weight:800;letter-spacing:0.1em;font-size:0.9rem;z-index:10">COURT —</div>
+  <div id="repCounterBadge" style="display:none;position:fixed;top:10px;right:10px;background:#1a0a0a;border:2px solid #8C1515;color:#fff;padding:6px 10px 6px;border-radius:8px;font-weight:800;letter-spacing:0.1em;font-size:1rem;z-index:10;text-align:center;line-height:1;display:none">
+    <div style="font-size:0.55rem;color:#c0392b;letter-spacing:0.18em;margin-bottom:2px">REPS</div>
+    <div id="repCounterNum" style="font-size:1.8rem;font-weight:900;cursor:pointer;padding:2px 12px" data-rep-action="inc" title="tap to +1, hold to reset">0</div>
+    <div style="display:flex;gap:6px;justify-content:center;margin-top:4px">
+      <button data-rep-action="dec" style="background:#2a0a0a;border:1px solid #5a1818;color:#aaa;width:28px;height:22px;border-radius:4px;font-weight:800;cursor:pointer;font-size:0.85rem">−</button>
+      <button data-rep-action="reset" style="background:#2a0a0a;border:1px solid #5a1818;color:#aaa;width:28px;height:22px;border-radius:4px;font-weight:800;cursor:pointer;font-size:0.7rem" title="reset to 0">↺</button>
+    </div>
+  </div>
   <div class="qtr-bar">
     <div class="qtr-dot q-active" id="qd0"></div>
     <div class="qtr-dot" id="qd1"></div>
@@ -862,6 +870,11 @@ body.is-tv { background: #000 !important; overflow: hidden; }
     </div>
 
     <div class="settings-row">
+      <label>Rep Counter</label>
+      <div class="rb rb-mode" id="rbRepCounterToggle" onclick="ctrlToggleRepCounter()">🔢 REP COUNTER<span class="rb-sub">small badge on display, tap to +1</span></div>
+    </div>
+
+    <div class="settings-row">
       <label>Other</label>
       <div class="ctrl-grid g2">
         <div class="rb rb-mode" onclick="cmd('toggleMode')">SHOT-ONLY<span class="rb-sub">toggle</span></div>
@@ -1046,7 +1059,9 @@ function sendState() {
     restTime: restTime,
     qtrLen: CFG.qtrLen,
     shotLen: CFG.shotLen,
-    drillsMode: drillsMode
+    drillsMode: drillsMode,
+    repCounterEnabled: repCounterEnabled,
+    repCount: repCount
   });
 }
 
@@ -1072,6 +1087,15 @@ function ctrlToggleDrills() {
   var b = document.getElementById('rbDrillsToggle');
   if (b && b.firstChild) b.firstChild.textContent = _ctrlDrills ? '✕ NORMAL TV' : '⏱ DRILL SCOREBOARD';
   cmd('setDrills', {on: _ctrlDrills});
+}
+
+// Rep counter — controller-side toggle and command helpers.
+var _ctrlRepCounter = false;
+function ctrlToggleRepCounter() {
+  _ctrlRepCounter = !_ctrlRepCounter;
+  var b = document.getElementById('rbRepCounterToggle');
+  if (b && b.firstChild) b.firstChild.textContent = _ctrlRepCounter ? '✕ HIDE REP COUNTER' : '🔢 REP COUNTER';
+  cmd('setRepCounter', {on: _ctrlRepCounter});
 }
 
 function applyState(s) {
@@ -1205,6 +1229,12 @@ var bAwayScoreVal = 0;
 // TV reads this from incoming state messages and switches its layout to
 // big game clock + scores instead of the default shot-clock-big.
 var drillsMode = false;
+
+// Rep counter — small badge at the top of the display, manual +/-/reset
+// from the controller. `repCounterEnabled` toggles whether the badge
+// shows at all.
+var repCounterEnabled = false;
+var repCount = 0;
 
 // Rest timer (between-quarter break) — independent countdown that takes
 // over the display until it expires or is cancelled.
@@ -1421,6 +1451,22 @@ function handleCmd(action, data) {
       break;
     case 'setDrills':
       drillsMode = !!data.on;
+      break;
+    case 'setRepCounter':
+      repCounterEnabled = !!data.on;
+      renderRepCounter(); sendState();
+      break;
+    case 'repInc':
+      repCount = Math.max(0, repCount + 1);
+      renderRepCounter(); sendState();
+      break;
+    case 'repDec':
+      repCount = Math.max(0, repCount - 1);
+      renderRepCounter(); sendState();
+      break;
+    case 'repReset':
+      repCount = 0;
+      renderRepCounter(); sendState();
       break;
     case 'restStart':
       _stop(); _stopB();
@@ -1641,6 +1687,37 @@ function _renderSidePanel(which, gt, st, isRun) {
   sEl.className = sCls;
 }
 
+// Rep counter badge — top-right of display, tap big number to +1.
+// Hidden unless `repCounterEnabled` is true (toggled from controller settings).
+function renderRepCounter() {
+  if (IS_CONTROL || IS_TV) return;
+  var badge = document.getElementById('repCounterBadge');
+  if (!badge) return;
+  badge.style.display = repCounterEnabled ? 'block' : 'none';
+  var n = document.getElementById('repCounterNum');
+  if (n) n.textContent = repCount;
+}
+// Tap actions on the badge (+1, -1, reset). Document-level mousedown
+// delegation so the handler doesn't get torn off by display re-renders.
+function _handleRepAction(action) {
+  if (action === 'inc')   repCount = Math.max(0, repCount + 1);
+  else if (action === 'dec')   repCount = Math.max(0, repCount - 1);
+  else if (action === 'reset') repCount = 0;
+  renderRepCounter(); sendState();
+}
+document.addEventListener('mousedown', function(e) {
+  var t = e.target.closest('[data-rep-action]');
+  if (!t) return;
+  e.preventDefault(); e.stopPropagation();
+  _handleRepAction(t.getAttribute('data-rep-action'));
+});
+document.addEventListener('touchstart', function(e) {
+  var t = e.target.closest('[data-rep-action]');
+  if (!t) return;
+  e.preventDefault();
+  _handleRepAction(t.getAttribute('data-rep-action'));
+}, {passive: false});
+
 // ── Render ──────────────────────────────────────────────────────────────
 function renderDisplay() {
   if (IS_CONTROL) return;
@@ -1808,6 +1885,10 @@ function openSettings() {
   _ctrlDrills = !!_lastRemoteState.drillsMode;
   var db = document.getElementById('rbDrillsToggle');
   if (db && db.firstChild) db.firstChild.textContent = _ctrlDrills ? '✕ NORMAL TV' : '⏱ DRILL SCOREBOARD';
+  // Reflect rep counter state from the display
+  _ctrlRepCounter = !!_lastRemoteState.repCounterEnabled;
+  var rb = document.getElementById('rbRepCounterToggle');
+  if (rb && rb.firstChild) rb.firstChild.textContent = _ctrlRepCounter ? '✕ HIDE REP COUNTER' : '🔢 REP COUNTER';
   document.getElementById('settingsOverlay').classList.add('open');
 }
 function closeSettings() {
@@ -1896,6 +1977,7 @@ renderDisplay();
 renderQtr();
 renderExcl();
 renderSplit();
+renderRepCounter();
 showRemoteURL();
 connectWS();
 </script>
