@@ -496,12 +496,17 @@ body.is-solo-A .sp-label, body.is-solo-B .sp-label { font-size: 1.8rem; }
 body.is-rest .rest-overlay { display: flex; }
 body.is-rest .display-app,
 body.is-rest .split-app { display: none !important; }
-.rest-banner {
-  font-size: 2.4rem; font-weight: 900;
-  letter-spacing: 0.5em; color: #00d4d4;
-  text-shadow: 0 0 30px rgba(0,212,212,0.4);
-  margin-bottom: 24px;
+.rest-scores {
+  display: flex; gap: 80px;
+  font-family: 'SF Mono', 'Courier New', monospace;
+  margin-bottom: 18px; align-items: center;
 }
+.rest-score { display: flex; align-items: center; gap: 18px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.rest-score-lbl { font-size: 1.4rem; font-weight: 900; letter-spacing: 0.22em; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+.rest-score-w .rest-score-lbl, .rest-score-w .rest-score-num { color: #fff; }
+.rest-score-b .rest-score-lbl { color: #999; }
+.rest-score-b .rest-score-num { color: #ccc; }
+.rest-score-num { font-size: 6rem; line-height: 1; min-width: 100px; text-align: center; }
 .rest-clock {
   font-family: 'SF Mono', 'Courier New', monospace;
   font-size: 22rem; font-weight: 900;
@@ -754,8 +759,14 @@ body.is-tv-sideB .tv-side-badge { display: block; }
 </div>
 
 <!-- ═══ REST overlay (between-quarter rest countdown) ═══ -->
+<!-- During rest the board still surfaces the running scoreboard data —
+     swimmers/refs glance up between periods and want to see who's
+     leading. Just no "REST" banner anymore. -->
 <div class="rest-overlay" id="restOverlay">
-  <div class="rest-banner">REST</div>
+  <div class="rest-scores">
+    <div class="rest-score rest-score-w"><span class="rest-score-lbl">WHITE</span><span class="rest-score-num" id="restHomeScore">0</span></div>
+    <div class="rest-score rest-score-b"><span class="rest-score-lbl">BLACK</span><span class="rest-score-num" id="restAwayScore">0</span></div>
+  </div>
   <div class="rest-clock" id="restClock">2:00</div>
   <div class="rest-sub" id="restSub">tap remote to cancel</div>
 </div>
@@ -1545,6 +1556,8 @@ function handleCmd(action, data) {
         }
         if (splitMode) renderSplitScores();
       }
+      // Mirror score changes onto the rest overlay if it's currently showing
+      if (restMode) renderRest();
       break;
     case 'excl':
       exclusions.push({team:data.t, remaining:CFG.exclLen, id:++exclCounter});
@@ -1806,6 +1819,13 @@ function renderRest() {
   if (sec <= 5 && sec > 0) cls += ' danger';
   else if (sec <= 15) cls += ' warn';
   el.className = cls;
+  // Keep score visible during rest. In split mode show the higher-scoring
+  // side's totals (matches what the main display shows pre-rest); for a
+  // proper per-side rest you'd start the rest with the side selected.
+  var hs = document.getElementById('restHomeScore');
+  var as = document.getElementById('restAwayScore');
+  if (hs) hs.textContent = (homeScoreVal || 0);
+  if (as) as.textContent = (awayScoreVal || 0);
 }
 
 // Render the split-screen panels (side A uses top-level state, side B uses b*)
