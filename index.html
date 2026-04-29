@@ -706,17 +706,17 @@ body.is-tv #setupView, body.is-tv #clockView { display: none !important; }
       <div class="tier-row">
         <div class="tdot t1"></div>
         <label>Tier 1 — Green</label>
-        <input id="t1names" value="Ohl* · Krilanovich · West · Oerlemans · De Vecchis · Mathiopoulos">
+        <input id="t1names" value="Ohl* · West · Krilanovich · Oerlemans · Balogh · Gheorghe · De Vecchis">
       </div>
       <div class="tier-row">
         <div class="tdot t2"></div>
         <label>Tier 2 — Blue</label>
-        <input id="t2names" value="Leonardi · Balogh · Forer · Schneider · Gheorghe">
+        <input id="t2names" value="Mathiopoulos · Schneider · Leonardi · Zelikov · Mnatsakanian">
       </div>
       <div class="tier-row">
         <div class="tdot t3"></div>
         <label>Tier 3 — Red</label>
-        <input id="t3names" value="Caras · Arakelian · Mnatsakanian · Zervoudakis">
+        <input id="t3names" value="Forer · Arakelian · Caras · Zervoudakis">
       </div>
     </div>
   </div>
@@ -752,19 +752,19 @@ body.is-tv #setupView, body.is-tv #clockView { display: none !important; }
       <div class="tier-row">
         <div class="tdot t1"></div>
         <label>Tier 1 CSS</label>
-        <input class="css-inp" id="css0" type="number" min="40" max="120" step="0.5" value="66">
+        <input class="css-inp" id="css0" type="number" min="40" max="120" step="0.5" value="61.1">
         <span class="css-unit">sec / 100m</span>
       </div>
       <div class="tier-row">
         <div class="tdot t2"></div>
         <label>Tier 2 CSS</label>
-        <input class="css-inp" id="css1" type="number" min="40" max="120" step="0.5" value="68">
+        <input class="css-inp" id="css1" type="number" min="40" max="120" step="0.5" value="63.3">
         <span class="css-unit">sec / 100m</span>
       </div>
       <div class="tier-row">
         <div class="tdot t3"></div>
         <label>Tier 3 CSS</label>
-        <input class="css-inp" id="css2" type="number" min="40" max="120" step="0.5" value="71">
+        <input class="css-inp" id="css2" type="number" min="40" max="120" step="0.5" value="65.7">
         <span class="css-unit">sec / 100m</span>
       </div>
     </div>
@@ -1042,7 +1042,10 @@ function applyTvState(msg) {
 tvConnect();
 
 // ── Pace table (base CSS: T1=66, T2=68, T3=71 sec/100m) ────────────────────
-var BASE_CSS = [66, 68, 71];
+// BASE_CSS pairs with the RAW pace tables. Updating the team's defaults
+// here keeps the displayed pace ranges familiar — at default CSS values
+// scale = 1.0 and getPace returns the RAW table values directly.
+var BASE_CSS = [61.1, 63.3, 65.7];
 var USER_CSS = [66, 68, 71];
 var EXT = 3; // extend green window upper end by this many seconds
 var POOL_LEN = 36; // pool length in meters (used to calculate laps)
@@ -1073,13 +1076,15 @@ var TIER_COUNT = 3; // how many columns to show
 
 var _TIER_PRESETS = {
   3: [
-    'Ohl* \xb7 Krilanovich \xb7 West \xb7 Oerlemans \xb7 De Vecchis \xb7 Mathiopoulos',
-    'Leonardi \xb7 Balogh \xb7 Forer \xb7 Schneider \xb7 Gheorghe',
-    'Caras \xb7 Arakelian \xb7 Mnatsakanian \xb7 Zervoudakis'
+    'Ohl* \xb7 West \xb7 Krilanovich \xb7 Oerlemans \xb7 Balogh \xb7 Gheorghe \xb7 De Vecchis',
+    'Mathiopoulos \xb7 Schneider \xb7 Leonardi \xb7 Zelikov \xb7 Mnatsakanian',
+    'Forer \xb7 Arakelian \xb7 Caras \xb7 Zervoudakis'
   ],
   2: [
-    'Ohl* \xb7 Krilanovich \xb7 West \xb7 Oerlemans \xb7 De Vecchis \xb7 Mathiopoulos \xb7 Leonardi',
-    'Balogh \xb7 Forer \xb7 Schneider \xb7 Gheorghe \xb7 Caras \xb7 Arakelian \xb7 Mnatsakanian \xb7 Zervoudakis',
+    // Group A: 10 swimmers (Ohl + Tier 1 group + the three faster of the old Tier 2)
+    'Ohl* \xb7 West \xb7 Krilanovich \xb7 Oerlemans \xb7 Balogh \xb7 Gheorghe \xb7 De Vecchis \xb7 Mathiopoulos \xb7 Schneider \xb7 Leonardi',
+    // Group B: 6 swimmers (Zelikov + slower group + Tier 3)
+    'Zelikov \xb7 Mnatsakanian \xb7 Forer \xb7 Arakelian \xb7 Caras \xb7 Zervoudakis',
     ''
   ],
   1: [
@@ -1620,9 +1625,9 @@ function launch() {
   var txt = document.getElementById('setInput').value.trim();
   if (!txt) { alert('Paste a swim set first!'); return; }
 
-  USER_CSS[0] = parseFloat(document.getElementById('css0').value)||66;
-  USER_CSS[1] = parseFloat(document.getElementById('css1').value)||68;
-  USER_CSS[2] = parseFloat(document.getElementById('css2').value)||71;
+  USER_CSS[0] = parseFloat(document.getElementById('css0').value)||61.1;
+  USER_CSS[1] = parseFloat(document.getElementById('css1').value)||63.3;
+  USER_CSS[2] = parseFloat(document.getElementById('css2').value)||65.7;
   POOL_LEN = parseFloat(document.getElementById('poolLen').value)||36;
 
   // Use the inline-edited secs if they match the current text, otherwise
@@ -2475,9 +2480,9 @@ function renderPreview() {
 
   // Temporarily set USER_CSS from inputs
   var tmpCSS = [
-    parseFloat(document.getElementById('css0').value)||66,
-    parseFloat(document.getElementById('css1').value)||68,
-    parseFloat(document.getElementById('css2').value)||71
+    parseFloat(document.getElementById('css0').value)||61.1,
+    parseFloat(document.getElementById('css1').value)||63.3,
+    parseFloat(document.getElementById('css2').value)||65.7
   ];
   USER_CSS[0]=tmpCSS[0]; USER_CSS[1]=tmpCSS[1]; USER_CSS[2]=tmpCSS[2];
   POOL_LEN = parseFloat(document.getElementById('poolLen').value)||36;

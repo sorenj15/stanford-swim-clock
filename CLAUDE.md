@@ -100,4 +100,4 @@ The AI_SYSTEM_PROMPT in `server.js` has detailed formatting rules that must stay
 
 - `DSEG7` font loaded from `jsdelivr` CDN for the water polo TV. Falls back to Arial Black if CDN fails.
 - Pool length defaults to 36 m (Avery short-course meters). Coaches change this per-session.
-- CSS defaults: Tier 1 = 66 s/100m, Tier 2 = 68, Tier 3 = 71. These are Stanford-specific — don't repurpose.
+- CSS defaults: Tier 1 = 61.1 s/100m, Tier 2 = 63.3, Tier 3 = 65.7. These are Stanford-specific (converted from sec/100y test averages × 1.0936) — don't repurpose. BASE_CSS in index.html must stay in sync with these so the default scale is 1.0.
