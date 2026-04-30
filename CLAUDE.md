@@ -2,6 +2,8 @@
 
 This repo hosts two poolside apps plus a tiny Node server that glues them together. Keep this doc current as the architecture evolves.
 
+> **For full session context (URLs, recent features, common workflows, what to NOT do), read `HANDOFF.md` first.** This file is the lean architecture reference that auto-loads into every Claude session.
+
 ## Files
 
 | File | Purpose |
@@ -34,11 +36,21 @@ Mode detection happens near the top of the `<script>` block via `location.search
 
 **Message shape — water polo:**
 ```js
-// Display → others (broadcast at 60fps while running)
-{ type: 'state', gameTime, shotTime, quarter, homeScore, awayScore, running, shotOnly, exclusions }
+// Display → others (throttled 8 Hz default, 30 Hz when game<60s or shot<5s).
+// sendState(true) bypasses throttle for event-driven updates.
+{ type: 'state',
+  gameTime, shotTime, quarter, homeScore, awayScore, running, shotOnly, exclusions,
+  splitMode, bGameTime, bShotTime, bRunning, bHomeScore, bAwayScore,
+  drillsMode, repCounterEnabled, repCount, bRepCount,
+  restMode, restTime, qtrLen, shotLen,
+  displayId, displayBorn  // duplicate-tab detection
+}
 
-// Controller → display
-{ type: 'cmd', action: 'start' | 'stop' | 'reset' | 'setGame' | 'setShot' | 'score' | ..., data: {...} }
+// Controller → display (or display → display in some cases)
+{ type: 'cmd', action: '...', data: { side: 'A'|'B', ... } }
+// Common actions: toggle, stop, shot30, shot20, score, setGame, setShot,
+//   setSplit, setDrills, resetSide, restStart, restCancel, horn,
+//   setRepCounter, repInc, repDec, repReset, swapPoss, toggleMode
 ```
 
 **Message shape — swim clock:**
