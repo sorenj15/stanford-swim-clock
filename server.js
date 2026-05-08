@@ -190,6 +190,8 @@ function parseCourt(req) {
 
 wss.on('connection', (ws, req) => {
   ws._court = parseCourt(req);
+  ws.isAlive = true;
+  ws.on('pong', () => { ws.isAlive = true; });
   clients.add(ws);
   console.log(`Client connected to court "${ws._court}" (${clients.size} total)`);
 
@@ -208,6 +210,24 @@ wss.on('connection', (ws, req) => {
     console.log(`Client disconnected from court "${ws._court}" (${clients.size} total)`);
   });
 });
+
+// Heartbeat — Render's proxy and mobile NAT silently drop idle WS
+// connections. Ping every 25s; any client that hasn't ponged since the
+// last ping gets terminated so the client-side onclose fires promptly
+// and reconnect kicks in.
+const heartbeatInterval = setInterval(() => {
+  for (const ws of clients) {
+    if (ws.isAlive === false) {
+      clients.delete(ws);
+      try { ws.terminate(); } catch(e) {}
+      continue;
+    }
+    ws.isAlive = false;
+    try { ws.ping(); } catch(e) {}
+  }
+}, 25000);
+
+wss.on('close', () => clearInterval(heartbeatInterval));
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {

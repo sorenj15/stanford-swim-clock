@@ -1077,6 +1077,12 @@ var DISPLAY_ID = Math.random().toString(36).slice(2, 10);
 var DISPLAY_BORN = Date.now();
 var _displayDeposed = false;
 
+// TV mode locks onto a single display source so a stray second display
+// can't make the shot clock flicker between two senders. We only switch
+// sources after the active one has been silent for >3s.
+var _tvActiveDisplayId = null;
+var _tvActiveLastSeen = 0;
+
 function connectWS() {
   try {
     var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -1133,6 +1139,18 @@ function connectWS() {
 function wsSend(obj) {
   if (ws && wsReady) ws.send(JSON.stringify(obj));
 }
+
+// iPhone Safari kills WebSockets the moment the screen locks. The
+// existing onclose handler reconnects after 2s, but on a half-open
+// socket onclose can take tens of seconds to fire — that's the
+// "controller disconnected" feeling. Force a reconnect when the page
+// becomes visible again, if we're not already connected.
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible' && !wsReady) {
+    try { if (ws) ws.close(); } catch(e) {}
+    connectWS();
+  }
+});
 
 // Throttle sendState so we're not flooding the WebSocket at 60Hz from
 // the clock loop. The controller and TVs only need second-level
@@ -1233,6 +1251,21 @@ function ctrlToggleRepCounter() {
 
 function applyState(s) {
   if (IS_TV) {
+    // displayId lock: ignore state from a second sender unless the current
+    // source has gone silent (>3s). Prevents flicker when a stray second
+    // display tab is broadcasting alongside the real scoreboard.
+    if (s.displayId) {
+      var nowMs = Date.now();
+      if (!_tvActiveDisplayId || s.displayId === _tvActiveDisplayId) {
+        _tvActiveDisplayId = s.displayId;
+        _tvActiveLastSeen = nowMs;
+      } else if (nowMs - _tvActiveLastSeen > 3000) {
+        _tvActiveDisplayId = s.displayId;
+        _tvActiveLastSeen = nowMs;
+      } else {
+        return; // active source still alive — drop this stray broadcast
+      }
+    }
     _lastRemoteState = s;
     // If the scoreboard is in split mode and this TV is configured for
     // Side B, remap the state we read so the rest of the TV render code
@@ -1680,7 +1713,9 @@ function handleCmd(action, data) {
       if (data.ms && data.ms > 0) CFG.shotLen = data.ms;
       break;
   }
-  sendState();
+  // Force-bypass the 125ms throttle: cmds are user-initiated and the
+  // controller needs to see the result NOW, not 125ms later.
+  sendState(true);
 }
 
 // ── Clock control ───────────────────────────────────────────────────────
@@ -1737,9 +1772,12 @@ function loopB(ts) {
       renderSplit(); sendState(); return;
     }
   }
+  var bPrevTs = bLastTs;
   bLastTs = ts;
   renderSplit();
-  if (Math.floor(ts / 250) !== Math.floor((bLastTs||ts) / 250)) sendState();
+  // ~4 Hz state stream while running. Compare against the PREVIOUS ts —
+  // bLastTs was just overwritten so we'd always compare equal otherwise.
+  if (Math.floor(ts / 250) !== Math.floor((bPrevTs||ts) / 250)) sendState();
   bRaf = requestAnimationFrame(loopB);
 }
 
@@ -1778,11 +1816,13 @@ function loop(ts) {
     exclusions = exclusions.filter(function(e){ return e.remaining > 0; });
     if (exclDone) renderExcl();
   }
+  var prevTs = lastTs;
   lastTs = ts;
   renderDisplay();
   if (splitMode) renderSplit();
-  // Send state to controller ~4x per second
-  if (Math.floor(ts / 250) !== Math.floor((lastTs||ts) / 250)) sendState();
+  // Send state to controller ~4x per second. Compare against the PREVIOUS
+  // ts — lastTs was just overwritten so we'd always compare equal otherwise.
+  if (Math.floor(ts / 250) !== Math.floor((prevTs||ts) / 250)) sendState();
   raf = requestAnimationFrame(loop);
 }
 
