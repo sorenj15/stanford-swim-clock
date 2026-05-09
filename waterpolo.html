@@ -1078,9 +1078,12 @@ var DISPLAY_BORN = Date.now();
 var _displayDeposed = false;
 
 // TV mode locks onto a single display source so a stray second display
-// can't make the shot clock flicker between two senders. We only switch
-// sources after the active one has been silent for >3s.
+// can't make the shot clock flicker between two senders. Strategy: prefer
+// the newest-born display (matches the display-vs-display deposing rule).
+// Older displays are ignored. If the active source goes silent for >3s
+// we accept whoever's broadcasting, regardless of birth order.
 var _tvActiveDisplayId = null;
+var _tvActiveDisplayBorn = 0;
 var _tvActiveLastSeen = 0;
 
 function connectWS() {
@@ -1251,19 +1254,22 @@ function ctrlToggleRepCounter() {
 
 function applyState(s) {
   if (IS_TV) {
-    // displayId lock: ignore state from a second sender unless the current
-    // source has gone silent (>3s). Prevents flicker when a stray second
-    // display tab is broadcasting alongside the real scoreboard.
+    // displayId lock — newest-born wins. Prefer broadcasts from the
+    // most recently opened display (matches the display-vs-display
+    // deposing rule). Stray older displays are ignored. If the active
+    // source has been silent >3s we adopt whoever's still talking.
     if (s.displayId) {
       var nowMs = Date.now();
-      if (!_tvActiveDisplayId || s.displayId === _tvActiveDisplayId) {
-        _tvActiveDisplayId = s.displayId;
-        _tvActiveLastSeen = nowMs;
-      } else if (nowMs - _tvActiveLastSeen > 3000) {
-        _tvActiveDisplayId = s.displayId;
-        _tvActiveLastSeen = nowMs;
+      var born = s.displayBorn || 0;
+      var sameSource = (s.displayId === _tvActiveDisplayId);
+      var newer      = (born > _tvActiveDisplayBorn);
+      var stale      = (nowMs - _tvActiveLastSeen > 3000);
+      if (!_tvActiveDisplayId || sameSource || newer || stale) {
+        _tvActiveDisplayId   = s.displayId;
+        _tvActiveDisplayBorn = born;
+        _tvActiveLastSeen    = nowMs;
       } else {
-        return; // active source still alive — drop this stray broadcast
+        return; // older phantom display — ignore
       }
     }
     _lastRemoteState = s;
