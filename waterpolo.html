@@ -954,6 +954,11 @@ body.is-tv-sideB .tv-side-badge { display: block; }
     </div>
 
     <div class="settings-row">
+      <label>Shot Clock Loop</label>
+      <div class="rb rb-mode" id="rbShotLoopToggle" onclick="ctrlToggleShotLoop()">🔁 LOOP SHOT CLOCK<span class="rb-sub">auto-reset to shot-clock default when it runs out</span></div>
+    </div>
+
+    <div class="settings-row">
       <label>Other</label>
       <div class="ctrl-grid g2">
         <div class="rb rb-mode" onclick="cmd('toggleMode')">SHOT-ONLY<span class="rb-sub">toggle</span></div>
@@ -1200,7 +1205,8 @@ function sendState(force) {
     drillsMode: drillsMode,
     repCounterEnabled: repCounterEnabled,
     repCount: repCount,
-    bRepCount: bRepCount
+    bRepCount: bRepCount,
+    shotLoop: shotLoop
   });
 }
 
@@ -1231,6 +1237,16 @@ function ctrlToggleDrills() {
   var b = document.getElementById('rbDrillsToggle');
   if (b && b.firstChild) b.firstChild.textContent = _ctrlDrills ? '✕ NORMAL TV' : '⏱ DRILL SCOREBOARD';
   cmd('setDrills', {on: _ctrlDrills});
+}
+
+// Shot clock loop mode — controller toggle. When on, the display auto-
+// resets shotTime to the sticky default when it hits 0 and keeps running.
+var _ctrlShotLoop = false;
+function ctrlToggleShotLoop() {
+  _ctrlShotLoop = !_ctrlShotLoop;
+  var b = document.getElementById('rbShotLoopToggle');
+  if (b && b.firstChild) b.firstChild.textContent = _ctrlShotLoop ? '✕ STOP LOOPING' : '🔁 LOOP SHOT CLOCK';
+  cmd('setShotLoop', {on: _ctrlShotLoop});
 }
 
 // Rep counter — controller-side toggle and command helpers.
@@ -1376,6 +1392,13 @@ function applyState(s) {
   setDisplay('ctrlRepSecB', !!(s.repCounterEnabled && s.splitMode));
   setText('ctrlRepCountB',  String(s.bRepCount || 0));
 
+  // Shot loop toggle — keep controller label in sync with display state
+  if (typeof s.shotLoop === 'boolean' && s.shotLoop !== _ctrlShotLoop) {
+    _ctrlShotLoop = s.shotLoop;
+    var sl = document.getElementById('rbShotLoopToggle');
+    if (sl && sl.firstChild) sl.firstChild.textContent = _ctrlShotLoop ? '✕ STOP LOOPING' : '🔁 LOOP SHOT CLOCK';
+  }
+
   setStartBtn('rbStartStop', s.running);
 
   // Split mode: the remote's layout is driven by its OWN local flag
@@ -1436,6 +1459,10 @@ var drillsMode = false;
 var repCounterEnabled = false;
 var repCount = 0;
 var bRepCount = 0;
+
+// Shot clock loop mode — when on, hitting 0 auto-resets the shot clock
+// to CFG.shotLen and keeps the game running. Useful for timed drills.
+var shotLoop = false;
 
 // Rest timer (between-quarter break) — independent countdown that takes
 // over the display until it expires or is cancelled.
@@ -1662,6 +1689,9 @@ function handleCmd(action, data) {
       repCounterEnabled = !!data.on;
       renderRepCounter(); sendState();
       break;
+    case 'setShotLoop':
+      shotLoop = !!data.on;
+      break;
     case 'repInc':
       if ((data && data.side) === 'B') bRepCount = Math.max(0, bRepCount + 1);
       else repCount = Math.max(0, repCount + 1);
@@ -1774,8 +1804,14 @@ function loopB(ts) {
     }
     bShotTime -= dt;
     if (bShotTime <= 0) {
-      bShotTime = 0; _stopB(); soundHorn();
-      renderSplit(); sendState(); return;
+      if (shotLoop) {
+        bShotTime = CFG.shotLen;
+        soundHorn();
+        sendState(true);
+      } else {
+        bShotTime = 0; _stopB(); soundHorn();
+        renderSplit(); sendState(); return;
+      }
     }
   }
   var bPrevTs = bLastTs;
@@ -1809,8 +1845,15 @@ function loop(ts) {
     // Shot clock always runs
     shotTime -= dt;
     if (shotTime <= 0) {
-      shotTime = 0; _stop(); soundHorn();
-      renderDisplay(); sendState(); return;
+      if (shotLoop) {
+        // Loop mode: reset to the sticky shot-clock default and keep going
+        shotTime = CFG.shotLen;
+        soundHorn();
+        sendState(true);
+      } else {
+        shotTime = 0; _stop(); soundHorn();
+        renderDisplay(); sendState(); return;
+      }
     }
 
     // Exclusions
