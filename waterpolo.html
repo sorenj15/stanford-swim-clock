@@ -143,6 +143,31 @@ body {
   letter-spacing: 0.15em; text-transform: uppercase;
   color: #5a2020;
 }
+/* ROTATE label — appears above the shot clock during the rest phase of
+   alternating mode. Toggled via inline style.display from JS render code. */
+.rotate-lbl {
+  display: none;
+  font-size: 1rem; font-weight: 900;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: #2ecc71;
+  text-shadow: 0 0 12px rgba(46,204,113,0.5);
+}
+.tv-rotate-lbl {
+  display: none;
+  position: absolute; top: 4vh; left: 0; right: 0; text-align: center;
+  font-size: 4vh; font-weight: 900;
+  letter-spacing: 0.25em; text-transform: uppercase;
+  color: #2ecc71;
+  text-shadow: 0 0 24px rgba(46,204,113,0.6);
+  pointer-events: none; z-index: 5;
+}
+.sp-rotate-lbl {
+  display: none;
+  font-size: 1rem; font-weight: 900;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: #2ecc71; margin-bottom: 4px;
+  text-shadow: 0 0 10px rgba(46,204,113,0.45);
+}
 .shot-clock {
   font-family: 'SF Mono', 'Courier New', monospace;
   font-size: 10rem; font-weight: 900;
@@ -652,6 +677,7 @@ body.is-tv-sideB .tv-side-badge { display: block; }
 
 <!-- ═══ TV VIEW (dedicated outdoor shot clock) ═══ -->
 <div class="tv-app" id="tvApp" style="display:none">
+  <div class="tv-rotate-lbl" id="tvRotateLbl">ROTATE</div>
   <div class="tv-mini tv-mini-game" id="tvMiniGame">8:00</div>
   <div class="tv-num" id="tvNum">30</div>
   <div class="tv-mini tv-mini-shot" id="tvMiniShot">30</div>
@@ -721,6 +747,7 @@ body.is-tv-sideB .tv-side-badge { display: block; }
     <div class="mode-badge" id="modeBadge">SHOT CLOCK ONLY</div>
     <div class="sc-wrap">
       <div class="sc-lbl">SHOT CLOCK</div>
+      <div class="rotate-lbl rotate-lbl-A" id="rotateLblMain">ROTATE</div>
       <div class="shot-clock sc-off" id="shotClock" onclick="openTimeEdit('shot')">30</div>
     </div>
   </div>
@@ -742,7 +769,10 @@ body.is-tv-sideB .tv-side-badge { display: block; }
     </div>
     <div class="sp-row">
       <div class="sp-game" id="spGameA" onclick="openTimeEdit('game','A')">8:00</div>
-      <div class="sp-shot" id="spShotA" onclick="openTimeEdit('shot','A')">30</div>
+      <div>
+        <div class="sp-rotate-lbl" id="spRotateLblA">ROTATE</div>
+        <div class="sp-shot" id="spShotA" onclick="openTimeEdit('shot','A')">30</div>
+      </div>
     </div>
   </div>
   <div class="sp-panel">
@@ -753,7 +783,10 @@ body.is-tv-sideB .tv-side-badge { display: block; }
     </div>
     <div class="sp-row">
       <div class="sp-game" id="spGameB" onclick="openTimeEdit('game','B')">8:00</div>
-      <div class="sp-shot" id="spShotB" onclick="openTimeEdit('shot','B')">30</div>
+      <div>
+        <div class="sp-rotate-lbl" id="spRotateLblB">ROTATE</div>
+        <div class="sp-shot" id="spShotB" onclick="openTimeEdit('shot','B')">30</div>
+      </div>
     </div>
   </div>
 </div>
@@ -956,6 +989,16 @@ body.is-tv-sideB .tv-side-badge { display: block; }
     <div class="settings-row">
       <label>Shot Clock Loop</label>
       <div class="rb rb-mode" id="rbShotLoopToggle" onclick="ctrlToggleShotLoop()">🔁 LOOP SHOT CLOCK<span class="rb-sub">auto-reset to shot-clock default when it runs out</span></div>
+    </div>
+
+    <div class="settings-row">
+      <label>Alternating Rest (Rotate)</label>
+      <div class="rb rb-mode" id="rbShotAltToggle" onclick="ctrlToggleShotAlt()">🔄 ALTERNATING REST<span class="rb-sub">cycle shot-clock → rest-len → shot-clock (loop must be on)</span></div>
+    </div>
+
+    <div class="settings-row">
+      <label>Rest Length (seconds)</label>
+      <input class="settings-inp" id="setAltSec" type="number" min="1" max="60" value="5">
     </div>
 
     <div class="settings-row">
@@ -1206,7 +1249,11 @@ function sendState(force) {
     repCounterEnabled: repCounterEnabled,
     repCount: repCount,
     bRepCount: bRepCount,
-    shotLoop: shotLoop
+    shotLoop: shotLoop,
+    shotAlt: shotAlt,
+    shotAltLen: CFG.shotAltLen,
+    shotAltPhase: shotAltPhase,
+    bShotAltPhase: bShotAltPhase
   });
 }
 
@@ -1247,6 +1294,15 @@ function ctrlToggleShotLoop() {
   var b = document.getElementById('rbShotLoopToggle');
   if (b && b.firstChild) b.firstChild.textContent = _ctrlShotLoop ? '✕ STOP LOOPING' : '🔁 LOOP SHOT CLOCK';
   cmd('setShotLoop', {on: _ctrlShotLoop});
+}
+
+// Alternating rest ("ROTATE") — toggle. Pairs with loop mode.
+var _ctrlShotAlt = false;
+function ctrlToggleShotAlt() {
+  _ctrlShotAlt = !_ctrlShotAlt;
+  var b = document.getElementById('rbShotAltToggle');
+  if (b && b.firstChild) b.firstChild.textContent = _ctrlShotAlt ? '✕ STOP ALTERNATING' : '🔄 ALTERNATING REST';
+  cmd('setShotAlt', {on: _ctrlShotAlt});
 }
 
 // Rep counter — controller-side toggle and command helpers.
@@ -1301,7 +1357,9 @@ function applyState(s) {
         homeScore: s.bHomeScore,
         awayScore: s.bAwayScore,
         drillsMode: s.drillsMode,
-        splitMode: s.splitMode
+        splitMode: s.splitMode,
+        shotAlt:      s.shotAlt,
+        shotAltPhase: s.bShotAltPhase
       };
     }
     var tvApp = document.getElementById('tvApp');
@@ -1317,6 +1375,11 @@ function applyState(s) {
     if (tvMS) tvMS.textContent = Math.max(0, Math.ceil((s.shotTime||0)/1000));
     if (tvScW) tvScW.textContent = s.homeScore || 0;
     if (tvScB) tvScB.textContent = s.awayScore || 0;
+
+    // ROTATE label on TV when alternating mode is on and shot clock is
+    // in the rest phase.
+    var tvRL = document.getElementById('tvRotateLbl');
+    if (tvRL) tvRL.style.display = (s.shotAlt && s.shotAltPhase === 'rest') ? 'block' : 'none';
 
     // DRILLS mode: TV is acting as a drill scoreboard. Just show the
     // game clock big + scores. Skip the shot-clock specifics below.
@@ -1398,6 +1461,12 @@ function applyState(s) {
     var sl = document.getElementById('rbShotLoopToggle');
     if (sl && sl.firstChild) sl.firstChild.textContent = _ctrlShotLoop ? '✕ STOP LOOPING' : '🔁 LOOP SHOT CLOCK';
   }
+  // Alternating rest toggle — same idea
+  if (typeof s.shotAlt === 'boolean' && s.shotAlt !== _ctrlShotAlt) {
+    _ctrlShotAlt = s.shotAlt;
+    var sa = document.getElementById('rbShotAltToggle');
+    if (sa && sa.firstChild) sa.firstChild.textContent = _ctrlShotAlt ? '✕ STOP ALTERNATING' : '🔄 ALTERNATING REST';
+  }
 
   setStartBtn('rbStartStop', s.running);
 
@@ -1422,6 +1491,7 @@ var CFG = {
   shotLen: 30 * 1000,
   shotShort: 20 * 1000,
   exclLen: 20 * 1000,
+  shotAltLen: 5 * 1000,  // "rotate" rest length when alternating mode is on
 };
 
 // ── State ───────────────────────────────────────────────────────────────
@@ -1463,6 +1533,13 @@ var bRepCount = 0;
 // Shot clock loop mode — when on, hitting 0 auto-resets the shot clock
 // to CFG.shotLen and keeps the game running. Useful for timed drills.
 var shotLoop = false;
+
+// Alternating "ROTATE" rest mode — only kicks in when shotLoop is also on.
+// When on, the shot clock cycles work-len → rest-len → work-len → …
+// (e.g. 12 → 5 → 12 → 5 for a drill with rotation gaps).
+var shotAlt = false;
+var shotAltPhase  = 'work'; // 'work' | 'rest' — current cycle phase, Side A
+var bShotAltPhase = 'work'; // same, Side B
 
 // Rest timer (between-quarter break) — independent countdown that takes
 // over the display until it expires or is cancelled.
@@ -1564,12 +1641,12 @@ function handleCmd(action, data) {
       break;
     case 'shot30':
       // ↺ 30 button is always exactly 30 seconds — fixed convention.
-      if (side === 'B') { bShotTime = 30000; renderSplit(); }
-      else { shotTime = 30000; renderDisplay(); }
+      if (side === 'B') { bShotTime = 30000; bShotAltPhase = 'work'; renderSplit(); }
+      else { shotTime = 30000; shotAltPhase = 'work'; renderDisplay(); }
       break;
     case 'shot20':
-      if (side === 'B') { bShotTime = CFG.shotShort; renderSplit(); }
-      else { shotTime = CFG.shotShort; renderDisplay(); }
+      if (side === 'B') { bShotTime = CFG.shotShort; bShotAltPhase = 'work'; renderSplit(); }
+      else { shotTime = CFG.shotShort; shotAltPhase = 'work'; renderDisplay(); }
       break;
     case 'resetSide':
       // Shot-clock-only reset to the sticky default (CFG.shotLen). Does
@@ -1578,9 +1655,11 @@ function handleCmd(action, data) {
       // For a full reset of a side, use Settings → RESET ALL.
       if (side === 'B') {
         bShotTime = CFG.shotLen;
+        bShotAltPhase = 'work';
         renderSplit();
       } else {
         shotTime = CFG.shotLen;
+        shotAltPhase = 'work';
         renderDisplay(); renderSplit();
       }
       break;
@@ -1596,8 +1675,10 @@ function handleCmd(action, data) {
         // Reset both sides to clean defaults
         gameTime = CFG.qtrLen; shotTime = CFG.shotLen;
         bGameTime = CFG.qtrLen; bShotTime = CFG.shotLen;
+        shotAltPhase = 'work'; bShotAltPhase = 'work';
         renderSplit();
       } else {
+        shotAltPhase = 'work';
         renderDisplay();
       }
       // The rep counter badges depend on splitMode (Side B badge only
@@ -1638,6 +1719,7 @@ function handleCmd(action, data) {
       quarter = Math.min(quarter + 1, 4);
       gameTime = CFG.qtrLen;
       shotTime = CFG.shotLen;
+      shotAltPhase = 'work'; bShotAltPhase = 'work';
       exclusions = [];
       renderQtr(); renderDisplay(); renderExcl();
       soundHorn();
@@ -1645,6 +1727,7 @@ function handleCmd(action, data) {
     case 'resetGame':
       _stop();
       quarter = 0; gameTime = CFG.qtrLen; shotTime = CFG.shotLen;
+      shotAltPhase = 'work'; bShotAltPhase = 'work';
       homeScoreVal = 0; awayScoreVal = 0; exclusions = [];
       document.getElementById('homeScore').textContent = '0';
       document.getElementById('awayScore').textContent = '0';
@@ -1665,6 +1748,7 @@ function handleCmd(action, data) {
       break;
     case 'swapPoss':
       shotTime = CFG.shotLen;
+      shotAltPhase = 'work';
       renderDisplay();
       break;
     case 'editGame':
@@ -1691,6 +1775,12 @@ function handleCmd(action, data) {
       break;
     case 'setShotLoop':
       shotLoop = !!data.on;
+      break;
+    case 'setShotAlt':
+      shotAlt = !!data.on;
+      // Always reset both phases when toggling — avoids landing mid-rest by surprise
+      shotAltPhase = 'work';
+      bShotAltPhase = 'work';
       break;
     case 'repInc':
       if ((data && data.side) === 'B') bRepCount = Math.max(0, bRepCount + 1);
@@ -1732,6 +1822,9 @@ function handleCmd(action, data) {
         if (!running) shotTime = data.shotMs;
         if (!bRunning && splitMode) bShotTime = data.shotMs;
       }
+      if (data.altMs && data.altMs > 0) {
+        CFG.shotAltLen = data.altMs;
+      }
       renderDisplay(); renderSplit();
       break;
     case 'setShot':
@@ -1740,9 +1833,11 @@ function handleCmd(action, data) {
       // to Settings every time they want a different clock for a drill.
       if (side === 'B') {
         bShotTime = data.ms;
+        bShotAltPhase = 'work';
         if (!bRunning) renderSplit();
       } else {
         shotTime = data.ms;
+        shotAltPhase = 'work';
         if (!running) { renderDisplay(); renderSplit(); }
       }
       // Sticky default — both sides share CFG.shotLen.
@@ -1805,7 +1900,12 @@ function loopB(ts) {
     bShotTime -= dt;
     if (bShotTime <= 0) {
       if (shotLoop) {
-        bShotTime = CFG.shotLen;
+        if (shotAlt) {
+          bShotAltPhase = (bShotAltPhase === 'work') ? 'rest' : 'work';
+          bShotTime = (bShotAltPhase === 'rest') ? CFG.shotAltLen : CFG.shotLen;
+        } else {
+          bShotTime = CFG.shotLen;
+        }
         soundHorn();
         sendState(true);
       } else {
@@ -1846,8 +1946,14 @@ function loop(ts) {
     shotTime -= dt;
     if (shotTime <= 0) {
       if (shotLoop) {
-        // Loop mode: reset to the sticky shot-clock default and keep going
-        shotTime = CFG.shotLen;
+        // Loop mode: reset and keep going. If alternating is on, flip the
+        // phase between work and rest each cycle.
+        if (shotAlt) {
+          shotAltPhase = (shotAltPhase === 'work') ? 'rest' : 'work';
+          shotTime = (shotAltPhase === 'rest') ? CFG.shotAltLen : CFG.shotLen;
+        } else {
+          shotTime = CFG.shotLen;
+        }
         soundHorn();
         sendState(true);
       } else {
@@ -1972,6 +2078,13 @@ function _renderSidePanel(which, gt, st, isRun) {
   else if (sSec <= 5) sCls += ' sp-danger';
   else if (sSec <= 10) sCls += ' sp-warn';
   sEl.className = sCls;
+
+  // ROTATE label — visible when alternating is on and this side is in rest phase
+  var rLbl = document.getElementById('spRotateLbl' + which);
+  if (rLbl) {
+    var phase = (which === 'B') ? bShotAltPhase : shotAltPhase;
+    rLbl.style.display = (shotAlt && phase === 'rest') ? 'block' : 'none';
+  }
 }
 
 // Rep counter badges — main (Side A) top-right, Side B bottom-right.
@@ -2057,6 +2170,10 @@ function renderDisplay() {
   else if (sSec <= 5) scCls += ' sc-danger';
   else if (sSec <= 10) scCls += ' sc-warn';
   scEl.className = scCls;
+
+  // ROTATE label — single-court display (uses Side A's phase)
+  var rLbl = document.getElementById('rotateLblMain');
+  if (rLbl) rLbl.style.display = (shotAlt && shotAltPhase === 'rest') ? 'block' : 'none';
 }
 
 function fmtClock(ms) {
@@ -2191,6 +2308,15 @@ function openSettings() {
   _ctrlRepCounter = !!_lastRemoteState.repCounterEnabled;
   var rb = document.getElementById('rbRepCounterToggle');
   if (rb && rb.firstChild) rb.firstChild.textContent = _ctrlRepCounter ? '✕ HIDE REP COUNTER' : '🔢 REP COUNTER';
+  // Reflect loop + alternating state from the display
+  _ctrlShotLoop = !!_lastRemoteState.shotLoop;
+  var lb = document.getElementById('rbShotLoopToggle');
+  if (lb && lb.firstChild) lb.firstChild.textContent = _ctrlShotLoop ? '✕ STOP LOOPING' : '🔁 LOOP SHOT CLOCK';
+  _ctrlShotAlt = !!_lastRemoteState.shotAlt;
+  var ab = document.getElementById('rbShotAltToggle');
+  if (ab && ab.firstChild) ab.firstChild.textContent = _ctrlShotAlt ? '✕ STOP ALTERNATING' : '🔄 ALTERNATING REST';
+  var altMs = _lastRemoteState.shotAltLen || 5*1000;
+  document.getElementById('setAltSec').value = Math.round(altMs / 1000);
   document.getElementById('settingsOverlay').classList.add('open');
 }
 function closeSettings() {
@@ -2199,7 +2325,8 @@ function closeSettings() {
 function applySettings() {
   var m = parseInt(document.getElementById('setQtrMin').value, 10) || 8;
   var s = parseInt(document.getElementById('setShotSec').value, 10) || 30;
-  cmd('setDefaults', { qtrMs: m * 60 * 1000, shotMs: s * 1000 });
+  var a = parseInt(document.getElementById('setAltSec').value, 10) || 5;
+  cmd('setDefaults', { qtrMs: m * 60 * 1000, shotMs: s * 1000, altMs: a * 1000 });
   closeSettings();
 }
 
