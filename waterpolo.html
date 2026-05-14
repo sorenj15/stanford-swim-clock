@@ -838,6 +838,26 @@ body.is-tv-sideB .tv-side-badge { display: block; }
     </div>
   </div>
 
+  <!-- Rep counter sections — placed up high so they're thumb-reachable
+       without scrolling. Hidden until the coach turns them on in Settings.
+       Side B appears only in split mode. -->
+  <div class="ctrl-section" id="ctrlRepSec" style="display:none">
+    <div class="ctrl-section-title"><span id="ctrlRepLblA">Reps</span> · <span id="ctrlRepCount" style="color:#fff;font-size:1.6rem;font-weight:900">0</span></div>
+    <div class="ctrl-grid g3">
+      <div class="rb rb-rep-plus" onclick="cmd('repInc',{side:'A'})" style="background:#1a3a2a;color:#8fcc6a;border:1px solid #2a4020;font-size:1.6rem;font-weight:900">+1</div>
+      <div class="rb rb-rep-minus" onclick="cmd('repDec',{side:'A'})" style="background:#3a1a1a;color:#cc8f8f;border:1px solid #5a2020">−1</div>
+      <div class="rb rb-rep-reset" onclick="cmd('repReset',{side:'A'})" style="background:#1a1a1a;color:#888;border:1px solid #333">↺ RESET</div>
+    </div>
+  </div>
+  <div class="ctrl-section" id="ctrlRepSecB" style="display:none">
+    <div class="ctrl-section-title">Reps · B · <span id="ctrlRepCountB" style="color:#fff;font-size:1.6rem;font-weight:900">0</span></div>
+    <div class="ctrl-grid g3">
+      <div class="rb rb-rep-plus" onclick="cmd('repInc',{side:'B'})" style="background:#1a3a2a;color:#8fcc6a;border:1px solid #2a4020;font-size:1.6rem;font-weight:900">+1</div>
+      <div class="rb rb-rep-minus" onclick="cmd('repDec',{side:'B'})" style="background:#3a1a1a;color:#cc8f8f;border:1px solid #5a2020">−1</div>
+      <div class="rb rb-rep-reset" onclick="cmd('repReset',{side:'B'})" style="background:#1a1a1a;color:#888;border:1px solid #333">↺ RESET</div>
+    </div>
+  </div>
+
   <!-- Split-mode controls (one set per side) -->
   <div id="splitCtrl">
     <div class="cs-side-hdr first">Side A — <span id="csScoreA" style="color:#fff">0–0</span></div>
@@ -934,26 +954,6 @@ body.is-tv-sideB .tv-side-badge { display: block; }
       </div>
     </div>
   </div><!-- /#normalCtrl -->
-
-  <!-- Rep counter (sits OUTSIDE normalCtrl/splitCtrl so it shows in BOTH
-       normal and split modes when enabled). In split mode a second
-       Side-B section appears below this one. -->
-  <div class="ctrl-section" id="ctrlRepSec" style="display:none">
-    <div class="ctrl-section-title"><span id="ctrlRepLblA">Reps</span> · <span id="ctrlRepCount" style="color:#fff;font-size:1.6rem;font-weight:900">0</span></div>
-    <div class="ctrl-grid g3">
-      <div class="rb rb-rep-plus" onclick="cmd('repInc',{side:'A'})" style="background:#1a3a2a;color:#8fcc6a;border:1px solid #2a4020;font-size:1.6rem;font-weight:900">+1</div>
-      <div class="rb rb-rep-minus" onclick="cmd('repDec',{side:'A'})" style="background:#3a1a1a;color:#cc8f8f;border:1px solid #5a2020">−1</div>
-      <div class="rb rb-rep-reset" onclick="cmd('repReset',{side:'A'})" style="background:#1a1a1a;color:#888;border:1px solid #333">↺ RESET</div>
-    </div>
-  </div>
-  <div class="ctrl-section" id="ctrlRepSecB" style="display:none">
-    <div class="ctrl-section-title">Reps · B · <span id="ctrlRepCountB" style="color:#fff;font-size:1.6rem;font-weight:900">0</span></div>
-    <div class="ctrl-grid g3">
-      <div class="rb rb-rep-plus" onclick="cmd('repInc',{side:'B'})" style="background:#1a3a2a;color:#8fcc6a;border:1px solid #2a4020;font-size:1.6rem;font-weight:900">+1</div>
-      <div class="rb rb-rep-minus" onclick="cmd('repDec',{side:'B'})" style="background:#3a1a1a;color:#cc8f8f;border:1px solid #5a2020">−1</div>
-      <div class="rb rb-rep-reset" onclick="cmd('repReset',{side:'B'})" style="background:#1a1a1a;color:#888;border:1px solid #333">↺ RESET</div>
-    </div>
-  </div>
 </div>
 
 <!-- Settings overlay (gear icon → modal) -->
@@ -1134,6 +1134,23 @@ var _tvActiveDisplayId = null;
 var _tvActiveDisplayBorn = 0;
 var _tvActiveLastSeen = 0;
 
+// Controller uses the same single-source lock — without it, two displays
+// in the same court make the START button + toggles flicker between
+// states. Variables are separate from the TV ones because a remote can
+// also be running with no TV present.
+var _ctrlActiveDisplayId = null;
+var _ctrlActiveDisplayBorn = 0;
+var _ctrlActiveLastSeen = 0;
+
+// Suppression window for toggle-button echoes — when the user taps a
+// toggle locally, ignore conflicting in-flight state for ~1s so the
+// stale echo can't overwrite their action mid-round-trip.
+var _ctrlLocalTs = {};
+function _ctrlMarkLocal(field) { _ctrlLocalTs[field] = Date.now(); }
+function _ctrlIsFreshLocal(field) {
+  var t = _ctrlLocalTs[field]; return t && (Date.now() - t < 1000);
+}
+
 function connectWS() {
   try {
     var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -1272,7 +1289,7 @@ function ctrlToggleSplit() {
   cmd('setSplit', {on: _ctrlSplit});
   // Show/hide Side B rep section to match new split state
   var secB = document.getElementById('ctrlRepSecB');
-  if (secB) secB.style.display = (_ctrlRepCounter && _ctrlSplit) ? 'block' : 'none';
+  if (secB) secB.style.display = (_ctrlRepCounter && _ctrlSplit) ? '' : 'none';
   var lblA = document.getElementById('ctrlRepLblA');
   if (lblA) lblA.textContent = (_ctrlRepCounter && _ctrlSplit) ? 'Reps · A' : 'Reps';
 }
@@ -1281,6 +1298,7 @@ function ctrlToggleSplit() {
 var _ctrlDrills = false;
 function ctrlToggleDrills() {
   _ctrlDrills = !_ctrlDrills;
+  _ctrlMarkLocal('drills');
   var b = document.getElementById('rbDrillsToggle');
   if (b && b.firstChild) b.firstChild.textContent = _ctrlDrills ? '✕ NORMAL TV' : '⏱ DRILL SCOREBOARD';
   cmd('setDrills', {on: _ctrlDrills});
@@ -1291,6 +1309,7 @@ function ctrlToggleDrills() {
 var _ctrlShotLoop = false;
 function ctrlToggleShotLoop() {
   _ctrlShotLoop = !_ctrlShotLoop;
+  _ctrlMarkLocal('shotLoop');
   var b = document.getElementById('rbShotLoopToggle');
   if (b && b.firstChild) b.firstChild.textContent = _ctrlShotLoop ? '✕ STOP LOOPING' : '🔁 LOOP SHOT CLOCK';
   cmd('setShotLoop', {on: _ctrlShotLoop});
@@ -1300,6 +1319,7 @@ function ctrlToggleShotLoop() {
 var _ctrlShotAlt = false;
 function ctrlToggleShotAlt() {
   _ctrlShotAlt = !_ctrlShotAlt;
+  _ctrlMarkLocal('shotAlt');
   var b = document.getElementById('rbShotAltToggle');
   if (b && b.firstChild) b.firstChild.textContent = _ctrlShotAlt ? '✕ STOP ALTERNATING' : '🔄 ALTERNATING REST';
   cmd('setShotAlt', {on: _ctrlShotAlt});
@@ -1309,15 +1329,18 @@ function ctrlToggleShotAlt() {
 var _ctrlRepCounter = false;
 function ctrlToggleRepCounter() {
   _ctrlRepCounter = !_ctrlRepCounter;
+  _ctrlMarkLocal('repCounter');
   var b = document.getElementById('rbRepCounterToggle');
   if (b && b.firstChild) b.firstChild.textContent = _ctrlRepCounter ? '✕ HIDE REP COUNTER' : '🔢 REP COUNTER';
   // Apply locally so the panel appears immediately, even before the display
-  // round-trips state back to us.
+  // round-trips state back to us. Use '' (default) not 'block' to match
+  // what the diff-aware setDisplay does — keeps style.display strings
+  // identical so the echoed applyState is a true no-op.
   var sec = document.getElementById('ctrlRepSec');
-  if (sec) sec.style.display = _ctrlRepCounter ? 'block' : 'none';
+  if (sec) sec.style.display = _ctrlRepCounter ? '' : 'none';
   // Side B rep section appears only when ALSO in split mode
   var secB = document.getElementById('ctrlRepSecB');
-  if (secB) secB.style.display = (_ctrlRepCounter && _ctrlSplit) ? 'block' : 'none';
+  if (secB) secB.style.display = (_ctrlRepCounter && _ctrlSplit) ? '' : 'none';
   // Repaint label for the A panel so it says "Reps · A" or just "Reps"
   var lblA = document.getElementById('ctrlRepLblA');
   if (lblA) lblA.textContent = (_ctrlRepCounter && _ctrlSplit) ? 'Reps · A' : 'Reps';
@@ -1419,6 +1442,23 @@ function applyState(s) {
     return;
   }
   if (!IS_CONTROL) return;
+  // Controller displayId lock — newest-born wins, 3s silence fallback.
+  // Without this, two displays in the same court make the START button
+  // and toggle states flicker between the two senders.
+  if (s.displayId) {
+    var nowMs2 = Date.now();
+    var born2  = s.displayBorn || 0;
+    var sameSrc = (s.displayId === _ctrlActiveDisplayId);
+    var newer2  = (born2 > _ctrlActiveDisplayBorn);
+    var stale2  = (nowMs2 - _ctrlActiveLastSeen > 3000);
+    if (!_ctrlActiveDisplayId || sameSrc || newer2 || stale2) {
+      _ctrlActiveDisplayId   = s.displayId;
+      _ctrlActiveDisplayBorn = born2;
+      _ctrlActiveLastSeen    = nowMs2;
+    } else {
+      return; // older phantom display — ignore
+    }
+  }
   _lastRemoteState = s;
   // Diff-aware setters — only touch the DOM when the value actually
   // changed. Browsers will repaint a node every time you assign to
@@ -1437,9 +1477,12 @@ function applyState(s) {
   function setStartBtn(id, isRun) {
     var b = document.getElementById(id); if (!b) return;
     var wantText = isRun ? '⏸ STOP' : '▶ START';
-    var wantClass = isRun ? 'rb rb-stop' : 'rb rb-start';
     if (b.textContent !== wantText) b.textContent = wantText;
-    if (b.className   !== wantClass) b.className   = wantClass;
+    // classList.toggle preserves other modifiers like rb-huge (which the
+    // old `b.className = ...` was wiping on first state msg, shrinking
+    // the button forever).
+    b.classList.toggle('rb-stop',  isRun);
+    b.classList.toggle('rb-start', !isRun);
   }
 
   setText('csGame',  s.restMode ? '⏸ ' + fmtClock(s.restTime) : fmtClock(s.gameTime));
@@ -1448,21 +1491,25 @@ function applyState(s) {
   setText('csHome',  String(s.homeScore));
   setText('csAway',  String(s.awayScore));
 
-  // Rep counter section(s)
-  setDisplay('ctrlRepSec',  !!s.repCounterEnabled);
+  // Rep counter section(s). Skip echoes for ~1s after a local tap so the
+  // in-flight stale state can't briefly flip the panel hidden again.
+  if (!_ctrlIsFreshLocal('repCounter')) {
+    setDisplay('ctrlRepSec',  !!s.repCounterEnabled);
+    setDisplay('ctrlRepSecB', !!(s.repCounterEnabled && s.splitMode));
+    setText('ctrlRepLblA',    (s.repCounterEnabled && s.splitMode) ? 'Reps · A' : 'Reps');
+  }
   setText('ctrlRepCount',   String(s.repCount || 0));
-  setText('ctrlRepLblA',    (s.repCounterEnabled && s.splitMode) ? 'Reps · A' : 'Reps');
-  setDisplay('ctrlRepSecB', !!(s.repCounterEnabled && s.splitMode));
   setText('ctrlRepCountB',  String(s.bRepCount || 0));
 
-  // Shot loop toggle — keep controller label in sync with display state
-  if (typeof s.shotLoop === 'boolean' && s.shotLoop !== _ctrlShotLoop) {
+  // Shot loop toggle — keep controller label in sync with display state,
+  // but skip echoes for 1s after a local tap.
+  if (!_ctrlIsFreshLocal('shotLoop') && typeof s.shotLoop === 'boolean' && s.shotLoop !== _ctrlShotLoop) {
     _ctrlShotLoop = s.shotLoop;
     var sl = document.getElementById('rbShotLoopToggle');
     if (sl && sl.firstChild) sl.firstChild.textContent = _ctrlShotLoop ? '✕ STOP LOOPING' : '🔁 LOOP SHOT CLOCK';
   }
   // Alternating rest toggle — same idea
-  if (typeof s.shotAlt === 'boolean' && s.shotAlt !== _ctrlShotAlt) {
+  if (!_ctrlIsFreshLocal('shotAlt') && typeof s.shotAlt === 'boolean' && s.shotAlt !== _ctrlShotAlt) {
     _ctrlShotAlt = s.shotAlt;
     var sa = document.getElementById('rbShotAltToggle');
     if (sa && sa.firstChild) sa.firstChild.textContent = _ctrlShotAlt ? '✕ STOP ALTERNATING' : '🔄 ALTERNATING REST';
