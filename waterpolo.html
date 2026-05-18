@@ -955,6 +955,18 @@ body.is-tv-sideB .tv-side-badge { display: block; }
       </div>
     </div>
 
+    <!-- Goals — moved above Transition Timer so scoring stays in easy
+         thumb reach without scrolling to the bottom of the controller. -->
+    <div class="ctrl-section">
+      <div class="ctrl-section-title">Goals</div>
+      <div class="ctrl-grid g4">
+        <div class="rb rb-score-h rb-compact" onclick="cmd('score',{t:'home',d:1})">+ W</div>
+        <div class="rb rb-score-h rb-compact" onclick="cmd('score',{t:'home',d:-1})">− W</div>
+        <div class="rb rb-score-a rb-compact" onclick="cmd('score',{t:'away',d:1})">+ B</div>
+        <div class="rb rb-score-a rb-compact" onclick="cmd('score',{t:'away',d:-1})">− B</div>
+      </div>
+    </div>
+
     <!-- TRANSITION countdown — short hustle timer between drills/reps -->
     <div class="ctrl-section">
       <div class="ctrl-section-title">Transition Timer</div>
@@ -988,17 +1000,6 @@ body.is-tv-sideB .tv-side-badge { display: block; }
       <div class="ctrl-grid g2">
         <div class="rb rb-qtr" onclick="cmd('nextQtr')">▶ NEXT QTR</div>
         <div class="rb rb-horn" onclick="cmd('horn')">📯 HORN</div>
-      </div>
-    </div>
-
-    <!-- Goals (compact, at bottom) -->
-    <div class="ctrl-section">
-      <div class="ctrl-section-title">Goals</div>
-      <div class="ctrl-grid g4">
-        <div class="rb rb-score-h rb-compact" onclick="cmd('score',{t:'home',d:1})">+ W</div>
-        <div class="rb rb-score-h rb-compact" onclick="cmd('score',{t:'home',d:-1})">− W</div>
-        <div class="rb rb-score-a rb-compact" onclick="cmd('score',{t:'away',d:1})">+ B</div>
-        <div class="rb rb-score-a rb-compact" onclick="cmd('score',{t:'away',d:-1})">− B</div>
       </div>
     </div>
   </div><!-- /#normalCtrl -->
@@ -1047,6 +1048,22 @@ body.is-tv-sideB .tv-side-badge { display: block; }
     <div class="settings-row">
       <label>Rest Length (seconds)</label>
       <input class="settings-inp" id="setAltSec" type="number" min="1" max="60" value="5">
+    </div>
+
+    <div class="settings-row">
+      <label>Random Shot Clock</label>
+      <div class="rb rb-mode" id="rbShotRandomToggle" onclick="ctrlToggleShotRandom()">🎲 RANDOM SHOT CLOCK<span class="rb-sub">each loop cycle picks a new value in range (loop must be on)</span></div>
+    </div>
+
+    <div class="settings-row" style="display:flex;gap:8px">
+      <div style="flex:1">
+        <label>Random Min (seconds)</label>
+        <input class="settings-inp" id="setRandMin" type="number" min="1" max="120" value="10">
+      </div>
+      <div style="flex:1">
+        <label>Random Max (seconds)</label>
+        <input class="settings-inp" id="setRandMax" type="number" min="1" max="120" value="30">
+      </div>
     </div>
 
     <div class="settings-row">
@@ -1326,6 +1343,9 @@ function sendState(force) {
     shotAltLen: CFG.shotAltLen,
     shotAltPhase: shotAltPhase,
     bShotAltPhase: bShotAltPhase,
+    shotRandom: shotRandom,
+    shotRandMin: CFG.shotRandMin,
+    shotRandMax: CFG.shotRandMax,
     transitionMode: transitionMode,
     transitionTime: transitionTime
   });
@@ -1380,6 +1400,16 @@ function ctrlToggleShotAlt() {
   var b = document.getElementById('rbShotAltToggle');
   if (b && b.firstChild) b.firstChild.textContent = _ctrlShotAlt ? '✕ STOP ALTERNATING' : '🔄 ALTERNATING REST';
   cmd('setShotAlt', {on: _ctrlShotAlt});
+}
+
+// Random shot-clock mode — toggle. Pairs with loop mode.
+var _ctrlShotRandom = false;
+function ctrlToggleShotRandom() {
+  _ctrlShotRandom = !_ctrlShotRandom;
+  _ctrlMarkLocal('shotRandom');
+  var b = document.getElementById('rbShotRandomToggle');
+  if (b && b.firstChild) b.firstChild.textContent = _ctrlShotRandom ? '✕ STOP RANDOM' : '🎲 RANDOM SHOT CLOCK';
+  cmd('setShotRandom', {on: _ctrlShotRandom});
 }
 
 // Rep counter — controller-side toggle and command helpers.
@@ -1610,6 +1640,12 @@ function applyState(s) {
     var sa = document.getElementById('rbShotAltToggle');
     if (sa && sa.firstChild) sa.firstChild.textContent = _ctrlShotAlt ? '✕ STOP ALTERNATING' : '🔄 ALTERNATING REST';
   }
+  // Random shot-clock toggle — same idea
+  if (!_ctrlIsFreshLocal('shotRandom') && typeof s.shotRandom === 'boolean' && s.shotRandom !== _ctrlShotRandom) {
+    _ctrlShotRandom = s.shotRandom;
+    var sr = document.getElementById('rbShotRandomToggle');
+    if (sr && sr.firstChild) sr.firstChild.textContent = _ctrlShotRandom ? '✕ STOP RANDOM' : '🎲 RANDOM SHOT CLOCK';
+  }
 
   setStartBtn('rbStartStop', s.running);
 
@@ -1635,6 +1671,10 @@ var CFG = {
   shotShort: 20 * 1000,
   exclLen: 20 * 1000,
   shotAltLen: 5 * 1000,  // "rotate" rest length when alternating mode is on
+  // Random shot-clock mode — when on (and LOOP is on), each cycle picks a
+  // fresh random value in [min, max] seconds.
+  shotRandMin: 10,
+  shotRandMax: 30,
 };
 
 // ── State ───────────────────────────────────────────────────────────────
@@ -1683,6 +1723,12 @@ var shotLoop = false;
 var shotAlt = false;
 var shotAltPhase  = 'work'; // 'work' | 'rest' — current cycle phase, Side A
 var bShotAltPhase = 'work'; // same, Side B
+
+// Random shot-clock mode — only matters when LOOP is on. Each cycle the
+// new shot value is rand(CFG.shotRandMin..CFG.shotRandMax) seconds. With
+// ALT also on, randomness applies to the WORK phase only — rest stays at
+// CFG.shotAltLen so players have a predictable rotation gap.
+var shotRandom = false;
 
 // Rest timer (between-quarter break) — independent countdown that takes
 // over the display until it expires or is cancelled.
@@ -1779,6 +1825,19 @@ function beepCadence(urgent) {
   else        beepShort(880, 0.4);
 }
 
+// Pick the next work-phase shot-clock value. Returns CFG.shotLen unless
+// random mode is on, in which case it returns a random integer-seconds
+// value in [shotRandMin, shotRandMax] (inclusive) converted to ms.
+function _pickShotLen() {
+  if (shotRandom) {
+    var lo = Math.max(1, CFG.shotRandMin|0);
+    var hi = Math.max(lo, CFG.shotRandMax|0);
+    var pick = Math.floor(Math.random() * (hi - lo + 1)) + lo;
+    return pick * 1000;
+  }
+  return CFG.shotLen;
+}
+
 // "Final" beep — used at the end of the transition timer in place of the
 // air-horn. Same sine family as the cadence beeps but louder and longer
 // so it lands as an obvious GO! cue without sounding like a game horn.
@@ -1834,13 +1893,14 @@ function handleCmd(action, data) {
       // Shot-clock-only reset to the sticky default (CFG.shotLen). Does
       // NOT pause the clock — if the game was running, it keeps running
       // from the new shot value. Does NOT touch the game clock or scores.
+      // If RANDOM mode is on, pick a fresh value within the range instead.
       // For a full reset of a side, use Settings → RESET ALL.
       if (side === 'B') {
-        bShotTime = CFG.shotLen;
+        bShotTime = _pickShotLen();
         bShotAltPhase = 'work';
         renderSplit();
       } else {
-        shotTime = CFG.shotLen;
+        shotTime = _pickShotLen();
         shotAltPhase = 'work';
         renderDisplay(); renderSplit();
       }
@@ -1964,6 +2024,9 @@ function handleCmd(action, data) {
       shotAltPhase = 'work';
       bShotAltPhase = 'work';
       break;
+    case 'setShotRandom':
+      shotRandom = !!data.on;
+      break;
     case 'repInc':
       if ((data && data.side) === 'B') bRepCount = Math.max(0, bRepCount + 1);
       else repCount = Math.max(0, repCount + 1);
@@ -2022,6 +2085,16 @@ function handleCmd(action, data) {
       }
       if (data.altMs && data.altMs > 0) {
         CFG.shotAltLen = data.altMs;
+      }
+      if (typeof data.randMin === 'number' && data.randMin > 0) {
+        CFG.shotRandMin = data.randMin|0;
+      }
+      if (typeof data.randMax === 'number' && data.randMax > 0) {
+        CFG.shotRandMax = data.randMax|0;
+      }
+      // Coerce so max >= min — silently swap if backwards.
+      if (CFG.shotRandMax < CFG.shotRandMin) {
+        var _t = CFG.shotRandMin; CFG.shotRandMin = CFG.shotRandMax; CFG.shotRandMax = _t;
       }
       renderDisplay(); renderSplit();
       break;
@@ -2100,10 +2173,10 @@ function loopB(ts) {
       if (shotLoop) {
         if (shotAlt) {
           bShotAltPhase = (bShotAltPhase === 'work') ? 'rest' : 'work';
-          bShotTime = (bShotAltPhase === 'rest') ? CFG.shotAltLen : CFG.shotLen;
+          bShotTime = (bShotAltPhase === 'rest') ? CFG.shotAltLen : _pickShotLen();
           _bAltLastBeepSec = null; // arm cadence for the new phase
         } else {
-          bShotTime = CFG.shotLen;
+          bShotTime = _pickShotLen();
         }
         soundHorn();
         sendState(true);
@@ -2156,13 +2229,15 @@ function loop(ts) {
     if (shotTime <= 0) {
       if (shotLoop) {
         // Loop mode: reset and keep going. If alternating is on, flip the
-        // phase between work and rest each cycle.
+        // phase between work and rest each cycle. Random mode (if on)
+        // picks a fresh value within [shotRandMin, shotRandMax] for the
+        // work phase.
         if (shotAlt) {
           shotAltPhase = (shotAltPhase === 'work') ? 'rest' : 'work';
-          shotTime = (shotAltPhase === 'rest') ? CFG.shotAltLen : CFG.shotLen;
+          shotTime = (shotAltPhase === 'rest') ? CFG.shotAltLen : _pickShotLen();
           _altLastBeepSec = null; // arm cadence for the new phase
         } else {
-          shotTime = CFG.shotLen;
+          shotTime = _pickShotLen();
         }
         soundHorn();
         sendState(true);
@@ -2586,6 +2661,12 @@ function openSettings() {
   if (ab && ab.firstChild) ab.firstChild.textContent = _ctrlShotAlt ? '✕ STOP ALTERNATING' : '🔄 ALTERNATING REST';
   var altMs = _lastRemoteState.shotAltLen || 5*1000;
   document.getElementById('setAltSec').value = Math.round(altMs / 1000);
+  // Random shot-clock toggle + range inputs
+  _ctrlShotRandom = !!_lastRemoteState.shotRandom;
+  var rb2 = document.getElementById('rbShotRandomToggle');
+  if (rb2 && rb2.firstChild) rb2.firstChild.textContent = _ctrlShotRandom ? '✕ STOP RANDOM' : '🎲 RANDOM SHOT CLOCK';
+  document.getElementById('setRandMin').value = _lastRemoteState.shotRandMin || 10;
+  document.getElementById('setRandMax').value = _lastRemoteState.shotRandMax || 30;
   document.getElementById('settingsOverlay').classList.add('open');
 }
 function closeSettings() {
@@ -2595,7 +2676,15 @@ function applySettings() {
   var m = parseInt(document.getElementById('setQtrMin').value, 10) || 8;
   var s = parseInt(document.getElementById('setShotSec').value, 10) || 30;
   var a = parseInt(document.getElementById('setAltSec').value, 10) || 5;
-  cmd('setDefaults', { qtrMs: m * 60 * 1000, shotMs: s * 1000, altMs: a * 1000 });
+  var rMin = parseInt(document.getElementById('setRandMin').value, 10) || 10;
+  var rMax = parseInt(document.getElementById('setRandMax').value, 10) || 30;
+  cmd('setDefaults', {
+    qtrMs: m * 60 * 1000,
+    shotMs: s * 1000,
+    altMs: a * 1000,
+    randMin: rMin,
+    randMax: rMax
+  });
   closeSettings();
 }
 
