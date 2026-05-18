@@ -1452,7 +1452,7 @@ function applyState(s) {
       // too) and clear the overlay
       document.body.classList.remove('is-transition');
       _tvTransitionLastBeepSec = null;
-      try { soundWhistle(); } catch(e) {}
+      try { beepBig(); } catch(e) {}
     }
 
     // If the scoreboard is in split mode and this TV is configured for
@@ -1779,48 +1779,21 @@ function beepCadence(urgent) {
   else        beepShort(880, 0.4);
 }
 
-// Coach-style whistle — used at the end of the transition timer instead
-// of the air-horn (which still fires for actual game events). Synthesized:
-// pitched sine ~2.5 kHz with a small rising chirp + bandpassed noise core
-// for the breathy texture, fast attack, ~0.4s total.
-function soundWhistle() {
+// "Final" beep — used at the end of the transition timer in place of the
+// air-horn. Same sine family as the cadence beeps but louder and longer
+// so it lands as an obvious GO! cue without sounding like a game horn.
+function beepBig() {
   var ctx = getAudio(); if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume();
   var t = ctx.currentTime;
-  var dur = 0.42;
-
-  var osc = ctx.createOscillator();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(2400, t);
-  osc.frequency.linearRampToValueAtTime(2700, t + 0.05);
-  osc.frequency.linearRampToValueAtTime(2650, t + dur);
-
-  var bufLen = Math.floor(ctx.sampleRate * dur);
-  var buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
-  var data = buf.getChannelData(0);
-  for (var i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
-  var noiseSrc = ctx.createBufferSource();
-  noiseSrc.buffer = buf;
-  var bp = ctx.createBiquadFilter();
-  bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 12;
-
-  var oscG = ctx.createGain();
-  oscG.gain.setValueAtTime(0, t);
-  oscG.gain.linearRampToValueAtTime(0.55, t + 0.03);
-  oscG.gain.setValueAtTime(0.55, t + dur - 0.08);
-  oscG.gain.linearRampToValueAtTime(0, t + dur);
-
-  var noiseG = ctx.createGain();
-  noiseG.gain.setValueAtTime(0, t);
-  noiseG.gain.linearRampToValueAtTime(0.35, t + 0.03);
-  noiseG.gain.setValueAtTime(0.35, t + dur - 0.08);
-  noiseG.gain.linearRampToValueAtTime(0, t + dur);
-
-  osc.connect(oscG); oscG.connect(ctx.destination);
-  noiseSrc.connect(bp); bp.connect(noiseG); noiseG.connect(ctx.destination);
-
-  osc.start(t); osc.stop(t + dur + 0.05);
-  noiseSrc.start(t); noiseSrc.stop(t + dur + 0.05);
+  var o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 1600;
+  var g = ctx.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.9, t + 0.02);
+  g.gain.setValueAtTime(0.9, t + 0.18);
+  g.gain.linearRampToValueAtTime(0, t + 0.32);
+  o.connect(g); g.connect(ctx.destination);
+  o.start(t); o.stop(t + 0.34);
 }
 
 // ── Commands (both local + remote) ──────────────────────────────────────
@@ -2280,7 +2253,7 @@ function transitionLoop(ts) {
       transitionTime = 0;
       transitionMode = false;
       document.body.classList.remove('is-transition');
-      soundWhistle();
+      beepBig();
       renderTransition();
       sendState(true);
       return;
