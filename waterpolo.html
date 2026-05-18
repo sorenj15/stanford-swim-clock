@@ -543,6 +543,34 @@ body.is-rest .split-app { display: none !important; }
 .rest-clock.danger { color: #e74c3c; animation: pulse-c .5s ease-in-out infinite; }
 .rest-sub { font-size: 1rem; color: #5a8080; letter-spacing: 0.2em; margin-top: 18px; }
 
+/* TRANSITION overlay — full-screen takeover during coach-summoned
+   transition countdown (10/20/30/60s presets). Sits on top of every
+   normal layout (display, split, tv) via fixed positioning + high z-index. */
+.transition-overlay {
+  display: none; position: fixed; inset: 0;
+  background: #050a0a;
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 200;
+}
+body.is-transition .transition-overlay { display: flex; }
+.transition-lbl {
+  font-size: 3vh; font-weight: 900;
+  letter-spacing: 0.32em; text-transform: uppercase;
+  color: #2ecc71;
+  margin-bottom: 2vh;
+  text-shadow: 0 0 18px rgba(46,204,113,0.55);
+}
+.transition-clock {
+  font-family: 'DSEG7', 'SF Mono', 'Courier New', monospace;
+  font-size: 60vh; font-weight: 900;
+  color: #fff; line-height: 0.85;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 60px rgba(255,255,255,0.35);
+}
+.transition-clock.tc-warn   { color: #f39c12; text-shadow: 0 0 70px rgba(243,156,18,0.6); }
+.transition-clock.tc-danger { color: #e74c3c; text-shadow: 0 0 90px rgba(231,76,60,0.75); animation: pulse-c .32s ease-in-out infinite; }
+
 /* ═══════ TV VIEW (dedicated shot clock for outdoor TV) ═══════ */
 /* White-on-black by default — on a backlit LCD TV this maxes out peak
    luminance (all RGB subpixels fully on), which matters more in direct
@@ -804,6 +832,12 @@ body.is-tv-sideB .tv-side-badge { display: block; }
   <div class="rest-sub" id="restSub">tap remote to cancel</div>
 </div>
 
+<!-- ═══ TRANSITION overlay — coach-summoned short countdown ═══ -->
+<div class="transition-overlay" id="transitionOverlay">
+  <div class="transition-lbl">TRANSITION</div>
+  <div class="transition-clock" id="transitionClock">0:30</div>
+</div>
+
 <!-- ═══ CONTROL VIEW (iPhone) ═══ -->
 <div class="control-app" id="controlApp">
   <div class="ctrl-hdr">
@@ -918,6 +952,20 @@ body.is-tv-sideB .tv-side-badge { display: block; }
       </div>
       <div class="ctrl-grid" style="margin-top:8px">
         <div class="rb rb-reset" onclick="cmd('resetSide')">↺ RESET<span class="rb-sub">to current default · keeps running</span></div>
+      </div>
+    </div>
+
+    <!-- TRANSITION countdown — short hustle timer between drills/reps -->
+    <div class="ctrl-section">
+      <div class="ctrl-section-title">Transition Timer</div>
+      <div class="ctrl-grid g4">
+        <div class="rb rb-rest" onclick="cmd('transitionStart',{ms:10000})">⏱ 0:10</div>
+        <div class="rb rb-rest" onclick="cmd('transitionStart',{ms:20000})">⏱ 0:20</div>
+        <div class="rb rb-rest" onclick="cmd('transitionStart',{ms:30000})">⏱ 0:30</div>
+        <div class="rb rb-rest" onclick="cmd('transitionStart',{ms:60000})">⏱ 1:00</div>
+      </div>
+      <div class="ctrl-grid" style="margin-top:8px">
+        <div class="rb rb-reset" onclick="cmd('transitionCancel')">✕ CANCEL TRANSITION</div>
       </div>
     </div>
 
@@ -1134,6 +1182,13 @@ var _tvActiveDisplayId = null;
 var _tvActiveDisplayBorn = 0;
 var _tvActiveLastSeen = 0;
 
+// Cadence tracking — TVs need to fire their own beeps from state changes
+// because the display's beepCadence() only sounds through the display's
+// own speakers. These remember which whole-second we've already beeped on.
+var _tvTransitionLastBeepSec = null;
+var _tvAltLastBeepSec  = null;
+var _tvBAltLastBeepSec = null;
+
 // Controller uses the same single-source lock — without it, two displays
 // in the same court make the START button + toggles flicker between
 // states. Variables are separate from the TV ones because a remote can
@@ -1270,7 +1325,9 @@ function sendState(force) {
     shotAlt: shotAlt,
     shotAltLen: CFG.shotAltLen,
     shotAltPhase: shotAltPhase,
-    bShotAltPhase: bShotAltPhase
+    bShotAltPhase: bShotAltPhase,
+    transitionMode: transitionMode,
+    transitionTime: transitionTime
   });
 }
 
@@ -1368,6 +1425,36 @@ function applyState(s) {
       }
     }
     _lastRemoteState = s;
+
+    // Transition overlay — driven entirely off state from the display.
+    // Show full-screen overlay + countdown, fire local beep cadence so
+    // the speakers at the pool actually make noise.
+    if (s.transitionMode) {
+      document.body.classList.add('is-transition');
+      var tEl = document.getElementById('transitionClock');
+      if (tEl) {
+        tEl.textContent = fmtClock(s.transitionTime || 0);
+        var tSec = (s.transitionTime || 0) / 1000;
+        var tCls = 'transition-clock';
+        if (tSec <= 3 && tSec > 0) tCls += ' tc-danger';
+        else if (tSec <= 10) tCls += ' tc-warn';
+        tEl.className = tCls;
+      }
+      var tSecsLeft = Math.ceil((s.transitionTime || 0) / 1000);
+      if (tSecsLeft <= 10 && tSecsLeft > 0 && tSecsLeft !== _tvTransitionLastBeepSec) {
+        _tvTransitionLastBeepSec = tSecsLeft;
+        beepCadence(tSecsLeft <= 4);
+      }
+      return; // overlay covers the screen; skip normal TV render
+    } else if (document.body.classList.contains('is-transition')) {
+      // Transition just ended — fire the horn locally (display already
+      // fired its own; on the TV the speakers at the pool need to fire
+      // too) and clear the overlay
+      document.body.classList.remove('is-transition');
+      _tvTransitionLastBeepSec = null;
+      try { soundHorn(); } catch(e) {}
+    }
+
     // If the scoreboard is in split mode and this TV is configured for
     // Side B, remap the state we read so the rest of the TV render code
     // doesn't have to care.
@@ -1438,6 +1525,15 @@ function applyState(s) {
       }
     } else {
       tvApp.classList.remove('tv-buzz');
+    }
+    // Alt-rest cadence — TV-local beep so the pool speakers fire too
+    if (s.shotAlt && s.shotAltPhase === 'rest' && secs > 0 && secs <= 5) {
+      if (secs !== _tvAltLastBeepSec) {
+        _tvAltLastBeepSec = secs;
+        try { beepCadence(secs <= 3); } catch(e) {}
+      }
+    } else if (_tvAltLastBeepSec !== null) {
+      _tvAltLastBeepSec = null;
     }
     return;
   }
@@ -1596,6 +1692,20 @@ var restRaf = null;
 var restLastTs = null;
 var restLastSentMs = 0;
 
+// Transition timer — short countdown (10–60s) coach-summoned between
+// drills/reps to make players hustle. Full-screen takeover on display
+// and TVs, audible beep cadence in the last 10s, horn at 0, auto-clear.
+var transitionMode = false;
+var transitionTime = 0;
+var transitionRaf = null;
+var transitionLastTs = null;
+var transitionLastSentMs = 0;
+var _transitionLastBeepSec = null; // tracks which whole-second we beeped
+// Alt-rest cadence tracking — beep on each whole-second decrement when in
+// the rest phase of alternating mode.
+var _altLastBeepSec = null;
+var _bAltLastBeepSec = null;
+
 var Q_LABELS = ['1ST QUARTER','2ND QUARTER','3RD QUARTER','4TH QUARTER','OVERTIME'];
 
 // ── Audio ───────────────────────────────────────────────────────────────
@@ -1650,15 +1760,23 @@ function soundHorn() {
   sub.start(t); sub.stop(t + 1.4);
 }
 
-function beepShort() {
+function beepShort(freq, gainVal) {
   var ctx = getAudio(); if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume();
   var t = ctx.currentTime;
-  var o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 1000;
+  var o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq || 1000;
   var g = ctx.createGain();
-  g.gain.setValueAtTime(0.35, t);
+  g.gain.setValueAtTime(gainVal || 0.35, t);
   g.gain.linearRampToValueAtTime(0, t + 0.12);
   o.connect(g); g.connect(ctx.destination);
   o.start(t); o.stop(t + 0.15);
+}
+
+// Cadence beep — short tone for transition/rest countdown. `urgent` swaps
+// to a higher, louder pitch for the final 1–4 second stretch.
+function beepCadence(urgent) {
+  if (urgent) beepShort(1400, 0.55);
+  else        beepShort(880, 0.4);
 }
 
 // ── Commands (both local + remote) ──────────────────────────────────────
@@ -1858,6 +1976,22 @@ function handleCmd(action, data) {
       if (restRaf) { cancelAnimationFrame(restRaf); restRaf = null; }
       document.body.classList.remove('is-rest');
       break;
+    case 'transitionStart':
+      // Re-arm: cancel any prior transition so duration restarts cleanly
+      if (transitionRaf) { cancelAnimationFrame(transitionRaf); transitionRaf = null; }
+      transitionMode = true;
+      transitionTime = data.ms || 30000;
+      transitionLastTs = null;
+      _transitionLastBeepSec = null;
+      document.body.classList.add('is-transition');
+      renderTransition();
+      transitionRaf = requestAnimationFrame(transitionLoop);
+      break;
+    case 'transitionCancel':
+      transitionMode = false;
+      if (transitionRaf) { cancelAnimationFrame(transitionRaf); transitionRaf = null; }
+      document.body.classList.remove('is-transition');
+      break;
     case 'setDefaults':
       if (data.qtrMs && data.qtrMs > 0) {
         CFG.qtrLen = data.qtrMs;
@@ -1950,6 +2084,7 @@ function loopB(ts) {
         if (shotAlt) {
           bShotAltPhase = (bShotAltPhase === 'work') ? 'rest' : 'work';
           bShotTime = (bShotAltPhase === 'rest') ? CFG.shotAltLen : CFG.shotLen;
+          _bAltLastBeepSec = null; // arm cadence for the new phase
         } else {
           bShotTime = CFG.shotLen;
         }
@@ -1959,6 +2094,16 @@ function loopB(ts) {
         bShotTime = 0; _stopB(); soundHorn();
         renderSplit(); sendState(); return;
       }
+    }
+    // Alt-rest cadence — beep on each whole-second tick during rest phase
+    if (shotAlt && shotLoop && bShotAltPhase === 'rest') {
+      var bAltSecs = Math.ceil(bShotTime / 1000);
+      if (bAltSecs > 0 && bAltSecs <= 5 && bAltSecs !== _bAltLastBeepSec) {
+        _bAltLastBeepSec = bAltSecs;
+        beepCadence(bAltSecs <= 3);
+      }
+    } else if (_bAltLastBeepSec !== null) {
+      _bAltLastBeepSec = null;
     }
   }
   var bPrevTs = bLastTs;
@@ -1998,6 +2143,7 @@ function loop(ts) {
         if (shotAlt) {
           shotAltPhase = (shotAltPhase === 'work') ? 'rest' : 'work';
           shotTime = (shotAltPhase === 'rest') ? CFG.shotAltLen : CFG.shotLen;
+          _altLastBeepSec = null; // arm cadence for the new phase
         } else {
           shotTime = CFG.shotLen;
         }
@@ -2007,6 +2153,16 @@ function loop(ts) {
         shotTime = 0; _stop(); soundHorn();
         renderDisplay(); sendState(); return;
       }
+    }
+    // Alt-rest cadence — beep on each whole-second tick during rest phase
+    if (shotAlt && shotLoop && shotAltPhase === 'rest') {
+      var altSecs = Math.ceil(shotTime / 1000);
+      if (altSecs > 0 && altSecs <= 5 && altSecs !== _altLastBeepSec) {
+        _altLastBeepSec = altSecs;
+        beepCadence(altSecs <= 3);
+      }
+    } else if (_altLastBeepSec !== null) {
+      _altLastBeepSec = null;
     }
 
     // Exclusions
@@ -2068,6 +2224,55 @@ function renderRest() {
   var as = document.getElementById('restAwayScore');
   if (hs) hs.textContent = (homeScoreVal || 0);
   if (as) as.textContent = (awayScoreVal || 0);
+}
+
+// ── Transition timer loop & render ─────────────────────────────────────
+function transitionLoop(ts) {
+  if (!transitionMode) return;
+  if (transitionLastTs !== null) {
+    var dt = ts - transitionLastTs;
+    transitionTime -= dt;
+    if (transitionTime <= 0) {
+      transitionTime = 0;
+      transitionMode = false;
+      document.body.classList.remove('is-transition');
+      soundHorn();
+      renderTransition();
+      sendState(true);
+      return;
+    }
+  }
+  transitionLastTs = ts;
+  renderTransition();
+
+  // Cadence beep — on each whole-second decrement in the last 10s
+  var secsLeft = Math.ceil(transitionTime / 1000);
+  if (secsLeft <= 10 && secsLeft > 0 && secsLeft !== _transitionLastBeepSec) {
+    _transitionLastBeepSec = secsLeft;
+    beepCadence(secsLeft <= 4);
+  }
+
+  // ~10 Hz state broadcast — TVs will derive their own beep cadence from
+  // the changing transitionTime, so they need fresh-enough samples
+  if (ts - transitionLastSentMs >= 100) {
+    transitionLastSentMs = ts;
+    sendState();
+  }
+  transitionRaf = requestAnimationFrame(transitionLoop);
+}
+
+function renderTransition() {
+  // Render the overlay countdown on whichever client owns the DOM. TV
+  // also renders it but does so from applyState (state-driven).
+  if (IS_CONTROL) return;
+  var el = document.getElementById('transitionClock');
+  if (!el) return;
+  el.textContent = fmtClock(transitionTime);
+  var sec = transitionTime / 1000;
+  var cls = 'transition-clock';
+  if (sec <= 3 && sec > 0) cls += ' tc-danger';
+  else if (sec <= 10) cls += ' tc-warn';
+  el.className = cls;
 }
 
 // Render the split-screen panels (side A uses top-level state, side B uses b*)
