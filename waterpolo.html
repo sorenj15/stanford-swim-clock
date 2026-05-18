@@ -1447,12 +1447,12 @@ function applyState(s) {
       }
       return; // overlay covers the screen; skip normal TV render
     } else if (document.body.classList.contains('is-transition')) {
-      // Transition just ended — fire the horn locally (display already
+      // Transition just ended — fire the whistle locally (display already
       // fired its own; on the TV the speakers at the pool need to fire
       // too) and clear the overlay
       document.body.classList.remove('is-transition');
       _tvTransitionLastBeepSec = null;
-      try { soundHorn(); } catch(e) {}
+      try { soundWhistle(); } catch(e) {}
     }
 
     // If the scoreboard is in split mode and this TV is configured for
@@ -1777,6 +1777,50 @@ function beepShort(freq, gainVal) {
 function beepCadence(urgent) {
   if (urgent) beepShort(1400, 0.55);
   else        beepShort(880, 0.4);
+}
+
+// Coach-style whistle — used at the end of the transition timer instead
+// of the air-horn (which still fires for actual game events). Synthesized:
+// pitched sine ~2.5 kHz with a small rising chirp + bandpassed noise core
+// for the breathy texture, fast attack, ~0.4s total.
+function soundWhistle() {
+  var ctx = getAudio(); if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume();
+  var t = ctx.currentTime;
+  var dur = 0.42;
+
+  var osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(2400, t);
+  osc.frequency.linearRampToValueAtTime(2700, t + 0.05);
+  osc.frequency.linearRampToValueAtTime(2650, t + dur);
+
+  var bufLen = Math.floor(ctx.sampleRate * dur);
+  var buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+  var data = buf.getChannelData(0);
+  for (var i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+  var noiseSrc = ctx.createBufferSource();
+  noiseSrc.buffer = buf;
+  var bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 12;
+
+  var oscG = ctx.createGain();
+  oscG.gain.setValueAtTime(0, t);
+  oscG.gain.linearRampToValueAtTime(0.55, t + 0.03);
+  oscG.gain.setValueAtTime(0.55, t + dur - 0.08);
+  oscG.gain.linearRampToValueAtTime(0, t + dur);
+
+  var noiseG = ctx.createGain();
+  noiseG.gain.setValueAtTime(0, t);
+  noiseG.gain.linearRampToValueAtTime(0.35, t + 0.03);
+  noiseG.gain.setValueAtTime(0.35, t + dur - 0.08);
+  noiseG.gain.linearRampToValueAtTime(0, t + dur);
+
+  osc.connect(oscG); oscG.connect(ctx.destination);
+  noiseSrc.connect(bp); bp.connect(noiseG); noiseG.connect(ctx.destination);
+
+  osc.start(t); osc.stop(t + dur + 0.05);
+  noiseSrc.start(t); noiseSrc.stop(t + dur + 0.05);
 }
 
 // ── Commands (both local + remote) ──────────────────────────────────────
@@ -2236,7 +2280,7 @@ function transitionLoop(ts) {
       transitionTime = 0;
       transitionMode = false;
       document.body.classList.remove('is-transition');
-      soundHorn();
+      soundWhistle();
       renderTransition();
       sendState(true);
       return;
