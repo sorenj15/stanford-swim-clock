@@ -1554,10 +1554,13 @@ function _ctrlRenderExclLists(excs, whiteRoster, blackRoster) {
     var inlineStyle = 'background:' + bg + ';color:' + col + ';border:1px solid #555;border-radius:8px;'
       + 'padding:14px 16px;margin:6px 0;display:flex;justify-content:space-between;align-items:center;'
       + 'font-size:1.2rem;font-weight:800;width:100%;box-sizing:border-box;cursor:pointer';
-    var disabled = (fouled || act) ? ';pointer-events:none;opacity:0.55' : '';
-    return '<div onclick="cmd(\'exclPlayer\',{team:\'' + teamKey + '\',name:' + JSON.stringify(p.name) + '})" ' +
-      'style="' + inlineStyle + disabled + '">' +
-      '<span>' + (p.name.replace(/</g,'&lt;')) + '</span>' +
+    if (fouled || act) inlineStyle += ';pointer-events:none;opacity:0.55';
+    // HTML-escape the name for both attribute value and text content
+    var attrName = String(p.name).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+    var textName = String(p.name).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    return '<div data-excl-tap-team="' + teamKey + '" data-excl-tap-name="' + attrName + '" ' +
+      'style="' + inlineStyle + '">' +
+      '<span>' + textName + '</span>' +
       '<span style="font-family:\'SF Mono\',monospace;font-size:1.4rem;color:' + rightCol + '">' + rightBit + '</span>' +
       '</div>';
   }
@@ -2804,6 +2807,23 @@ document.addEventListener('touchstart', function(e) {
   e.preventDefault();
   _handleRepAction(t.getAttribute('data-rep-action'), t.getAttribute('data-rep-side'));
 }, {passive: false});
+
+// Exclusion-board per-player taps (controller). Uses data-attribute +
+// document delegation so we don't have to embed names in onclick="..."
+// attribute strings (which broke for names containing quotes).
+function _handleExclTap(target) {
+  if (!target) return;
+  var team = target.getAttribute('data-excl-tap-team');
+  var name = target.getAttribute('data-excl-tap-name');
+  if (!name) return;
+  cmd('exclPlayer', { team: team, name: name });
+}
+document.addEventListener('click', function(e) {
+  var t = e.target.closest('[data-excl-tap-name]');
+  if (!t) return;
+  e.preventDefault(); e.stopPropagation();
+  _handleExclTap(t);
+});
 
 // ── Render ──────────────────────────────────────────────────────────────
 function renderDisplay() {
