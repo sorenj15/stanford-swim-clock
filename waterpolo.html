@@ -651,6 +651,39 @@ body.is-practice:not(.is-tv) .practice-panel { display: block; }
   margin-top: 8px; letter-spacing: 0.1em;
 }
 
+/* Big practice clock — replaces the game clock when practice-main mode
+   is on. Hidden by default. Inherits the same visual weight as the
+   game clock so it dominates the display. */
+.practice-main { display: none; text-align: center; }
+body.is-practice-main:not(.is-tv):not(.is-shotonly) .practice-main { display: block; }
+body.is-practice-main:not(.is-tv):not(.is-shotonly) #gameClock,
+body.is-practice-main:not(.is-tv):not(.is-shotonly) .gc-lbl,
+body.is-practice-main:not(.is-tv):not(.is-shotonly) .qtr-bar { display: none; }
+/* Hide the small bottom-left panel when the big one is showing — no duplicate */
+body.is-practice-main:not(.is-tv):not(.is-shotonly) #practicePanel { display: none; }
+/* SHOT-ONLY wins — hides everything except the shot clock. */
+body.is-shotonly .practice-main,
+body.is-shotonly #practicePanel { display: none !important; }
+.pm-name {
+  font-size: 3rem; font-weight: 900;
+  color: #fff; line-height: 1.1;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  margin: 6px 0 10px;
+}
+.pm-time {
+  font-family: 'SF Mono', 'Courier New', monospace;
+  font-size: 10rem; font-weight: 900;
+  color: #f1c40f; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.pm-time.is-warn   { color: #f39c12; }
+.pm-time.is-danger { color: #e74c3c; animation: pulse-c .35s ease-in-out infinite; }
+.pm-next {
+  font-size: 1rem; color: #999;
+  margin-top: 8px; letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
 /* ═══════ TV VIEW (dedicated shot clock for outdoor TV) ═══════ */
 /* White-on-black by default — on a backlit LCD TV this maxes out peak
    luminance (all RGB subpixels fully on), which matters more in direct
@@ -852,6 +885,13 @@ body.is-tv-sideB .tv-side-badge { display: block; }
   <div class="clock-area">
     <div class="gc-lbl">GAME CLOCK</div>
     <div class="game-clock gc-stopped" id="gameClock" onclick="openTimeEdit('game')">8:00</div>
+    <!-- Big practice clock — sits in the game-clock slot when
+         PRACTICE CLOCK MODE is on. Hidden by default. -->
+    <div class="practice-main" id="practiceMain">
+      <div class="pm-name" id="pcName">—</div>
+      <div class="pm-time" id="pcTime">0:00</div>
+      <div class="pm-next" id="pcNext"></div>
+    </div>
     <div class="mode-badge" id="modeBadge">SHOT CLOCK ONLY</div>
     <div class="sc-wrap">
       <div class="sc-lbl">SHOT CLOCK</div>
@@ -1223,6 +1263,11 @@ body.is-tv-sideB .tv-side-badge { display: block; }
     </div>
 
     <div class="settings-row">
+      <label>Practice Clock Mode</label>
+      <div class="rb rb-mode" id="rbPracticeClockToggle" onclick="ctrlTogglePracticeClockMode()">🏊 SHOW PRACTICE CLOCK<span class="rb-sub">replaces the big game clock with the drill timer</span></div>
+    </div>
+
+    <div class="settings-row">
       <label>Practice Schedule</label>
       <textarea class="settings-inp" id="setPracticeSchedule" rows="10" placeholder="Paste your practice table here (markdown format).\n\nExample:\n| Time | Drill | Duration |\n| --- | --- | --- |\n| 3:30-4:00pm | Video | 30 Minutes |\n| 4:00-4:15pm | Yoga | 15 Minutes |\n..." style="font-family:monospace;font-size:0.8rem;resize:vertical;width:100%"></textarea>
     </div>
@@ -1494,6 +1539,7 @@ function sendState(force) {
     practiceIdx: practiceIdx,
     practiceRemaining: practiceRemaining,
     practiceRunning: practiceRunning,
+    practiceClockMode: practiceClockMode,
     splitMode: splitMode,
     bGameTime: bGameTime,
     bShotTime: bShotTime,
@@ -1580,6 +1626,17 @@ function ctrlToggleShotRandom() {
   var b = document.getElementById('rbShotRandomToggle');
   if (b && b.firstChild) b.firstChild.textContent = _ctrlShotRandom ? '✕ STOP RANDOM' : '🎲 RANDOM SHOT CLOCK';
   cmd('setShotRandom', {on: _ctrlShotRandom});
+}
+
+// Practice clock mode — toggle. When on, the display replaces the game
+// clock with the practice timer.
+var _ctrlPracticeClock = false;
+function ctrlTogglePracticeClockMode() {
+  _ctrlPracticeClock = !_ctrlPracticeClock;
+  _ctrlMarkLocal('practiceClockMode');
+  var b = document.getElementById('rbPracticeClockToggle');
+  if (b && b.firstChild) b.firstChild.textContent = _ctrlPracticeClock ? '✕ HIDE PRACTICE CLOCK' : '🏊 SHOW PRACTICE CLOCK';
+  cmd('setPracticeClockMode', {on: _ctrlPracticeClock});
 }
 
 // Random exclusion mode — toggle. When on, the controller exposes the
@@ -1891,6 +1948,12 @@ function applyState(s) {
     var sec = document.getElementById('ctrlExclSec');
     if (sec) sec.style.display = _ctrlRandomExcl ? '' : 'none';
   }
+  // Practice clock mode toggle
+  if (!_ctrlIsFreshLocal('practiceClockMode') && typeof s.practiceClockMode === 'boolean' && s.practiceClockMode !== _ctrlPracticeClock) {
+    _ctrlPracticeClock = s.practiceClockMode;
+    var pcb = document.getElementById('rbPracticeClockToggle');
+    if (pcb && pcb.firstChild) pcb.firstChild.textContent = _ctrlPracticeClock ? '✕ HIDE PRACTICE CLOCK' : '🏊 SHOW PRACTICE CLOCK';
+  }
   // Cache the latest roster locally so we can repopulate Settings textareas
   // and push back if the display ever loses its copy. Also drives the
   // tappable per-player rows in the controller's exclusion section.
@@ -1992,6 +2055,7 @@ var practiceSchedule  = [];  // [{name, durationMs}, ...]
 var practiceIdx       = 0;
 var practiceRemaining = 0;
 var practiceRunning   = false;
+var practiceClockMode = false;  // when true, big practice clock replaces game clock on the display
 var _practiceRaf      = null;
 var _practiceLastTs   = null;
 var _practiceLastSent = 0;
@@ -2037,6 +2101,11 @@ function parsePracticeTable(text) {
     if (ls) practiceSchedule = JSON.parse(ls) || [];
     if (practiceSchedule.length > 0) {
       practiceRemaining = practiceSchedule[0].durationMs;
+    }
+    var lsM = localStorage.getItem('wpolo_practice_clock_mode');
+    if (lsM === '1') {
+      practiceClockMode = true;
+      if (!IS_CONTROL && !IS_TV) document.body.classList.add('is-practice-main');
     }
   } catch(e) {}
 })();
@@ -2384,6 +2453,7 @@ function handleCmd(action, data) {
       break;
     case 'toggleMode':
       shotOnly = !shotOnly;
+      document.body.classList.toggle('is-shotonly', shotOnly);
       document.getElementById('modeBadge').className = 'mode-badge' + (shotOnly ? ' visible' : '');
       // Hide/show game clock elements
       document.getElementById('gameClock').style.display = shotOnly ? 'none' : '';
@@ -2527,6 +2597,13 @@ function handleCmd(action, data) {
       practiceRunning = false;
       if (_practiceRaf) { cancelAnimationFrame(_practiceRaf); _practiceRaf = null; }
       practiceRemaining = practiceSchedule.length ? practiceSchedule[0].durationMs : 0;
+      renderPracticePanel();
+      break;
+    case 'setPracticeClockMode':
+      practiceClockMode = !!data.on;
+      try { localStorage.setItem('wpolo_practice_clock_mode', practiceClockMode ? '1' : '0'); } catch(e) {}
+      document.body.classList.toggle('is-practice-main', practiceClockMode);
+      renderDisplay();
       renderPracticePanel();
       break;
     case 'repInc':
@@ -2903,19 +2980,26 @@ function renderPracticePanel() {
   if (!hasSchedule) return;
   var cur = practiceSchedule[practiceIdx];
   if (!cur) return;
-  document.getElementById('practiceName').textContent = cur.name;
   var s = Math.max(0, Math.ceil(practiceRemaining / 1000));
   var mm = Math.floor(s / 60);
   var ss = s % 60;
-  var t = document.getElementById('practiceTime');
-  t.textContent = mm + ':' + (ss < 10 ? '0'+ss : ss);
-  var cls = 'practice-time';
-  if (s <= 10 && s > 0) cls += ' is-danger';
-  else if (s <= 60)     cls += ' is-warn';
-  t.className = cls;
+  var timeStr = mm + ':' + (ss < 10 ? '0'+ss : ss);
   var nxt = practiceSchedule[practiceIdx + 1];
-  document.getElementById('practiceNext').textContent =
-    nxt ? ('NEXT · ' + nxt.name) : '— last drill —';
+  var nextStr = nxt ? ('NEXT · ' + nxt.name) : '— last drill —';
+  var dangerCls = (s <= 10 && s > 0) ? ' is-danger' : (s <= 60 ? ' is-warn' : '');
+
+  // Small bottom-left panel
+  document.getElementById('practiceName').textContent = cur.name;
+  var t1 = document.getElementById('practiceTime');
+  t1.textContent = timeStr; t1.className = 'practice-time' + dangerCls;
+  document.getElementById('practiceNext').textContent = nextStr;
+  // Big in-place clock (when practice-main mode is on)
+  var pmName = document.getElementById('pcName');
+  var pmTime = document.getElementById('pcTime');
+  var pmNext = document.getElementById('pcNext');
+  if (pmName) pmName.textContent = cur.name;
+  if (pmTime) { pmTime.textContent = timeStr; pmTime.className = 'pm-time' + dangerCls; }
+  if (pmNext) pmNext.textContent = nextStr;
 }
 
 // Render the split-screen panels (side A uses top-level state, side B uses b*)
@@ -3322,6 +3406,10 @@ function openSettings() {
      sched.map(function(b){ return '| ' + b.name + ' | ' + Math.round(b.durationMs / 60000) + ' Minutes |'; }).join('\n'));
   document.getElementById('setPracticeSchedule').value = schedText;
   _ctrlLastSchedText = schedText;
+  // Practice clock mode toggle label
+  _ctrlPracticeClock = !!_lastRemoteState.practiceClockMode;
+  var pcb2 = document.getElementById('rbPracticeClockToggle');
+  if (pcb2 && pcb2.firstChild) pcb2.firstChild.textContent = _ctrlPracticeClock ? '✕ HIDE PRACTICE CLOCK' : '🏊 SHOW PRACTICE CLOCK';
   document.getElementById('settingsOverlay').classList.add('open');
 }
 function closeSettings() {
