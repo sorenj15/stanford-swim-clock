@@ -571,6 +571,53 @@ body.is-transition .transition-overlay { display: flex; }
 .transition-clock.tc-warn   { color: #f39c12; text-shadow: 0 0 70px rgba(243,156,18,0.6); }
 .transition-clock.tc-danger { color: #e74c3c; text-shadow: 0 0 90px rgba(231,76,60,0.75); animation: pulse-c .32s ease-in-out infinite; }
 
+/* Exclusion board — small panel right of the clock area, shown only
+   when random exclusion mode is on. Lists each team's roster with
+   remaining-exclusions count; greyed when fouled out; pulses when
+   currently in an active 30s exclusion. */
+.excl-board {
+  display: none;
+  position: fixed; right: 24px; top: 50%;
+  transform: translateY(-50%);
+  background: rgba(20,8,8,0.92);
+  border: 2px solid #5a1818;
+  border-radius: 12px;
+  padding: 14px 16px;
+  min-width: 230px; max-width: 280px;
+  z-index: 20;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+}
+body.is-randexcl .excl-board { display: block; }
+.excl-board-section { margin-bottom: 12px; }
+.excl-board-section:last-child { margin-bottom: 0; }
+.excl-board-hdr {
+  font-size: 0.85rem; font-weight: 900;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  margin-bottom: 6px;
+  padding-bottom: 4px; border-bottom: 1px solid #3a1010;
+}
+.excl-board-hdr.w { color: #fff; }
+.excl-board-hdr.b { color: #999; }
+.excl-board-row {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 1.05rem; font-weight: 700;
+  padding: 4px 2px; line-height: 1.2;
+}
+.excl-board-row .ebr-rem {
+  font-family: 'SF Mono', 'Courier New', monospace;
+  font-variant-numeric: tabular-nums;
+  color: #f1c40f;
+  min-width: 36px; text-align: right;
+}
+.excl-board-row.is-active { background: rgba(231,76,60,0.18); border-radius: 6px; }
+.excl-board-row.is-active .ebr-rem { color: #e74c3c; animation: pulse-c .6s ease-in-out infinite; }
+.excl-board-row.is-fouledout { opacity: 0.35; text-decoration: line-through; }
+.excl-board-empty { color: #555; font-style: italic; padding: 4px 2px; }
+/* TV board sits a bit smaller, off the right edge */
+body.is-tv .excl-board { right: 2vw; min-width: 18vw; }
+body.is-tv .excl-board-hdr  { font-size: 1.2vw; }
+body.is-tv .excl-board-row  { font-size: 1.4vw; padding: 0.4vw 0.2vw; }
+
 /* ═══════ TV VIEW (dedicated shot clock for outdoor TV) ═══════ */
 /* White-on-black by default — on a backlit LCD TV this maxes out peak
    luminance (all RGB subpixels fully on), which matters more in direct
@@ -838,6 +885,19 @@ body.is-tv-sideB .tv-side-badge { display: block; }
   <div class="transition-clock" id="transitionClock">0:30</div>
 </div>
 
+<!-- ═══ EXCLUSION BOARD — only shown when random-excl mode is on. Sits to
+     the right of the clock; lists each team's roster + remaining counts. ═══ -->
+<div class="excl-board" id="exclBoard">
+  <div class="excl-board-section">
+    <div class="excl-board-hdr w">White</div>
+    <div id="exclBoardListW"><div class="excl-board-empty">—</div></div>
+  </div>
+  <div class="excl-board-section">
+    <div class="excl-board-hdr b">Black</div>
+    <div id="exclBoardListB"><div class="excl-board-empty">—</div></div>
+  </div>
+</div>
+
 <!-- ═══ CONTROL VIEW (iPhone) ═══ -->
 <div class="control-app" id="controlApp">
   <div class="ctrl-hdr">
@@ -967,6 +1027,27 @@ body.is-tv-sideB .tv-side-badge { display: block; }
       </div>
     </div>
 
+    <!-- Exclusion board — visible when 🎯 Random Exclusion Mode is on.
+         Two random buttons at the top, then per-player tappable rows
+         per team. Tap a name → 30s exclusion + decrement remaining. -->
+    <div class="ctrl-section" id="ctrlExclSec" style="display:none">
+      <div class="ctrl-section-title">Exclusion Board</div>
+      <div class="ctrl-grid g2">
+        <div class="rb rb-excl-w" onclick="cmd('exclRandom',{team:'W'})" style="background:#1a1a1a;color:#fff;border:1px solid #555">🎲 EXCL RANDOM W</div>
+        <div class="rb rb-excl-b" onclick="cmd('exclRandom',{team:'B'})" style="background:#0a0a0a;color:#aaa;border:1px solid #333">🎲 EXCL RANDOM B</div>
+      </div>
+      <div class="ctrl-grid g2" style="margin-top:10px;align-items:flex-start">
+        <div>
+          <div style="font-size:0.8rem;color:#888;letter-spacing:0.15em;font-weight:800;margin-bottom:6px">WHITE</div>
+          <div id="ctrlExclListW"></div>
+        </div>
+        <div>
+          <div style="font-size:0.8rem;color:#888;letter-spacing:0.15em;font-weight:800;margin-bottom:6px">BLACK</div>
+          <div id="ctrlExclListB"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- TRANSITION countdown — short hustle timer between drills/reps -->
     <div class="ctrl-section">
       <div class="ctrl-section-title">Transition Timer</div>
@@ -1064,6 +1145,26 @@ body.is-tv-sideB .tv-side-badge { display: block; }
         <label>Random Max (seconds)</label>
         <input class="settings-inp" id="setRandMax" type="number" min="1" max="120" value="30">
       </div>
+    </div>
+
+    <div class="settings-row">
+      <label>Exclusion Board</label>
+      <div class="rb rb-mode" id="rbRandomExclToggle" onclick="ctrlToggleRandomExcl()">🎯 RANDOM EXCLUSION MODE<span class="rb-sub">show roster board + random EXCL buttons</span></div>
+    </div>
+
+    <div class="settings-row">
+      <label>White Team Roster (one name per line, "Name N" sets max exclusions; default 3)</label>
+      <textarea class="settings-inp" id="setRosterWhite" rows="6" style="font-family:inherit;font-size:0.95rem;resize:vertical;width:100%"></textarea>
+    </div>
+
+    <div class="settings-row">
+      <label>Black Team Roster (same format)</label>
+      <textarea class="settings-inp" id="setRosterBlack" rows="6" style="font-family:inherit;font-size:0.95rem;resize:vertical;width:100%"></textarea>
+    </div>
+
+    <div class="settings-row">
+      <label>Reset</label>
+      <div class="rb rb-reset" onclick="cmd('resetExcls');closeSettings();">↺ RESET ALL EXCL COUNTS<span class="rb-sub">everyone back to their max</span></div>
     </div>
 
     <div class="settings-row">
@@ -1218,6 +1319,7 @@ var _ctrlActiveLastSeen = 0;
 // toggle locally, ignore conflicting in-flight state for ~1s so the
 // stale echo can't overwrite their action mid-round-trip.
 var _ctrlLocalTs = {};
+var _ctrlPushedRoster = false; // one-shot flag for the cache-recovery push
 function _ctrlMarkLocal(field) { _ctrlLocalTs[field] = Date.now(); }
 function _ctrlIsFreshLocal(field) {
   var t = _ctrlLocalTs[field]; return t && (Date.now() - t < 1000);
@@ -1323,7 +1425,10 @@ function sendState(force) {
     awayScore: awayScoreVal,
     running: running,
     shotOnly: shotOnly,
-    exclusions: exclusions.map(function(e){ return {team:e.team, remaining:e.remaining, id:e.id}; }),
+    exclusions: exclusions.map(function(e){ return {team:e.team, remaining:e.remaining, id:e.id, name:e.name}; }),
+    randomExclMode: randomExclMode,
+    rosterWhite: rosterWhite,
+    rosterBlack: rosterBlack,
     splitMode: splitMode,
     bGameTime: bGameTime,
     bShotTime: bShotTime,
@@ -1410,6 +1515,48 @@ function ctrlToggleShotRandom() {
   var b = document.getElementById('rbShotRandomToggle');
   if (b && b.firstChild) b.firstChild.textContent = _ctrlShotRandom ? '✕ STOP RANDOM' : '🎲 RANDOM SHOT CLOCK';
   cmd('setShotRandom', {on: _ctrlShotRandom});
+}
+
+// Random exclusion mode — toggle. When on, the controller exposes the
+// per-player exclusion board section + random EXCL buttons.
+var _ctrlRandomExcl = false;
+function ctrlToggleRandomExcl() {
+  _ctrlRandomExcl = !_ctrlRandomExcl;
+  _ctrlMarkLocal('randomExcl');
+  var b = document.getElementById('rbRandomExclToggle');
+  if (b && b.firstChild) b.firstChild.textContent = _ctrlRandomExcl ? '✕ HIDE EXCL BOARD' : '🎯 RANDOM EXCLUSION MODE';
+  // Show/hide the controller's exclusion board section immediately
+  var sec = document.getElementById('ctrlExclSec');
+  if (sec) sec.style.display = _ctrlRandomExcl ? '' : 'none';
+  cmd('setRandomExcl', {on: _ctrlRandomExcl});
+}
+
+// Render the per-player tappable lists in the controller's Exclusion
+// Board section. Tap → fires exclPlayer cmd → display decrements +
+// starts the 30s timer.
+function _ctrlRenderExclLists(excs, whiteRoster, blackRoster) {
+  var wEl = document.getElementById('ctrlExclListW');
+  var bEl = document.getElementById('ctrlExclListB');
+  if (!wEl || !bEl) return;
+  function isActive(team, name) {
+    for (var i = 0; i < (excs||[]).length; i++) {
+      if (excs[i].team === team && excs[i].name === name) return excs[i];
+    }
+    return null;
+  }
+  function row(p, teamKey) {
+    var act = isActive(teamKey, p.name);
+    var fouled = p.remaining <= 0;
+    var bg = fouled ? '#1a0505' : (act ? '#3a1818' : '#1a1a1a');
+    var col = fouled ? '#555' : '#fff';
+    var rightBit = act ? (Math.ceil(act.remaining/1000) + 's') : String(p.remaining);
+    var disabled = (fouled || act) ? ' style="pointer-events:none;opacity:0.55"' : '';
+    return '<div class="rb"' + disabled + ' onclick="cmd(\'exclPlayer\',{team:\'' + teamKey + '\',name:' + JSON.stringify(p.name) + '})" ' +
+      'style="background:' + bg + ';color:' + col + ';border:1px solid #444;padding:8px 10px;margin:4px 0;display:flex;justify-content:space-between;font-size:1.05rem;font-weight:700">' +
+      '<span>' + (p.name.replace(/</g,'&lt;')) + '</span><span style="font-family:monospace">' + rightBit + '</span></div>';
+  }
+  wEl.innerHTML = (whiteRoster||[]).map(function(p){ return row(p, 'home'); }).join('') || '<div style="color:#555;font-style:italic;padding:6px 2px">no roster</div>';
+  bEl.innerHTML = (blackRoster||[]).map(function(p){ return row(p, 'away'); }).join('') || '<div style="color:#555;font-style:italic;padding:6px 2px">no roster</div>';
 }
 
 // Rep counter — controller-side toggle and command helpers.
@@ -1516,6 +1663,39 @@ function applyState(s) {
     if (tvScW) tvScW.textContent = s.homeScore || 0;
     if (tvScB) tvScB.textContent = s.awayScore || 0;
 
+    // Exclusion board — mirror what the display is showing. Read from
+    // state because the TV doesn't run handleCmd and has no local roster.
+    if (typeof s.randomExclMode === 'boolean') {
+      document.body.classList.toggle('is-randexcl', !!s.randomExclMode);
+      if (s.randomExclMode) {
+        // Build the lists from incoming state (uses s.exclusions for active
+        // overlays + s.rosterWhite / s.rosterBlack for the full list).
+        var excs = s.exclusions || [];
+        function tvActiveFor(team, name) {
+          for (var i = 0; i < excs.length; i++) {
+            if (excs[i].team === team && excs[i].name === name) return excs[i];
+          }
+          return null;
+        }
+        function tvRenderTeamRows(roster, teamKey) {
+          return (roster||[]).map(function(p) {
+            var act = tvActiveFor(teamKey, p.name);
+            var foulOut = p.remaining <= 0;
+            var cls = 'excl-board-row';
+            if (foulOut) cls += ' is-fouledout';
+            if (act) cls += ' is-active';
+            var rightBit = act ? (Math.ceil(act.remaining/1000) + 's') : String(p.remaining);
+            var safeName = String(p.name).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+            return '<div class="' + cls + '"><span class="ebr-name">' + safeName + '</span><span class="ebr-rem">' + rightBit + '</span></div>';
+          }).join('') || '<div class="excl-board-empty">—</div>';
+        }
+        var tvWEl = document.getElementById('exclBoardListW');
+        var tvBEl = document.getElementById('exclBoardListB');
+        if (tvWEl) tvWEl.innerHTML = tvRenderTeamRows(s.rosterWhite, 'home');
+        if (tvBEl) tvBEl.innerHTML = tvRenderTeamRows(s.rosterBlack, 'away');
+      }
+    }
+
     // ROTATE label on TV when alternating mode is on and shot clock is
     // in the rest phase.
     var tvRL = document.getElementById('tvRotateLbl');
@@ -1568,6 +1748,17 @@ function applyState(s) {
     return;
   }
   if (!IS_CONTROL) return;
+  // Roster recovery: if this controller has a cached roster but the
+  // display is reporting an empty one, push ours back so the display
+  // (likely on a different machine that lost its localStorage) gets
+  // repopulated. Only do this once per session to avoid loops.
+  if (!_ctrlPushedRoster
+      && (rosterWhite.length > 0 || rosterBlack.length > 0)
+      && (!Array.isArray(s.rosterWhite) || s.rosterWhite.length === 0)
+      && (!Array.isArray(s.rosterBlack) || s.rosterBlack.length === 0)) {
+    _ctrlPushedRoster = true;
+    cmd('setRoster', { white: rosterWhite, black: rosterBlack });
+  }
   // Controller displayId lock — newest-born wins, 3s silence fallback.
   // Without this, two displays in the same court make the START button
   // and toggle states flicker between the two senders.
@@ -1646,6 +1837,25 @@ function applyState(s) {
     var sr = document.getElementById('rbShotRandomToggle');
     if (sr && sr.firstChild) sr.firstChild.textContent = _ctrlShotRandom ? '✕ STOP RANDOM' : '🎲 RANDOM SHOT CLOCK';
   }
+  // Random exclusion mode toggle + roster cache for the controller
+  if (!_ctrlIsFreshLocal('randomExcl') && typeof s.randomExclMode === 'boolean' && s.randomExclMode !== _ctrlRandomExcl) {
+    _ctrlRandomExcl = s.randomExclMode;
+    var re = document.getElementById('rbRandomExclToggle');
+    if (re && re.firstChild) re.firstChild.textContent = _ctrlRandomExcl ? '✕ HIDE EXCL BOARD' : '🎯 RANDOM EXCLUSION MODE';
+    var sec = document.getElementById('ctrlExclSec');
+    if (sec) sec.style.display = _ctrlRandomExcl ? '' : 'none';
+  }
+  // Cache the latest roster locally so we can repopulate Settings textareas
+  // and push back if the display ever loses its copy. Also drives the
+  // tappable per-player rows in the controller's exclusion section.
+  if (Array.isArray(s.rosterWhite)) rosterWhite = s.rosterWhite;
+  if (Array.isArray(s.rosterBlack)) rosterBlack = s.rosterBlack;
+  try {
+    localStorage.setItem('wpolo_roster_white', JSON.stringify(rosterWhite));
+    localStorage.setItem('wpolo_roster_black', JSON.stringify(rosterBlack));
+  } catch(e) {}
+  // Render the controller's tappable per-player rows from incoming state
+  _ctrlRenderExclLists(s.exclusions || [], s.rosterWhite || rosterWhite, s.rosterBlack || rosterBlack);
 
   setStartBtn('rbStartStop', s.running);
 
@@ -1689,6 +1899,64 @@ var homeScoreVal = 0;
 var awayScoreVal = 0;
 var exclusions = [];
 var exclCounter = 0;
+
+// ── Exclusion board ────────────────────────────────────────────────────
+// Per-player exclusion tracking for scrimmages. Each player has a `max`
+// (how many exclusions they're allowed — default 3) and `remaining`
+// (counts down with each exclusion). Coach taps a player on the remote
+// to decrement them and fire a 30s out-of-play timer. The board is a
+// small panel right of the clock on display + TV showing each player
+// + remaining count; greyed when fouled out. Random mode adds two
+// buttons to fire a random exclusion on a chosen team.
+var randomExclMode = false;
+var rosterWhite = [];   // [{name, max, remaining}, ...]
+var rosterBlack = [];
+
+// Parse a roster text-area string. Each line is "Name" (default max 3)
+// or "Name N" (max N). Resets `remaining` to `max`.
+function parseRosterText(text) {
+  return String(text || '').split(/\r?\n/).map(function(line) {
+    line = (line||'').trim();
+    if (!line) return null;
+    var m = line.match(/^(.+?)\s+(\d+)\s*$/);
+    var name = m ? m[1].trim() : line;
+    var max  = m ? Math.max(1, parseInt(m[2], 10)) : 3;
+    return { name: name, max: max, remaining: max };
+  }).filter(function(x){ return x; });
+}
+
+// Serialize the current roster back to a text-area-friendly string,
+// reflecting the configured max (not the live remaining).
+function rosterToText(arr) {
+  return (arr||[]).map(function(p){
+    return p.max === 3 ? p.name : (p.name + ' ' + p.max);
+  }).join('\n');
+}
+
+// Hydrate from localStorage on boot — display and controller both cache
+// for two-way safety net.
+(function hydrateRoster() {
+  try {
+    var lsW = localStorage.getItem('wpolo_roster_white');
+    if (lsW) rosterWhite = JSON.parse(lsW) || [];
+    var lsB = localStorage.getItem('wpolo_roster_black');
+    if (lsB) rosterBlack = JSON.parse(lsB) || [];
+    var lsM = localStorage.getItem('wpolo_random_excl_mode');
+    if (lsM === '1') randomExclMode = true;
+  } catch(e) {}
+})();
+
+function persistRoster() {
+  try {
+    localStorage.setItem('wpolo_roster_white', JSON.stringify(rosterWhite));
+    localStorage.setItem('wpolo_roster_black', JSON.stringify(rosterBlack));
+    localStorage.setItem('wpolo_random_excl_mode', randomExclMode ? '1' : '0');
+  } catch(e) {}
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
 // Split-screen state — independent side-B clock
 var splitMode = false;
@@ -2026,6 +2294,50 @@ function handleCmd(action, data) {
       break;
     case 'setShotRandom':
       shotRandom = !!data.on;
+      break;
+    case 'setRandomExcl':
+      randomExclMode = !!data.on;
+      persistRoster();
+      renderExclBoard();
+      break;
+    case 'setRoster':
+      // data.white / data.black are either parsed arrays or raw text.
+      if (typeof data.whiteText === 'string') rosterWhite = parseRosterText(data.whiteText);
+      else if (Array.isArray(data.white))    rosterWhite = data.white;
+      if (typeof data.blackText === 'string') rosterBlack = parseRosterText(data.blackText);
+      else if (Array.isArray(data.black))    rosterBlack = data.black;
+      persistRoster();
+      renderExclBoard();
+      break;
+    case 'exclPlayer':
+      // Coach tapped a specific player on the board. Decrement their
+      // remaining + fire a 30s exclusion. No-op if already at 0 or
+      // already in an active exclusion.
+      _excludePlayer(data.team, data.name);
+      break;
+    case 'exclRandom':
+      // Coach tapped EXCL RANDOM W/B. Pick a non-fouled-out player
+      // who isn't currently in an active exclusion.
+      var teamKey = (data.team === 'B' || data.team === 'away') ? 'away' : 'home';
+      var roster = (teamKey === 'away') ? rosterBlack : rosterWhite;
+      var activeNames = exclusions
+        .filter(function(e) { return e.team === teamKey && e.name; })
+        .map(function(e) { return e.name; });
+      var pool = (roster||[]).filter(function(p) {
+        return p.remaining > 0 && activeNames.indexOf(p.name) === -1;
+      });
+      if (pool.length === 0) break;
+      var pick = pool[Math.floor(Math.random() * pool.length)];
+      _excludePlayer(teamKey, pick.name);
+      break;
+    case 'resetExcls':
+      // Reset every player's remaining back to their configured max.
+      (rosterWhite||[]).forEach(function(p) { p.remaining = p.max; });
+      (rosterBlack||[]).forEach(function(p) { p.remaining = p.max; });
+      // Also clear any currently-active exclusions.
+      exclusions = [];
+      persistRoster();
+      renderExcl(); renderExclBoard();
       break;
     case 'repInc':
       if ((data && data.side) === 'B') bRepCount = Math.max(0, bRepCount + 1);
@@ -2518,6 +2830,9 @@ function renderDisplay() {
   // ROTATE label — single-court display (uses Side A's phase)
   var rLbl = document.getElementById('rotateLblMain');
   if (rLbl) rLbl.style.display = (shotAlt && shotAltPhase === 'rest') ? 'block' : 'none';
+
+  // Keep the exclusion board ticking — countdowns + fouled-out states.
+  renderExclBoard();
 }
 
 function fmtClock(ms) {
@@ -2558,8 +2873,71 @@ function renderExcl() {
 }
 function removeExcl(id) {
   exclusions = exclusions.filter(function(e){ return e.id !== id; });
-  renderExcl();
+  renderExcl(); renderExclBoard();
   sendState();
+}
+
+// Apply an exclusion to a specific player (manual tap or random pick).
+// Decrements their remaining + adds them to the live exclusions array
+// for 30s. No-op if already at 0 or already in an active exclusion.
+function _excludePlayer(team, name) {
+  var teamKey = (team === 'B' || team === 'away') ? 'away' : 'home';
+  var roster = (teamKey === 'away') ? rosterBlack : rosterWhite;
+  var player = (roster||[]).find ? roster.find(function(p){ return p.name === name; })
+                                 : null;
+  if (!player) {
+    for (var i = 0; i < (roster||[]).length; i++) {
+      if (roster[i].name === name) { player = roster[i]; break; }
+    }
+  }
+  if (!player || player.remaining <= 0) return;
+  // Skip if already in an active exclusion
+  for (var j = 0; j < exclusions.length; j++) {
+    if (exclusions[j].team === teamKey && exclusions[j].name === name) return;
+  }
+  player.remaining = Math.max(0, player.remaining - 1);
+  exclusions.push({
+    team: teamKey,
+    remaining: 30000,  // 30s for random/named exclusions
+    id: ++exclCounter,
+    name: name
+  });
+  persistRoster();
+  renderExcl(); renderExclBoard();
+  sendState(true);
+}
+
+// Render the small on-screen board (display + TV). Read from local state
+// on the display; mirrored on the TV via the state payload (TV calls this
+// from applyState after copying state into the local vars).
+function renderExclBoard() {
+  if (IS_CONTROL) return;
+  var board = document.getElementById('exclBoard');
+  if (!board) return;
+  document.body.classList.toggle('is-randexcl', randomExclMode);
+  if (!randomExclMode) return;
+
+  function activeFor(team, name) {
+    for (var i = 0; i < exclusions.length; i++) {
+      if (exclusions[i].team === team && exclusions[i].name === name) return exclusions[i];
+    }
+    return null;
+  }
+  function renderTeam(roster, teamKey) {
+    return (roster||[]).map(function(p) {
+      var act = activeFor(teamKey, p.name);
+      var foulOut = p.remaining <= 0;
+      var cls = 'excl-board-row';
+      if (foulOut) cls += ' is-fouledout';
+      if (act) cls += ' is-active';
+      var rightBit = act ? (Math.ceil(act.remaining/1000) + 's') : String(p.remaining);
+      return '<div class="' + cls + '"><span class="ebr-name">' + escHtml(p.name) + '</span><span class="ebr-rem">' + rightBit + '</span></div>';
+    }).join('') || '<div class="excl-board-empty">—</div>';
+  }
+  var wEl = document.getElementById('exclBoardListW');
+  var bEl = document.getElementById('exclBoardListB');
+  if (wEl) wEl.innerHTML = renderTeam(rosterWhite, 'home');
+  if (bEl) bEl.innerHTML = renderTeam(rosterBlack, 'away');
 }
 
 // ── Time edit ───────────────────────────────────────────────────────────
@@ -2667,6 +3045,19 @@ function openSettings() {
   if (rb2 && rb2.firstChild) rb2.firstChild.textContent = _ctrlShotRandom ? '✕ STOP RANDOM' : '🎲 RANDOM SHOT CLOCK';
   document.getElementById('setRandMin').value = _lastRemoteState.shotRandMin || 10;
   document.getElementById('setRandMax').value = _lastRemoteState.shotRandMax || 30;
+  // Random exclusion mode toggle + roster textareas
+  _ctrlRandomExcl = !!_lastRemoteState.randomExclMode;
+  var reb = document.getElementById('rbRandomExclToggle');
+  if (reb && reb.firstChild) reb.firstChild.textContent = _ctrlRandomExcl ? '✕ HIDE EXCL BOARD' : '🎯 RANDOM EXCLUSION MODE';
+  // Build the text-area content from the live roster (max only; live
+  // `remaining` isn't shown in the editor — coach edits structure, not state)
+  function _rosterToTextLocal(arr) {
+    return (arr||[]).map(function(p){
+      return p.max === 3 ? p.name : (p.name + ' ' + p.max);
+    }).join('\n');
+  }
+  document.getElementById('setRosterWhite').value = _rosterToTextLocal(_lastRemoteState.rosterWhite || rosterWhite);
+  document.getElementById('setRosterBlack').value = _rosterToTextLocal(_lastRemoteState.rosterBlack || rosterBlack);
   document.getElementById('settingsOverlay').classList.add('open');
 }
 function closeSettings() {
@@ -2685,6 +3076,10 @@ function applySettings() {
     randMin: rMin,
     randMax: rMax
   });
+  // Push roster text-areas to the display (raw text — display parses)
+  var wText = document.getElementById('setRosterWhite').value;
+  var bText = document.getElementById('setRosterBlack').value;
+  cmd('setRoster', { whiteText: wText, blackText: bText });
   closeSettings();
 }
 
