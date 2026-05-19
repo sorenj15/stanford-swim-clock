@@ -2910,7 +2910,7 @@ function _excludePlayer(team, name) {
   player.count = (player.count || 0) + 1;
   exclusions.push({
     team: teamKey,
-    remaining: 30000,  // 30s for random/named exclusions
+    remaining: CFG.exclLen,  // 20s, matches real water polo rule
     id: ++exclCounter,
     name: name
   });
