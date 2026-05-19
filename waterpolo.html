@@ -616,6 +616,41 @@ body.is-randexcl:not(.is-tv) .excl-board { display: block; }
 .excl-board-row.is-fouledout { opacity: 0.35; text-decoration: line-through; }
 .excl-board-empty { color: #555; font-style: italic; padding: 4px 2px; }
 
+/* Practice block-timer panel — bottom-left of the jumbotron display. */
+.practice-panel {
+  display: none;
+  position: fixed; bottom: 24px; left: 24px;
+  background: rgba(20,8,8,0.92);
+  border: 2px solid #5a1818;
+  border-radius: 12px;
+  padding: 14px 18px;
+  min-width: 240px; max-width: 360px;
+  z-index: 20;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+}
+body.is-practice:not(.is-tv) .practice-panel { display: block; }
+.practice-lbl {
+  font-size: 0.8rem; font-weight: 900;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: #c0392b; margin-bottom: 6px;
+}
+.practice-name {
+  font-size: 1.4rem; font-weight: 900;
+  color: #fff; line-height: 1.15; margin-bottom: 6px;
+}
+.practice-time {
+  font-family: 'SF Mono', 'Courier New', monospace;
+  font-size: 3rem; font-weight: 900;
+  color: #f1c40f;
+  line-height: 1; letter-spacing: 0.02em;
+}
+.practice-time.is-warn   { color: #f39c12; }
+.practice-time.is-danger { color: #e74c3c; animation: pulse-c .35s ease-in-out infinite; }
+.practice-next {
+  font-size: 0.85rem; color: #888;
+  margin-top: 8px; letter-spacing: 0.1em;
+}
+
 /* ═══════ TV VIEW (dedicated shot clock for outdoor TV) ═══════ */
 /* White-on-black by default — on a backlit LCD TV this maxes out peak
    luminance (all RGB subpixels fully on), which matters more in direct
@@ -895,6 +930,16 @@ body.is-tv-sideB .tv-side-badge { display: block; }
   <div id="exclBoardListB"><div class="excl-board-empty">—</div></div>
 </div>
 
+<!-- ═══ PRACTICE BLOCK TIMER — bottom-left panel showing the current
+     drill name + countdown. Hidden unless a schedule is loaded. Not
+     shown on TVs (those stay shot-clock only). ═══ -->
+<div class="practice-panel" id="practicePanel">
+  <div class="practice-lbl">PRACTICE</div>
+  <div class="practice-name" id="practiceName">—</div>
+  <div class="practice-time" id="practiceTime">0:00</div>
+  <div class="practice-next" id="practiceNext"></div>
+</div>
+
 <!-- ═══ CONTROL VIEW (iPhone) ═══ -->
 <div class="control-app" id="controlApp">
   <div class="ctrl-hdr">
@@ -1078,6 +1123,21 @@ body.is-tv-sideB .tv-side-badge { display: block; }
         <div class="rb rb-horn" onclick="cmd('horn')">📯 HORN</div>
       </div>
     </div>
+
+    <!-- Practice block timer — visible whenever a schedule is loaded -->
+    <div class="ctrl-section" id="ctrlPracticeSec" style="display:none">
+      <div class="ctrl-section-title">Practice · <span id="ctrlPracticeName" style="color:#fff">—</span></div>
+      <div id="ctrlPracticeTime" style="font-family:'SF Mono',monospace;font-size:2.2rem;font-weight:900;color:#f1c40f;text-align:center;margin:6px 0;line-height:1">0:00</div>
+      <div id="ctrlPracticeNext" style="font-size:0.85rem;color:#888;text-align:center;margin-bottom:8px;letter-spacing:0.1em"></div>
+      <div class="ctrl-grid g3">
+        <div class="rb" onclick="cmd('practicePrev')" style="background:#1a1a1a;color:#fff;border:1px solid #444">⏮ PREV</div>
+        <div class="rb" id="rbPracticeToggle" onclick="cmd('practiceToggle')" style="background:#1a3a1a;color:#8fcc6a;border:1px solid #2a5a20">▶ START</div>
+        <div class="rb" onclick="cmd('practiceNext')" style="background:#1a1a1a;color:#fff;border:1px solid #444">⏭ NEXT</div>
+      </div>
+      <div class="ctrl-grid" style="margin-top:8px">
+        <div class="rb rb-reset" onclick="cmd('practiceReset')">↺ BACK TO FIRST DRILL</div>
+      </div>
+    </div>
   </div><!-- /#normalCtrl -->
 </div>
 
@@ -1160,6 +1220,11 @@ body.is-tv-sideB .tv-side-badge { display: block; }
     <div class="settings-row">
       <label>Reset</label>
       <div class="rb rb-reset" onclick="cmd('resetExcls');closeSettings();">↺ RESET ALL EXCL COUNTS<span class="rb-sub">everyone back to their max</span></div>
+    </div>
+
+    <div class="settings-row">
+      <label>Practice Schedule</label>
+      <textarea class="settings-inp" id="setPracticeSchedule" rows="10" placeholder="Paste your practice table here (markdown format).\n\nExample:\n| Time | Drill | Duration |\n| --- | --- | --- |\n| 3:30-4:00pm | Video | 30 Minutes |\n| 4:00-4:15pm | Yoga | 15 Minutes |\n..." style="font-family:monospace;font-size:0.8rem;resize:vertical;width:100%"></textarea>
     </div>
 
     <div class="settings-row">
@@ -1315,6 +1380,7 @@ var _ctrlActiveLastSeen = 0;
 // stale echo can't overwrite their action mid-round-trip.
 var _ctrlLocalTs = {};
 var _ctrlPushedRoster = false; // one-shot flag for the cache-recovery push
+var _ctrlLastSchedText = '';   // tracks last submitted schedule text so APPLY doesn't reset a running timer
 function _ctrlMarkLocal(field) { _ctrlLocalTs[field] = Date.now(); }
 function _ctrlIsFreshLocal(field) {
   var t = _ctrlLocalTs[field]; return t && (Date.now() - t < 1000);
@@ -1424,6 +1490,10 @@ function sendState(force) {
     randomExclMode: randomExclMode,
     rosterWhite: rosterWhite,
     rosterBlack: rosterBlack,
+    practiceSchedule: practiceSchedule,
+    practiceIdx: practiceIdx,
+    practiceRemaining: practiceRemaining,
+    practiceRunning: practiceRunning,
     splitMode: splitMode,
     bGameTime: bGameTime,
     bShotTime: bShotTime,
@@ -1833,6 +1903,31 @@ function applyState(s) {
   // Render the controller's tappable per-player rows from incoming state
   _ctrlRenderExclLists(s.exclusions || [], s.rosterWhite || rosterWhite, s.rosterBlack || rosterBlack);
 
+  // Practice block timer — update labels + START/PAUSE button state
+  if (Array.isArray(s.practiceSchedule)) {
+    var sched = s.practiceSchedule;
+    var idx = s.practiceIdx || 0;
+    var sec = document.getElementById('ctrlPracticeSec');
+    if (sec) sec.style.display = sched.length > 0 ? '' : 'none';
+    if (sched.length > 0) {
+      var cur = sched[idx];
+      setText('ctrlPracticeName', cur ? cur.name : '—');
+      var remMs = Math.max(0, s.practiceRemaining || 0);
+      var ts = Math.ceil(remMs / 1000);
+      setText('ctrlPracticeTime', Math.floor(ts/60) + ':' + (ts%60 < 10 ? '0'+(ts%60) : (ts%60)));
+      var nxt = sched[idx + 1];
+      setText('ctrlPracticeNext', nxt ? ('NEXT · ' + nxt.name) : '— last drill —');
+      var pb = document.getElementById('rbPracticeToggle');
+      if (pb) {
+        var wantTxt = s.practiceRunning ? '⏸ PAUSE' : '▶ START';
+        if (pb.textContent !== wantTxt) pb.textContent = wantTxt;
+        var wantBg  = s.practiceRunning ? '#3a1a1a' : '#1a3a1a';
+        var wantCol = s.practiceRunning ? '#cc8f8f' : '#8fcc6a';
+        pb.style.background = wantBg; pb.style.color = wantCol;
+      }
+    }
+  }
+
   setStartBtn('rbStartStop', s.running);
 
   // Split mode: the remote's layout is driven by its OWN local flag
@@ -1885,8 +1980,66 @@ var exclCounter = 0;
 // + remaining count; greyed when fouled out. Random mode adds two
 // buttons to fire a random exclusion on a chosen team.
 var randomExclMode = false;
-var rosterWhite = [];   // [{name, max, remaining}, ...]
+var rosterWhite = [];   // [{name, max, count}, ...]
 var rosterBlack = [];
+
+// ── Practice schedule ─────────────────────────────────────────────────
+// A list of named drill blocks with durations. Display shows the current
+// drill + countdown on a small panel bottom-left of the scoreboard;
+// controller has START/PAUSE/PREV/NEXT buttons. Coach pastes a markdown
+// table in Settings to load. Persists in localStorage.
+var practiceSchedule  = [];  // [{name, durationMs}, ...]
+var practiceIdx       = 0;
+var practiceRemaining = 0;
+var practiceRunning   = false;
+var _practiceRaf      = null;
+var _practiceLastTs   = null;
+var _practiceLastSent = 0;
+
+// Parse a markdown-ish table. Skips header / separator rows. Each data
+// row expected to be one of:
+//   | Time | Drill | Duration |   ← 3 cols: time, drill, dur
+//   | Drill | Duration |          ← 2 cols: drill, dur
+// Duration is "N Minutes" or just "N" (minutes assumed) or "N sec".
+function parsePracticeTable(text) {
+  var lines = String(text || '').split(/\r?\n/);
+  var out = [];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].trim();
+    if (!line) continue;
+    if (line.charAt(0) !== '|') continue;
+    var cells = line.split('|').map(function(c){ return c.trim(); }).filter(function(c){ return c.length; });
+    if (cells.length < 2) continue;
+    if (cells.every(function(c){ return /^[-:\s]+$/.test(c); })) continue;
+    var joined = cells.join(' ').toLowerCase();
+    if (joined.indexOf('drill') !== -1 && joined.indexOf('duration') !== -1) continue;
+    var name, durStr;
+    if (cells.length >= 3) { name = cells[1]; durStr = cells[2]; }
+    else                    { name = cells[0]; durStr = cells[1]; }
+    var m = durStr.match(/(\d+(?:\.\d+)?)\s*(min|minute|mins|minutes|sec|second|secs|seconds|hour|hours|h|m|s)?/i);
+    if (!m) continue;
+    var num = parseFloat(m[1]);
+    var unit = (m[2] || 'min').toLowerCase();
+    var ms;
+    if (/^(sec|secs|second|seconds|s)$/.test(unit)) ms = num * 1000;
+    else if (/^(hour|hours|h)$/.test(unit))        ms = num * 60 * 60 * 1000;
+    else                                            ms = num * 60 * 1000;
+    if (ms <= 0) continue;
+    out.push({ name: name, durationMs: ms });
+  }
+  return out;
+}
+
+// Hydrate from localStorage on boot
+(function hydratePractice() {
+  try {
+    var ls = localStorage.getItem('wpolo_practice_schedule');
+    if (ls) practiceSchedule = JSON.parse(ls) || [];
+    if (practiceSchedule.length > 0) {
+      practiceRemaining = practiceSchedule[0].durationMs;
+    }
+  } catch(e) {}
+})();
 
 // Parse a roster text-area string. Each line is "Name" (default max 3)
 // or "Name N" (max N). `count` starts at 0 and climbs with each
@@ -2325,6 +2478,57 @@ function handleCmd(action, data) {
       persistRoster();
       renderExcl(); renderExclBoard();
       break;
+    case 'setPracticeSchedule':
+      if (typeof data.text === 'string') {
+        practiceSchedule = parsePracticeTable(data.text);
+      } else if (Array.isArray(data.schedule)) {
+        practiceSchedule = data.schedule;
+      }
+      practiceIdx = 0;
+      practiceRunning = false;
+      if (_practiceRaf) { cancelAnimationFrame(_practiceRaf); _practiceRaf = null; }
+      practiceRemaining = practiceSchedule.length ? practiceSchedule[0].durationMs : 0;
+      try { localStorage.setItem('wpolo_practice_schedule', JSON.stringify(practiceSchedule)); } catch(e) {}
+      renderPracticePanel();
+      break;
+    case 'practiceToggle':
+      if (practiceRunning) {
+        practiceRunning = false;
+        if (_practiceRaf) { cancelAnimationFrame(_practiceRaf); _practiceRaf = null; }
+      } else {
+        if (practiceSchedule.length === 0 || practiceIdx >= practiceSchedule.length) break;
+        if (practiceRemaining <= 0) practiceRemaining = practiceSchedule[practiceIdx].durationMs;
+        practiceRunning = true;
+        _practiceLastTs = null;
+        _practiceRaf = requestAnimationFrame(_practiceLoop);
+      }
+      renderPracticePanel();
+      break;
+    case 'practiceNext':
+      if (practiceIdx + 1 < practiceSchedule.length) {
+        practiceIdx++;
+        practiceRemaining = practiceSchedule[practiceIdx].durationMs;
+        practiceRunning = false;
+        if (_practiceRaf) { cancelAnimationFrame(_practiceRaf); _practiceRaf = null; }
+        renderPracticePanel();
+      }
+      break;
+    case 'practicePrev':
+      if (practiceIdx > 0) {
+        practiceIdx--;
+        practiceRemaining = practiceSchedule[practiceIdx].durationMs;
+        practiceRunning = false;
+        if (_practiceRaf) { cancelAnimationFrame(_practiceRaf); _practiceRaf = null; }
+        renderPracticePanel();
+      }
+      break;
+    case 'practiceReset':
+      practiceIdx = 0;
+      practiceRunning = false;
+      if (_practiceRaf) { cancelAnimationFrame(_practiceRaf); _practiceRaf = null; }
+      practiceRemaining = practiceSchedule.length ? practiceSchedule[0].durationMs : 0;
+      renderPracticePanel();
+      break;
     case 'repInc':
       if ((data && data.side) === 'B') bRepCount = Math.max(0, bRepCount + 1);
       else repCount = Math.max(0, repCount + 1);
@@ -2663,6 +2867,55 @@ function renderTransition() {
   if (sec <= 3 && sec > 0) cls += ' tc-danger';
   else if (sec <= 10) cls += ' tc-warn';
   el.className = cls;
+}
+
+// Practice block timer — independent of the game clock. Counts down the
+// current drill; at 0 the horn fires and the timer waits at 0 for the
+// coach to tap ⏭ NEXT on the controller.
+function _practiceLoop(ts) {
+  if (!practiceRunning) return;
+  if (_practiceLastTs !== null) {
+    var dt = ts - _practiceLastTs;
+    practiceRemaining -= dt;
+    if (practiceRemaining <= 0) {
+      practiceRemaining = 0;
+      practiceRunning = false;
+      soundHorn();
+      renderPracticePanel();
+      sendState(true);
+      return;
+    }
+  }
+  _practiceLastTs = ts;
+  renderPracticePanel();
+  if (ts - _practiceLastSent >= 250) {
+    _practiceLastSent = ts;
+    sendState();
+  }
+  _practiceRaf = requestAnimationFrame(_practiceLoop);
+}
+
+function renderPracticePanel() {
+  if (IS_CONTROL) return;
+  if (!document.getElementById('practicePanel')) return;
+  var hasSchedule = practiceSchedule.length > 0;
+  document.body.classList.toggle('is-practice', hasSchedule);
+  if (!hasSchedule) return;
+  var cur = practiceSchedule[practiceIdx];
+  if (!cur) return;
+  document.getElementById('practiceName').textContent = cur.name;
+  var s = Math.max(0, Math.ceil(practiceRemaining / 1000));
+  var mm = Math.floor(s / 60);
+  var ss = s % 60;
+  var t = document.getElementById('practiceTime');
+  t.textContent = mm + ':' + (ss < 10 ? '0'+ss : ss);
+  var cls = 'practice-time';
+  if (s <= 10 && s > 0) cls += ' is-danger';
+  else if (s <= 60)     cls += ' is-warn';
+  t.className = cls;
+  var nxt = practiceSchedule[practiceIdx + 1];
+  document.getElementById('practiceNext').textContent =
+    nxt ? ('NEXT · ' + nxt.name) : '— last drill —';
 }
 
 // Render the split-screen panels (side A uses top-level state, side B uses b*)
@@ -3061,6 +3314,14 @@ function openSettings() {
   }
   document.getElementById('setRosterWhite').value = _rosterToTextLocal(_lastRemoteState.rosterWhite || rosterWhite);
   document.getElementById('setRosterBlack').value = _rosterToTextLocal(_lastRemoteState.rosterBlack || rosterBlack);
+  // Practice schedule textarea — rebuild a readable table from the
+  // current schedule so the coach can edit it inline.
+  var sched = _lastRemoteState.practiceSchedule || practiceSchedule || [];
+  var schedText = sched.length === 0 ? '' :
+    ('| Drill | Duration |\n| --- | --- |\n' +
+     sched.map(function(b){ return '| ' + b.name + ' | ' + Math.round(b.durationMs / 60000) + ' Minutes |'; }).join('\n'));
+  document.getElementById('setPracticeSchedule').value = schedText;
+  _ctrlLastSchedText = schedText;
   document.getElementById('settingsOverlay').classList.add('open');
 }
 function closeSettings() {
@@ -3083,6 +3344,13 @@ function applySettings() {
   var wText = document.getElementById('setRosterWhite').value;
   var bText = document.getElementById('setRosterBlack').value;
   cmd('setRoster', { whiteText: wText, blackText: bText });
+  // Practice schedule — only push if it actually changed (to avoid
+  // resetting the running drill timer on every APPLY)
+  var schedText = document.getElementById('setPracticeSchedule').value;
+  if (schedText !== _ctrlLastSchedText) {
+    _ctrlLastSchedText = schedText;
+    cmd('setPracticeSchedule', { text: schedText });
+  }
   closeSettings();
 }
 
@@ -3170,6 +3438,7 @@ renderQtr();
 renderExcl();
 renderSplit();
 renderRepCounter();
+renderPracticePanel();
 showRemoteURL();
 connectWS();
 </script>
