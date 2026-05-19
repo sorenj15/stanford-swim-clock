@@ -590,7 +590,8 @@ body.is-transition .transition-overlay { display: flex; }
 }
 .excl-board-w { left: 24px;  right: auto; }
 .excl-board-b { right: 24px; left: auto;  }
-body.is-randexcl .excl-board { display: block; }
+/* Show on the display (jumbotron) only — NOT on the TV shot-clocks */
+body.is-randexcl:not(.is-tv) .excl-board { display: block; }
 .excl-board-hdr {
   font-size: 0.85rem; font-weight: 900;
   letter-spacing: 0.2em; text-transform: uppercase;
@@ -614,12 +615,6 @@ body.is-randexcl .excl-board { display: block; }
 .excl-board-row.is-active .ebr-rem { color: #e74c3c; animation: pulse-c .6s ease-in-out infinite; }
 .excl-board-row.is-fouledout { opacity: 0.35; text-decoration: line-through; }
 .excl-board-empty { color: #555; font-style: italic; padding: 4px 2px; }
-/* TV variant — slightly smaller, hugs the edges */
-body.is-tv .excl-board   { min-width: 16vw; }
-body.is-tv .excl-board-w { left: 2vw; }
-body.is-tv .excl-board-b { right: 2vw; }
-body.is-tv .excl-board-hdr  { font-size: 1.4vw; }
-body.is-tv .excl-board-row  { font-size: 1.6vw; padding: 0.4vw 0.2vw; }
 
 /* ═══════ TV VIEW (dedicated shot clock for outdoor TV) ═══════ */
 /* White-on-black by default — on a backlit LCD TV this maxes out peak
@@ -1672,38 +1667,10 @@ function applyState(s) {
     if (tvScW) tvScW.textContent = s.homeScore || 0;
     if (tvScB) tvScB.textContent = s.awayScore || 0;
 
-    // Exclusion board — mirror what the display is showing. Read from
-    // state because the TV doesn't run handleCmd and has no local roster.
-    if (typeof s.randomExclMode === 'boolean') {
-      document.body.classList.toggle('is-randexcl', !!s.randomExclMode);
-      if (s.randomExclMode) {
-        // Build the lists from incoming state (uses s.exclusions for active
-        // overlays + s.rosterWhite / s.rosterBlack for the full list).
-        var excs = s.exclusions || [];
-        function tvActiveFor(team, name) {
-          for (var i = 0; i < excs.length; i++) {
-            if (excs[i].team === team && excs[i].name === name) return excs[i];
-          }
-          return null;
-        }
-        function tvRenderTeamRows(roster, teamKey) {
-          return (roster||[]).map(function(p) {
-            var act = tvActiveFor(teamKey, p.name);
-            var foulOut = p.count >= p.max;
-            var cls = 'excl-board-row';
-            if (foulOut) cls += ' is-fouledout';
-            if (act) cls += ' is-active';
-            var rightBit = act ? (Math.ceil(act.remaining/1000) + 's') : String(p.count);
-            var safeName = String(p.name).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-            return '<div class="' + cls + '"><span class="ebr-name">' + safeName + '</span><span class="ebr-rem">' + rightBit + '</span></div>';
-          }).join('') || '<div class="excl-board-empty">—</div>';
-        }
-        var tvWEl = document.getElementById('exclBoardListW');
-        var tvBEl = document.getElementById('exclBoardListB');
-        if (tvWEl) tvWEl.innerHTML = tvRenderTeamRows(s.rosterWhite, 'home');
-        if (tvBEl) tvBEl.innerHTML = tvRenderTeamRows(s.rosterBlack, 'away');
-      }
-    }
+    // Exclusion board is intentionally NOT rendered on TVs — the TVs
+    // are dedicated shot-clock displays. Board lives on the jumbotron
+    // (main display) only. CSS hides it via `:not(.is-tv)` regardless,
+    // but skipping the render work here too keeps the TV cheap.
 
     // ROTATE label on TV when alternating mode is on and shot clock is
     // in the rest phase.
