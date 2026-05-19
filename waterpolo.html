@@ -1546,10 +1546,10 @@ function _ctrlRenderExclLists(excs, whiteRoster, blackRoster) {
   }
   function row(p, teamKey) {
     var act = isActive(teamKey, p.name);
-    var fouled = p.remaining <= 0;
+    var fouled = p.count >= p.max;
     var bg = fouled ? '#1a0505' : (act ? '#3a1818' : '#1a1a1a');
     var col = fouled ? '#555' : '#fff';
-    var rightBit = act ? (Math.ceil(act.remaining/1000) + 's') : String(p.remaining);
+    var rightBit = act ? (Math.ceil(act.remaining/1000) + 's') : (p.count + '/' + p.max);
     var disabled = (fouled || act) ? ' style="pointer-events:none;opacity:0.55"' : '';
     return '<div class="rb"' + disabled + ' onclick="cmd(\'exclPlayer\',{team:\'' + teamKey + '\',name:' + JSON.stringify(p.name) + '})" ' +
       'style="background:' + bg + ';color:' + col + ';border:1px solid #444;padding:8px 10px;margin:4px 0;display:flex;justify-content:space-between;font-size:1.05rem;font-weight:700">' +
@@ -1680,11 +1680,11 @@ function applyState(s) {
         function tvRenderTeamRows(roster, teamKey) {
           return (roster||[]).map(function(p) {
             var act = tvActiveFor(teamKey, p.name);
-            var foulOut = p.remaining <= 0;
+            var foulOut = p.count >= p.max;
             var cls = 'excl-board-row';
             if (foulOut) cls += ' is-fouledout';
             if (act) cls += ' is-active';
-            var rightBit = act ? (Math.ceil(act.remaining/1000) + 's') : String(p.remaining);
+            var rightBit = act ? (Math.ceil(act.remaining/1000) + 's') : (p.count + '/' + p.max);
             var safeName = String(p.name).replace(/&/g,'&amp;').replace(/</g,'&lt;');
             return '<div class="' + cls + '"><span class="ebr-name">' + safeName + '</span><span class="ebr-rem">' + rightBit + '</span></div>';
           }).join('') || '<div class="excl-board-empty">—</div>';
@@ -1913,7 +1913,8 @@ var rosterWhite = [];   // [{name, max, remaining}, ...]
 var rosterBlack = [];
 
 // Parse a roster text-area string. Each line is "Name" (default max 3)
-// or "Name N" (max N). Resets `remaining` to `max`.
+// or "Name N" (max N). `count` starts at 0 and climbs with each
+// exclusion; player is fouled out when count >= max.
 function parseRosterText(text) {
   return String(text || '').split(/\r?\n/).map(function(line) {
     line = (line||'').trim();
@@ -1921,7 +1922,7 @@ function parseRosterText(text) {
     var m = line.match(/^(.+?)\s+(\d+)\s*$/);
     var name = m ? m[1].trim() : line;
     var max  = m ? Math.max(1, parseInt(m[2], 10)) : 3;
-    return { name: name, max: max, remaining: max };
+    return { name: name, max: max, count: 0 };
   }).filter(function(x){ return x; });
 }
 
@@ -1934,13 +1935,22 @@ function rosterToText(arr) {
 }
 
 // Hydrate from localStorage on boot — display and controller both cache
-// for two-way safety net.
+// for two-way safety net. Migrate old `remaining`-shaped entries to the
+// new `count`-shaped ones so existing saved rosters don't break.
+function _normalizeRosterEntries(arr) {
+  return (arr||[]).map(function(p) {
+    if (!p || typeof p !== 'object') return null;
+    var max = (typeof p.max === 'number' && p.max > 0) ? p.max : 3;
+    var count = (typeof p.count === 'number') ? p.count : 0;
+    return { name: String(p.name || ''), max: max, count: count };
+  }).filter(function(x){ return x && x.name; });
+}
 (function hydrateRoster() {
   try {
     var lsW = localStorage.getItem('wpolo_roster_white');
-    if (lsW) rosterWhite = JSON.parse(lsW) || [];
+    if (lsW) rosterWhite = _normalizeRosterEntries(JSON.parse(lsW));
     var lsB = localStorage.getItem('wpolo_roster_black');
-    if (lsB) rosterBlack = JSON.parse(lsB) || [];
+    if (lsB) rosterBlack = _normalizeRosterEntries(JSON.parse(lsB));
     var lsM = localStorage.getItem('wpolo_random_excl_mode');
     if (lsM === '1') randomExclMode = true;
   } catch(e) {}
@@ -2324,16 +2334,16 @@ function handleCmd(action, data) {
         .filter(function(e) { return e.team === teamKey && e.name; })
         .map(function(e) { return e.name; });
       var pool = (roster||[]).filter(function(p) {
-        return p.remaining > 0 && activeNames.indexOf(p.name) === -1;
+        return p.count < p.max && activeNames.indexOf(p.name) === -1;
       });
       if (pool.length === 0) break;
       var pick = pool[Math.floor(Math.random() * pool.length)];
       _excludePlayer(teamKey, pick.name);
       break;
     case 'resetExcls':
-      // Reset every player's remaining back to their configured max.
-      (rosterWhite||[]).forEach(function(p) { p.remaining = p.max; });
-      (rosterBlack||[]).forEach(function(p) { p.remaining = p.max; });
+      // Reset every player's count back to 0.
+      (rosterWhite||[]).forEach(function(p) { p.count = 0; });
+      (rosterBlack||[]).forEach(function(p) { p.count = 0; });
       // Also clear any currently-active exclusions.
       exclusions = [];
       persistRoster();
@@ -2890,12 +2900,12 @@ function _excludePlayer(team, name) {
       if (roster[i].name === name) { player = roster[i]; break; }
     }
   }
-  if (!player || player.remaining <= 0) return;
+  if (!player || player.count >= player.max) return;
   // Skip if already in an active exclusion
   for (var j = 0; j < exclusions.length; j++) {
     if (exclusions[j].team === teamKey && exclusions[j].name === name) return;
   }
-  player.remaining = Math.max(0, player.remaining - 1);
+  player.count = (player.count || 0) + 1;
   exclusions.push({
     team: teamKey,
     remaining: 30000,  // 30s for random/named exclusions
@@ -2926,11 +2936,11 @@ function renderExclBoard() {
   function renderTeam(roster, teamKey) {
     return (roster||[]).map(function(p) {
       var act = activeFor(teamKey, p.name);
-      var foulOut = p.remaining <= 0;
+      var foulOut = p.count >= p.max;
       var cls = 'excl-board-row';
       if (foulOut) cls += ' is-fouledout';
       if (act) cls += ' is-active';
-      var rightBit = act ? (Math.ceil(act.remaining/1000) + 's') : String(p.remaining);
+      var rightBit = act ? (Math.ceil(act.remaining/1000) + 's') : (p.count + '/' + p.max);
       return '<div class="' + cls + '"><span class="ebr-name">' + escHtml(p.name) + '</span><span class="ebr-rem">' + rightBit + '</span></div>';
     }).join('') || '<div class="excl-board-empty">—</div>';
   }
