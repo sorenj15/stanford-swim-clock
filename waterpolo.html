@@ -571,30 +571,31 @@ body.is-transition .transition-overlay { display: flex; }
 .transition-clock.tc-warn   { color: #f39c12; text-shadow: 0 0 70px rgba(243,156,18,0.6); }
 .transition-clock.tc-danger { color: #e74c3c; text-shadow: 0 0 90px rgba(231,76,60,0.75); animation: pulse-c .32s ease-in-out infinite; }
 
-/* Exclusion board — small panel right of the clock area, shown only
-   when random exclusion mode is on. Lists each team's roster with
-   remaining-exclusions count; greyed when fouled out; pulses when
-   currently in an active 30s exclusion. */
+/* Exclusion board — two panels flanking the clock area (matches the
+   existing scoreboard layout: White on the left, Black on the right).
+   Shown only when random exclusion mode is on. Lists each team's
+   roster with count/max; greyed when fouled out; pulses when in an
+   active 30s exclusion. */
 .excl-board {
   display: none;
-  position: fixed; right: 24px; top: 50%;
+  position: fixed; top: 50%;
   transform: translateY(-50%);
   background: rgba(20,8,8,0.92);
   border: 2px solid #5a1818;
   border-radius: 12px;
   padding: 14px 16px;
-  min-width: 230px; max-width: 280px;
+  min-width: 220px; max-width: 280px;
   z-index: 20;
   box-shadow: 0 8px 30px rgba(0,0,0,0.5);
 }
+.excl-board-w { left: 24px;  right: auto; }
+.excl-board-b { right: 24px; left: auto;  }
 body.is-randexcl .excl-board { display: block; }
-.excl-board-section { margin-bottom: 12px; }
-.excl-board-section:last-child { margin-bottom: 0; }
 .excl-board-hdr {
   font-size: 0.85rem; font-weight: 900;
   letter-spacing: 0.2em; text-transform: uppercase;
-  margin-bottom: 6px;
-  padding-bottom: 4px; border-bottom: 1px solid #3a1010;
+  margin-bottom: 8px;
+  padding-bottom: 5px; border-bottom: 1px solid #3a1010;
 }
 .excl-board-hdr.w { color: #fff; }
 .excl-board-hdr.b { color: #999; }
@@ -607,16 +608,18 @@ body.is-randexcl .excl-board { display: block; }
   font-family: 'SF Mono', 'Courier New', monospace;
   font-variant-numeric: tabular-nums;
   color: #f1c40f;
-  min-width: 36px; text-align: right;
+  min-width: 44px; text-align: right;
 }
 .excl-board-row.is-active { background: rgba(231,76,60,0.18); border-radius: 6px; }
 .excl-board-row.is-active .ebr-rem { color: #e74c3c; animation: pulse-c .6s ease-in-out infinite; }
 .excl-board-row.is-fouledout { opacity: 0.35; text-decoration: line-through; }
 .excl-board-empty { color: #555; font-style: italic; padding: 4px 2px; }
-/* TV board sits a bit smaller, off the right edge */
-body.is-tv .excl-board { right: 2vw; min-width: 18vw; }
-body.is-tv .excl-board-hdr  { font-size: 1.2vw; }
-body.is-tv .excl-board-row  { font-size: 1.4vw; padding: 0.4vw 0.2vw; }
+/* TV variant — slightly smaller, hugs the edges */
+body.is-tv .excl-board   { min-width: 16vw; }
+body.is-tv .excl-board-w { left: 2vw; }
+body.is-tv .excl-board-b { right: 2vw; }
+body.is-tv .excl-board-hdr  { font-size: 1.4vw; }
+body.is-tv .excl-board-row  { font-size: 1.6vw; padding: 0.4vw 0.2vw; }
 
 /* ═══════ TV VIEW (dedicated shot clock for outdoor TV) ═══════ */
 /* White-on-black by default — on a backlit LCD TV this maxes out peak
@@ -885,17 +888,16 @@ body.is-tv-sideB .tv-side-badge { display: block; }
   <div class="transition-clock" id="transitionClock">0:30</div>
 </div>
 
-<!-- ═══ EXCLUSION BOARD — only shown when random-excl mode is on. Sits to
-     the right of the clock; lists each team's roster + remaining counts. ═══ -->
-<div class="excl-board" id="exclBoard">
-  <div class="excl-board-section">
-    <div class="excl-board-hdr w">White</div>
-    <div id="exclBoardListW"><div class="excl-board-empty">—</div></div>
-  </div>
-  <div class="excl-board-section">
-    <div class="excl-board-hdr b">Black</div>
-    <div id="exclBoardListB"><div class="excl-board-empty">—</div></div>
-  </div>
+<!-- ═══ EXCLUSION BOARDS — shown only when random-excl mode is on.
+     Two panels flank the clock: White on the left, Black on the
+     right, matching the existing score layout. ═══ -->
+<div class="excl-board excl-board-w" id="exclBoardW">
+  <div class="excl-board-hdr w">White</div>
+  <div id="exclBoardListW"><div class="excl-board-empty">—</div></div>
+</div>
+<div class="excl-board excl-board-b" id="exclBoardB">
+  <div class="excl-board-hdr b">Black</div>
+  <div id="exclBoardListB"><div class="excl-board-empty">—</div></div>
 </div>
 
 <!-- ═══ CONTROL VIEW (iPhone) ═══ -->
@@ -2922,8 +2924,8 @@ function _excludePlayer(team, name) {
 // from applyState after copying state into the local vars).
 function renderExclBoard() {
   if (IS_CONTROL) return;
-  var board = document.getElementById('exclBoard');
-  if (!board) return;
+  // Check for one of the two panel elements as a sanity guard
+  if (!document.getElementById('exclBoardW')) return;
   document.body.classList.toggle('is-randexcl', randomExclMode);
   if (!randomExclMode) return;
 
