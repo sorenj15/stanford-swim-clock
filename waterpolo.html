@@ -1030,23 +1030,21 @@ body.is-tv-sideB .tv-side-badge { display: block; }
     </div>
 
     <!-- Exclusion board — visible when 🎯 Random Exclusion Mode is on.
-         Two random buttons at the top, then per-player tappable rows
-         per team. Tap a name → 30s exclusion + decrement remaining. -->
+         Two random buttons at the top, then full-width per-player rows
+         stacked by team. Tap a name → 20s exclusion + count up by 1. -->
     <div class="ctrl-section" id="ctrlExclSec" style="display:none">
       <div class="ctrl-section-title">Exclusion Board</div>
       <div class="ctrl-grid g2">
         <div class="rb rb-excl-w" onclick="cmd('exclRandom',{team:'W'})" style="background:#1a1a1a;color:#fff;border:1px solid #555">🎲 EXCL RANDOM W</div>
         <div class="rb rb-excl-b" onclick="cmd('exclRandom',{team:'B'})" style="background:#0a0a0a;color:#aaa;border:1px solid #333">🎲 EXCL RANDOM B</div>
       </div>
-      <div class="ctrl-grid g2" style="margin-top:10px;align-items:flex-start">
-        <div>
-          <div style="font-size:0.8rem;color:#888;letter-spacing:0.15em;font-weight:800;margin-bottom:6px">WHITE</div>
-          <div id="ctrlExclListW"></div>
-        </div>
-        <div>
-          <div style="font-size:0.8rem;color:#888;letter-spacing:0.15em;font-weight:800;margin-bottom:6px">BLACK</div>
-          <div id="ctrlExclListB"></div>
-        </div>
+      <div style="margin-top:14px">
+        <div style="font-size:0.85rem;color:#fff;letter-spacing:0.18em;font-weight:900;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #3a1010">WHITE — TAP TO EXCLUDE</div>
+        <div id="ctrlExclListW"></div>
+      </div>
+      <div style="margin-top:14px">
+        <div style="font-size:0.85rem;color:#aaa;letter-spacing:0.18em;font-weight:900;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #3a1010">BLACK — TAP TO EXCLUDE</div>
+        <div id="ctrlExclListB"></div>
       </div>
     </div>
 
@@ -1549,13 +1547,19 @@ function _ctrlRenderExclLists(excs, whiteRoster, blackRoster) {
   function row(p, teamKey) {
     var act = isActive(teamKey, p.name);
     var fouled = p.count >= p.max;
-    var bg = fouled ? '#1a0505' : (act ? '#3a1818' : '#1a1a1a');
+    var bg = fouled ? '#1a0505' : (act ? '#3a1818' : '#1f1f1f');
     var col = fouled ? '#555' : '#fff';
-    var rightBit = act ? (Math.ceil(act.remaining/1000) + 's') : (p.count + '/' + p.max);
-    var disabled = (fouled || act) ? ' style="pointer-events:none;opacity:0.55"' : '';
-    return '<div class="rb"' + disabled + ' onclick="cmd(\'exclPlayer\',{team:\'' + teamKey + '\',name:' + JSON.stringify(p.name) + '})" ' +
-      'style="background:' + bg + ';color:' + col + ';border:1px solid #444;padding:8px 10px;margin:4px 0;display:flex;justify-content:space-between;font-size:1.05rem;font-weight:700">' +
-      '<span>' + (p.name.replace(/</g,'&lt;')) + '</span><span style="font-family:monospace">' + rightBit + '</span></div>';
+    var rightBit = act ? (Math.ceil(act.remaining/1000) + 's') : String(p.count);
+    var rightCol = act ? '#e74c3c' : '#f1c40f';
+    var inlineStyle = 'background:' + bg + ';color:' + col + ';border:1px solid #555;border-radius:8px;'
+      + 'padding:14px 16px;margin:6px 0;display:flex;justify-content:space-between;align-items:center;'
+      + 'font-size:1.2rem;font-weight:800;width:100%;box-sizing:border-box;cursor:pointer';
+    var disabled = (fouled || act) ? ';pointer-events:none;opacity:0.55' : '';
+    return '<div onclick="cmd(\'exclPlayer\',{team:\'' + teamKey + '\',name:' + JSON.stringify(p.name) + '})" ' +
+      'style="' + inlineStyle + disabled + '">' +
+      '<span>' + (p.name.replace(/</g,'&lt;')) + '</span>' +
+      '<span style="font-family:\'SF Mono\',monospace;font-size:1.4rem;color:' + rightCol + '">' + rightBit + '</span>' +
+      '</div>';
   }
   wEl.innerHTML = (whiteRoster||[]).map(function(p){ return row(p, 'home'); }).join('') || '<div style="color:#555;font-style:italic;padding:6px 2px">no roster</div>';
   bEl.innerHTML = (blackRoster||[]).map(function(p){ return row(p, 'away'); }).join('') || '<div style="color:#555;font-style:italic;padding:6px 2px">no roster</div>';
@@ -1686,7 +1690,7 @@ function applyState(s) {
             var cls = 'excl-board-row';
             if (foulOut) cls += ' is-fouledout';
             if (act) cls += ' is-active';
-            var rightBit = act ? (Math.ceil(act.remaining/1000) + 's') : (p.count + '/' + p.max);
+            var rightBit = act ? (Math.ceil(act.remaining/1000) + 's') : String(p.count);
             var safeName = String(p.name).replace(/&/g,'&amp;').replace(/</g,'&lt;');
             return '<div class="' + cls + '"><span class="ebr-name">' + safeName + '</span><span class="ebr-rem">' + rightBit + '</span></div>';
           }).join('') || '<div class="excl-board-empty">—</div>';
@@ -2942,7 +2946,7 @@ function renderExclBoard() {
       var cls = 'excl-board-row';
       if (foulOut) cls += ' is-fouledout';
       if (act) cls += ' is-active';
-      var rightBit = act ? (Math.ceil(act.remaining/1000) + 's') : (p.count + '/' + p.max);
+      var rightBit = act ? (Math.ceil(act.remaining/1000) + 's') : String(p.count);
       return '<div class="' + cls + '"><span class="ebr-name">' + escHtml(p.name) + '</span><span class="ebr-rem">' + rightBit + '</span></div>';
     }).join('') || '<div class="excl-board-empty">—</div>';
   }
