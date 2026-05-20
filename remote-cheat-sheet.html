@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Stanford Water Polo — Remote Cheat Sheet</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #f5f5f5;
+    color: #111;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 11pt;
+    line-height: 1.35;
+  }
+  body { padding: 20px; }
+  .page {
+    background: #fff;
+    max-width: 8.5in;
+    margin: 0 auto;
+    padding: 0.45in 0.55in 0.4in;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  }
+
+  /* Header */
+  .hdr { text-align: center; border-bottom: 3px solid #8C1515; padding-bottom: 10px; margin-bottom: 14px; }
+  .hdr h1 { font-size: 20pt; font-weight: 900; letter-spacing: -0.01em; }
+  .hdr .sub { font-size: 9pt; color: #666; letter-spacing: 0.2em; text-transform: uppercase; margin-top: 4px; }
+  .hdr .urls { font-size: 8.5pt; color: #444; margin-top: 8px; font-family: 'SF Mono', Menlo, monospace; }
+
+  /* Two-column layout */
+  .cols { column-count: 2; column-gap: 22px; }
+  section { break-inside: avoid; margin-bottom: 12px; }
+  section h2 {
+    font-size: 11pt; font-weight: 800;
+    color: #8C1515; text-transform: uppercase; letter-spacing: 0.08em;
+    border-bottom: 1px solid #ddd; padding-bottom: 3px; margin-bottom: 6px;
+  }
+  section .where {
+    font-size: 8.5pt; color: #888; font-style: italic; margin-bottom: 6px;
+  }
+
+  /* Rows: button label + description */
+  .row {
+    display: grid;
+    grid-template-columns: 1.35in 1fr;
+    column-gap: 8px;
+    align-items: baseline;
+    padding: 3px 0;
+    border-bottom: 1px dotted #e2e2e2;
+  }
+  .row:last-child { border-bottom: 0; }
+  .btn {
+    font-weight: 700;
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 9pt;
+    color: #111;
+  }
+  .desc { font-size: 9pt; color: #333; }
+  .desc em { color: #666; font-style: normal; font-size: 8.5pt; }
+
+  /* Inline tips/banners */
+  .tip {
+    background: #fffbea;
+    border-left: 3px solid #c9a300;
+    padding: 6px 10px;
+    margin: 8px 0;
+    font-size: 9pt;
+    color: #5a4a00;
+  }
+  .tip strong { color: #6b4f00; }
+
+  /* Print rules */
+  @media print {
+    @page { size: letter; margin: 0.45in 0.55in; }
+    body { background: #fff; padding: 0; }
+    .page { box-shadow: none; padding: 0; max-width: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="hdr">
+    <h1>Stanford Water Polo · Remote Cheat Sheet</h1>
+    <div class="sub">iPhone Controller · Quick Reference</div>
+    <div class="urls">
+      Display: stanford-swim-clock.onrender.com/waterpolo.html &nbsp;·&nbsp;
+      Remote: …?control &nbsp;·&nbsp; TV: …?tv
+    </div>
+  </div>
+
+  <div class="cols">
+
+    <!-- ── BASIC GAME CONTROLS ────────────────────────────────────── -->
+    <section>
+      <h2>Game Clock & Shot Clock</h2>
+      <div class="where">Main remote — single-court mode</div>
+      <div class="row"><span class="btn">▶ START / ⏸ STOP</span><span class="desc">Big button. Start/pause the game + shot clock together.</span></div>
+      <div class="row"><span class="btn">↺ 30</span><span class="desc">Reset shot clock to exactly 30s. <em>Doesn't pause the game.</em></span></div>
+      <div class="row"><span class="btn">↺ 20</span><span class="desc">Reset shot clock to exactly 20s.</span></div>
+      <div class="row"><span class="btn">↺ RESET</span><span class="desc">Reset shot to your sticky default (set via SET SHOT). Keeps running.</span></div>
+      <div class="row"><span class="btn">SET SHOT CLOCK</span><span class="desc">In Settings → Other. Opens minute/second editor. The value you set becomes the new sticky default.</span></div>
+      <div class="row"><span class="btn">SET GAME CLOCK</span><span class="desc">In Settings → Other. Custom minutes/seconds for the game clock.</span></div>
+    </section>
+
+    <!-- ── SCORING & EXCLUSIONS ───────────────────────────────────── -->
+    <section>
+      <h2>Scoring</h2>
+      <div class="where">Goals row</div>
+      <div class="row"><span class="btn">+ W / − W</span><span class="desc">Add or subtract a White goal.</span></div>
+      <div class="row"><span class="btn">+ B / − B</span><span class="desc">Add or subtract a Black goal.</span></div>
+    </section>
+
+    <!-- ── QUARTER & HORN ─────────────────────────────────────────── -->
+    <section>
+      <h2>Quarter & Horn</h2>
+      <div class="row"><span class="btn">▶ NEXT QTR</span><span class="desc">Stops the clock, advances to next quarter, resets game + shot, plays horn.</span></div>
+      <div class="row"><span class="btn">📯 HORN</span><span class="desc">Manually fire the air-horn on the scoreboard speakers.</span></div>
+    </section>
+
+    <!-- ── REST TIMER ─────────────────────────────────────────────── -->
+    <section>
+      <h2>Rest Timer (between quarters)</h2>
+      <div class="row"><span class="btn">1:00 / 2:00 / 3:00 / 5:00</span><span class="desc">Full-screen rest countdown on the display, with score still visible.</span></div>
+      <div class="row"><span class="btn">✕ CANCEL REST</span><span class="desc">Dismiss the rest overlay early.</span></div>
+    </section>
+
+    <!-- ── TRANSITION TIMER ───────────────────────────────────────── -->
+    <section>
+      <h2>Transition Timer (drill hustle)</h2>
+      <div class="where">Coach-summoned countdown with beep cadence</div>
+      <div class="row"><span class="btn">⏱ 0:10 / 0:20 / 0:30 / 1:00</span><span class="desc">Full-screen "GET INTO POSITION" overlay on display + TVs. Beep every second in last 10s, big beep at 0.</span></div>
+      <div class="row"><span class="btn">✕ CANCEL TRANSITION</span><span class="desc">Dismiss the overlay early.</span></div>
+    </section>
+
+    <!-- ── REP COUNTER ────────────────────────────────────────────── -->
+    <section>
+      <h2>Rep Counter</h2>
+      <div class="where">Enable in Settings → 🔢 REP COUNTER</div>
+      <div class="row"><span class="btn">+1 / −1 / ↺ RESET</span><span class="desc">Per-side rep counters. Badge appears on display top-right (and bottom-right when in split mode).</span></div>
+    </section>
+
+    <!-- ── SHOT CLOCK MODES ───────────────────────────────────────── -->
+    <section>
+      <h2>Shot Clock Modes (drills)</h2>
+      <div class="where">Settings — combinable</div>
+      <div class="row"><span class="btn">🔁 LOOP SHOT CLOCK</span><span class="desc">When shot clock hits 0, auto-reset to sticky default + horn + keep running.</span></div>
+      <div class="row"><span class="btn">🔄 ALTERNATING REST</span><span class="desc">Pairs with LOOP. Cycles work → rest → work (e.g. 12s → 5s ROTATE → 12s). Set Rest Length in Settings.</span></div>
+      <div class="row"><span class="btn">🎲 RANDOM SHOT CLOCK</span><span class="desc">Pairs with LOOP. Each cycle picks a fresh value in your min–max range (default 10–30s).</span></div>
+      <div class="row"><span class="btn">SHOT-ONLY</span><span class="desc">In Settings → Other. Hides game clock + quarter dots. Just the shot clock.</span></div>
+    </section>
+
+    <!-- ── EXCLUSION BOARD ────────────────────────────────────────── -->
+    <section>
+      <h2>Random Exclusion Mode</h2>
+      <div class="where">Settings → 🎯 RANDOM EXCLUSION MODE + paste rosters</div>
+      <div class="row"><span class="btn">Tap a player name</span><span class="desc">Adds an exclusion to that player — count goes up by 1, 20s out-timer fires.</span></div>
+      <div class="row"><span class="btn">🎲 EXCL RANDOM W</span><span class="desc">Pick a random non-fouled-out white player.</span></div>
+      <div class="row"><span class="btn">🎲 EXCL RANDOM B</span><span class="desc">Pick a random non-fouled-out black player.</span></div>
+      <div class="row"><span class="btn">↺ RESET ALL EXCL</span><span class="desc">In Settings. Everyone back to 0 exclusions, clears any active.</span></div>
+      <div class="row"><span class="btn">Roster format</span><span class="desc">One name per line. Add a number to set per-player max: <em>"Marcus 1"</em>.</span></div>
+    </section>
+
+    <!-- ── PRACTICE CLOCK ─────────────────────────────────────────── -->
+    <section>
+      <h2>Practice Clock Mode</h2>
+      <div class="where">Settings → 🏊 SHOW PRACTICE CLOCK</div>
+      <div class="row"><span class="btn">⏱ SET TIME / tap time</span><span class="desc">Open the minute/second editor for the practice countdown.</span></div>
+      <div class="row"><span class="btn">▶ START / ⏸ PAUSE</span><span class="desc">Run the practice countdown. Horn fires at 0; timer waits.</span></div>
+      <div class="row"><span class="btn">⏮ PREV / ↺ FIRST / ⏭ NEXT</span><span class="desc">Only visible when a schedule is pasted in Settings (markdown table). Walks through drills.</span></div>
+    </section>
+
+    <!-- ── SPLIT SCREEN ───────────────────────────────────────────── -->
+    <section>
+      <h2>Split-Screen Mode</h2>
+      <div class="where">Settings → ⊟ TWO COURTS</div>
+      <div class="row"><span class="btn">Per-side controls</span><span class="desc">Each side gets its own START, ↺ RESET, ↺ 30/20, ± W/B, SET GAME/SHOT.</span></div>
+      <div class="row"><span class="btn">?solo=A / ?solo=B</span><span class="desc">URL param to put one side full-screen on the big board.</span></div>
+      <div class="row"><span class="btn">?tv&amp;side=B</span><span class="desc">TV variant — mirrors Side B instead of Side A.</span></div>
+    </section>
+
+    <!-- ── TV VARIANTS ────────────────────────────────────────────── -->
+    <section>
+      <h2>TV URL Variants</h2>
+      <div class="row"><span class="btn">?tv</span><span class="desc">Dedicated shot-clock display. Auto-fullscreens on first tap.</span></div>
+      <div class="row"><span class="btn">?tv&amp;amber</span><span class="desc">Amber digits A/B test for sunlit decks.</span></div>
+      <div class="row"><span class="btn">?tv&amp;drills</span><span class="desc">Big game-clock + scores, no shot clock — for drills.</span></div>
+    </section>
+
+    <!-- ── DEFAULTS & RESET ───────────────────────────────────────── -->
+    <section>
+      <h2>Settings — Defaults & Reset</h2>
+      <div class="row"><span class="btn">Quarter Length</span><span class="desc">Minutes per quarter (default 8). Hit APPLY.</span></div>
+      <div class="row"><span class="btn">Shot Clock</span><span class="desc">Seconds per shot clock (default 30). Becomes sticky default for ↺ RESET.</span></div>
+      <div class="row"><span class="btn">⇄ POSS</span><span class="desc">Possession swap — resets shot clock to sticky default. (Doesn't change scores.)</span></div>
+      <div class="row"><span class="btn">↺ RESET ALL</span><span class="desc">Confirm-gated. Resets quarter, game clock, shot, scores. Doesn't touch roster.</span></div>
+    </section>
+
+    <!-- ── TROUBLESHOOTING ────────────────────────────────────────── -->
+    <section>
+      <h2>If Something Looks Weird</h2>
+      <div class="row"><span class="btn">Flicker</span><span class="desc">A second display tab is open somewhere. Close it (or one display "deposes" itself with a banner).</span></div>
+      <div class="row"><span class="btn">Phone disconnects</span><span class="desc">Pull-down refresh on Safari. Reconnect is automatic but can be slow.</span></div>
+      <div class="row"><span class="btn">TV shot clocks differ</span><span class="desc">Make sure both TV URLs end in <em>?tv</em> (not just /waterpolo.html).</span></div>
+    </section>
+
+  </div><!-- /cols -->
+
+  <div class="tip" style="margin-top: 10px;">
+    <strong>One-line tips:</strong>
+    All ↺ buttons keep the clock running. ⇄ POSS is the polite reset between possessions. Loop + Alternating + Random can all be on at once (alternating-only-on-work-phase). Practice clock + game clock can't be on at the same time — toggle via the SHOW PRACTICE CLOCK / SHOT-ONLY buttons.
+  </div>
+
+</div><!-- /page -->
+
+</body>
+</html>
