@@ -2507,8 +2507,15 @@ function handleCmd(action, data) {
         practiceRunning = false;
         if (_practiceRaf) { cancelAnimationFrame(_practiceRaf); _practiceRaf = null; }
       } else {
-        if (practiceSchedule.length === 0 || practiceIdx >= practiceSchedule.length) break;
-        if (practiceRemaining <= 0) practiceRemaining = practiceSchedule[practiceIdx].durationMs;
+        // If a schedule is loaded and the timer is at 0, snap to the
+        // current drill's duration. Otherwise we just run with whatever
+        // the coach manually set via SET TIME.
+        if (practiceRemaining <= 0 && practiceSchedule.length > 0 && practiceIdx < practiceSchedule.length) {
+          practiceRemaining = practiceSchedule[practiceIdx].durationMs;
+        }
+        // Still no time? Nothing to count down — leave the START button
+        // un-engaged so the coach can set a time first.
+        if (practiceRemaining <= 0) break;
         practiceRunning = true;
         _practiceLastTs = null;
         _practiceRaf = requestAnimationFrame(_practiceLoop);
