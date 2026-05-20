@@ -616,60 +616,15 @@ body.is-randexcl:not(.is-tv) .excl-board { display: block; }
 .excl-board-row.is-fouledout { opacity: 0.35; text-decoration: line-through; }
 .excl-board-empty { color: #555; font-style: italic; padding: 4px 2px; }
 
-/* Practice block-timer panel — bottom-left of the jumbotron display. */
-.practice-panel {
-  display: none;
-  position: fixed; bottom: 24px; left: 24px;
-  background: rgba(20,8,8,0.92);
-  border: 2px solid #5a1818;
-  border-radius: 12px;
-  padding: 14px 18px;
-  min-width: 240px; max-width: 360px;
-  z-index: 20;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
-}
-body.is-practice:not(.is-tv) .practice-panel { display: block; }
-.practice-lbl {
-  font-size: 0.8rem; font-weight: 900;
-  letter-spacing: 0.22em; text-transform: uppercase;
-  color: #c0392b; margin-bottom: 6px;
-}
-.practice-name {
-  font-size: 1.4rem; font-weight: 900;
-  color: #fff; line-height: 1.15; margin-bottom: 6px;
-}
-.practice-time {
-  font-family: 'SF Mono', 'Courier New', monospace;
-  font-size: 3rem; font-weight: 900;
-  color: #f1c40f;
-  line-height: 1; letter-spacing: 0.02em;
-}
-.practice-time.is-warn   { color: #f39c12; }
-.practice-time.is-danger { color: #e74c3c; animation: pulse-c .35s ease-in-out infinite; }
-.practice-next {
-  font-size: 0.85rem; color: #888;
-  margin-top: 8px; letter-spacing: 0.1em;
-}
-
 /* Big practice clock — replaces the game clock when practice-main mode
-   is on. Hidden by default. Inherits the same visual weight as the
-   game clock so it dominates the display. */
+   is on. Hidden by default. Just the time; coach taps it to edit. */
 .practice-main { display: none; text-align: center; }
 body.is-practice-main:not(.is-tv):not(.is-shotonly) .practice-main { display: block; }
 body.is-practice-main:not(.is-tv):not(.is-shotonly) #gameClock,
 body.is-practice-main:not(.is-tv):not(.is-shotonly) .gc-lbl,
 body.is-practice-main:not(.is-tv):not(.is-shotonly) .qtr-bar { display: none; }
-/* Hide the small bottom-left panel when the big one is showing — no duplicate */
-body.is-practice-main:not(.is-tv):not(.is-shotonly) #practicePanel { display: none; }
-/* SHOT-ONLY wins — hides everything except the shot clock. */
-body.is-shotonly .practice-main,
-body.is-shotonly #practicePanel { display: none !important; }
-.pm-name {
-  font-size: 3rem; font-weight: 900;
-  color: #fff; line-height: 1.1;
-  letter-spacing: 0.05em; text-transform: uppercase;
-  margin: 6px 0 10px;
-}
+/* SHOT-ONLY wins — hides the practice clock entirely. */
+body.is-shotonly .practice-main { display: none !important; }
 .pm-time {
   font-family: 'SF Mono', 'Courier New', monospace;
   font-size: 6rem; font-weight: 900;
@@ -678,11 +633,6 @@ body.is-shotonly #practicePanel { display: none !important; }
 }
 .pm-time.is-warn   { color: #f39c12; }
 .pm-time.is-danger { color: #e74c3c; animation: pulse-c .35s ease-in-out infinite; }
-.pm-next {
-  font-size: 1rem; color: #999;
-  margin-top: 8px; letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
 
 /* ═══════ TV VIEW (dedicated shot clock for outdoor TV) ═══════ */
 /* White-on-black by default — on a backlit LCD TV this maxes out peak
@@ -886,11 +836,10 @@ body.is-tv-sideB .tv-side-badge { display: block; }
     <div class="gc-lbl">GAME CLOCK</div>
     <div class="game-clock gc-stopped" id="gameClock" onclick="openTimeEdit('game')">8:00</div>
     <!-- Big practice clock — sits in the game-clock slot when
-         PRACTICE CLOCK MODE is on. Hidden by default. -->
+         PRACTICE CLOCK MODE is on. Hidden by default. Tap the time
+         to open the inline minute/second editor. -->
     <div class="practice-main" id="practiceMain">
-      <div class="pm-name" id="pcName">—</div>
-      <div class="pm-time" id="pcTime">0:00</div>
-      <div class="pm-next" id="pcNext"></div>
+      <div class="pm-time" id="pcTime" onclick="openTimeEdit('practice')" style="cursor:pointer">0:00</div>
     </div>
     <div class="mode-badge" id="modeBadge">SHOT CLOCK ONLY</div>
     <div class="sc-wrap">
@@ -970,15 +919,6 @@ body.is-tv-sideB .tv-side-badge { display: block; }
   <div id="exclBoardListB"><div class="excl-board-empty">—</div></div>
 </div>
 
-<!-- ═══ PRACTICE BLOCK TIMER — bottom-left panel showing the current
-     drill name + countdown. Hidden unless a schedule is loaded. Not
-     shown on TVs (those stay shot-clock only). ═══ -->
-<div class="practice-panel" id="practicePanel">
-  <div class="practice-lbl">PRACTICE</div>
-  <div class="practice-name" id="practiceName">—</div>
-  <div class="practice-time" id="practiceTime">0:00</div>
-  <div class="practice-next" id="practiceNext"></div>
-</div>
 
 <!-- ═══ CONTROL VIEW (iPhone) ═══ -->
 <div class="control-app" id="controlApp">
@@ -1164,18 +1104,22 @@ body.is-tv-sideB .tv-side-badge { display: block; }
       </div>
     </div>
 
-    <!-- Practice block timer — visible whenever a schedule is loaded -->
+    <!-- Practice block timer — visible whenever Practice Clock Mode is on -->
     <div class="ctrl-section" id="ctrlPracticeSec" style="display:none">
-      <div class="ctrl-section-title">Practice · <span id="ctrlPracticeName" style="color:#fff">—</span></div>
-      <div id="ctrlPracticeTime" style="font-family:'SF Mono',monospace;font-size:2.2rem;font-weight:900;color:#f1c40f;text-align:center;margin:6px 0;line-height:1">0:00</div>
-      <div id="ctrlPracticeNext" style="font-size:0.85rem;color:#888;text-align:center;margin-bottom:8px;letter-spacing:0.1em"></div>
-      <div class="ctrl-grid g3">
-        <div class="rb" onclick="cmd('practicePrev')" style="background:#1a1a1a;color:#fff;border:1px solid #444">⏮ PREV</div>
+      <div class="ctrl-section-title">Practice</div>
+      <div id="ctrlPracticeTime" onclick="openTimeEdit('practice')" style="font-family:'SF Mono',monospace;font-size:2.6rem;font-weight:900;color:#fff;text-align:center;margin:6px 0;line-height:1;cursor:pointer">0:00</div>
+      <div style="text-align:center;font-size:0.75rem;color:#666;margin-bottom:10px;letter-spacing:0.15em">TAP TIME TO EDIT</div>
+      <div class="ctrl-grid g2">
         <div class="rb" id="rbPracticeToggle" onclick="cmd('practiceToggle')" style="background:#1a3a1a;color:#8fcc6a;border:1px solid #2a5a20">▶ START</div>
-        <div class="rb" onclick="cmd('practiceNext')" style="background:#1a1a1a;color:#fff;border:1px solid #444">⏭ NEXT</div>
+        <div class="rb rb-time" onclick="openTimeEdit('practice')">⏱ SET TIME</div>
       </div>
-      <div class="ctrl-grid" style="margin-top:8px">
-        <div class="rb rb-reset" onclick="cmd('practiceReset')">↺ BACK TO FIRST DRILL</div>
+      <!-- Optional schedule walkthrough — only shown when a schedule is loaded -->
+      <div id="ctrlPracticeScheduleRow" style="display:none;margin-top:8px">
+        <div class="ctrl-grid g3">
+          <div class="rb" onclick="cmd('practicePrev')" style="background:#1a1a1a;color:#fff;border:1px solid #444">⏮ PREV</div>
+          <div class="rb" onclick="cmd('practiceReset')" style="background:#1a1a1a;color:#fff;border:1px solid #444">↺ FIRST</div>
+          <div class="rb" onclick="cmd('practiceNext')" style="background:#1a1a1a;color:#fff;border:1px solid #444">⏭ NEXT</div>
+        </div>
       </div>
     </div>
   </div><!-- /#normalCtrl -->
@@ -1966,28 +1910,25 @@ function applyState(s) {
   // Render the controller's tappable per-player rows from incoming state
   _ctrlRenderExclLists(s.exclusions || [], s.rosterWhite || rosterWhite, s.rosterBlack || rosterBlack);
 
-  // Practice block timer — update labels + START/PAUSE button state
-  if (Array.isArray(s.practiceSchedule)) {
-    var sched = s.practiceSchedule;
-    var idx = s.practiceIdx || 0;
-    var sec = document.getElementById('ctrlPracticeSec');
-    if (sec) sec.style.display = sched.length > 0 ? '' : 'none';
-    if (sched.length > 0) {
-      var cur = sched[idx];
-      setText('ctrlPracticeName', cur ? cur.name : '—');
-      var remMs = Math.max(0, s.practiceRemaining || 0);
-      var ts = Math.ceil(remMs / 1000);
-      setText('ctrlPracticeTime', Math.floor(ts/60) + ':' + (ts%60 < 10 ? '0'+(ts%60) : (ts%60)));
-      var nxt = sched[idx + 1];
-      setText('ctrlPracticeNext', nxt ? ('NEXT · ' + nxt.name) : '— last drill —');
-      var pb = document.getElementById('rbPracticeToggle');
-      if (pb) {
-        var wantTxt = s.practiceRunning ? '⏸ PAUSE' : '▶ START';
-        if (pb.textContent !== wantTxt) pb.textContent = wantTxt;
-        var wantBg  = s.practiceRunning ? '#3a1a1a' : '#1a3a1a';
-        var wantCol = s.practiceRunning ? '#cc8f8f' : '#8fcc6a';
-        pb.style.background = wantBg; pb.style.color = wantCol;
-      }
+  // Practice block timer — visible whenever Practice Clock Mode is on,
+  // regardless of whether a schedule is loaded. PREV/NEXT/FIRST only
+  // show when a schedule actually exists.
+  var pSec = document.getElementById('ctrlPracticeSec');
+  if (pSec) pSec.style.display = s.practiceClockMode ? '' : 'none';
+  var sched = Array.isArray(s.practiceSchedule) ? s.practiceSchedule : [];
+  var pSchedRow = document.getElementById('ctrlPracticeScheduleRow');
+  if (pSchedRow) pSchedRow.style.display = sched.length > 0 ? '' : 'none';
+  if (s.practiceClockMode) {
+    var remMs = Math.max(0, s.practiceRemaining || 0);
+    var ts = Math.ceil(remMs / 1000);
+    setText('ctrlPracticeTime', Math.floor(ts/60) + ':' + (ts%60 < 10 ? '0'+(ts%60) : (ts%60)));
+    var pb = document.getElementById('rbPracticeToggle');
+    if (pb) {
+      var wantTxt = s.practiceRunning ? '⏸ PAUSE' : '▶ START';
+      if (pb.textContent !== wantTxt) pb.textContent = wantTxt;
+      var wantBg  = s.practiceRunning ? '#3a1a1a' : '#1a3a1a';
+      var wantCol = s.practiceRunning ? '#cc8f8f' : '#8fcc6a';
+      pb.style.background = wantBg; pb.style.color = wantCol;
     }
   }
 
@@ -2606,6 +2547,16 @@ function handleCmd(action, data) {
       renderDisplay();
       renderPracticePanel();
       break;
+    case 'setPracticeTime':
+      // Manual override — coach types in a new duration. Stops the
+      // timer (you almost certainly want a fresh START after editing).
+      if (typeof data.ms === 'number' && data.ms >= 0) {
+        practiceRemaining = data.ms;
+        practiceRunning = false;
+        if (_practiceRaf) { cancelAnimationFrame(_practiceRaf); _practiceRaf = null; }
+        renderPracticePanel();
+      }
+      break;
     case 'repInc':
       if ((data && data.side) === 'B') bRepCount = Math.max(0, bRepCount + 1);
       else repCount = Math.max(0, repCount + 1);
@@ -2974,32 +2925,14 @@ function _practiceLoop(ts) {
 
 function renderPracticePanel() {
   if (IS_CONTROL) return;
-  if (!document.getElementById('practicePanel')) return;
-  var hasSchedule = practiceSchedule.length > 0;
-  document.body.classList.toggle('is-practice', hasSchedule);
-  if (!hasSchedule) return;
-  var cur = practiceSchedule[practiceIdx];
-  if (!cur) return;
+  var pmTime = document.getElementById('pcTime');
+  if (!pmTime) return;
   var s = Math.max(0, Math.ceil(practiceRemaining / 1000));
   var mm = Math.floor(s / 60);
   var ss = s % 60;
-  var timeStr = mm + ':' + (ss < 10 ? '0'+ss : ss);
-  var nxt = practiceSchedule[practiceIdx + 1];
-  var nextStr = nxt ? ('NEXT · ' + nxt.name) : '— last drill —';
+  pmTime.textContent = mm + ':' + (ss < 10 ? '0'+ss : ss);
   var dangerCls = (s <= 10 && s > 0) ? ' is-danger' : (s <= 60 ? ' is-warn' : '');
-
-  // Small bottom-left panel
-  document.getElementById('practiceName').textContent = cur.name;
-  var t1 = document.getElementById('practiceTime');
-  t1.textContent = timeStr; t1.className = 'practice-time' + dangerCls;
-  document.getElementById('practiceNext').textContent = nextStr;
-  // Big in-place clock (when practice-main mode is on)
-  var pmName = document.getElementById('pcName');
-  var pmTime = document.getElementById('pcTime');
-  var pmNext = document.getElementById('pcNext');
-  if (pmName) pmName.textContent = cur.name;
-  if (pmTime) { pmTime.textContent = timeStr; pmTime.className = 'pm-time' + dangerCls; }
-  if (pmNext) pmNext.textContent = nextStr;
+  pmTime.className = 'pm-time' + dangerCls;
 }
 
 // Render the split-screen panels (side A uses top-level state, side B uses b*)
@@ -3281,22 +3214,27 @@ function renderExclBoard() {
 }
 
 // ── Time edit ───────────────────────────────────────────────────────────
-var _teTarget = 'game'; // 'game' or 'shot'
+var _teTarget = 'game'; // 'game' | 'shot' | 'practice'
 var _teSide = 'A';      // 'A' or 'B' (used in split-screen mode)
 
 function openTimeEdit(target, side) {
   side = side || 'A';
   // Stop the relevant clock while editing
   if (IS_CONTROL) {
-    cmd('stop', {side: side});
+    if (target === 'practice') cmd('practiceToggle'); // pause only if running — handled on display side
+    else cmd('stop', {side: side});
   } else {
-    if (side === 'B') { if (bRunning) _stopB(); }
+    if (target === 'practice') {
+      if (practiceRunning) { practiceRunning = false; if (_practiceRaf) { cancelAnimationFrame(_practiceRaf); _practiceRaf = null; } }
+    } else if (side === 'B') { if (bRunning) _stopB(); }
     else if (running) _stop();
   }
   _teTarget = target;
   _teSide = side;
   var ms;
-  if (IS_CONTROL) {
+  if (target === 'practice') {
+    ms = IS_CONTROL ? (_lastRemoteState.practiceRemaining || 0) : (practiceRemaining || 0);
+  } else if (IS_CONTROL) {
     if (side === 'B') {
       ms = target === 'game' ? (_lastRemoteState.bGameTime || CFG.qtrLen) : (_lastRemoteState.bShotTime || CFG.shotLen);
     } else {
@@ -3310,8 +3248,11 @@ function openTimeEdit(target, side) {
     }
   }
   var totalSec = Math.ceil(ms / 1000);
-  var sideLbl = (splitMode || (IS_CONTROL && _lastRemoteState.splitMode)) ? ' (Side ' + side + ')' : '';
-  document.getElementById('teTitle').textContent = (target === 'game' ? 'Set Game Clock' : 'Set Shot Clock') + sideLbl;
+  var sideLbl = (target !== 'practice' && (splitMode || (IS_CONTROL && _lastRemoteState.splitMode))) ? ' (Side ' + side + ')' : '';
+  var title = target === 'game' ? 'Set Game Clock'
+            : target === 'shot' ? 'Set Shot Clock'
+            : 'Set Practice Time';
+  document.getElementById('teTitle').textContent = title + sideLbl;
   document.getElementById('teMin').value = Math.floor(totalSec / 60);
   document.getElementById('teSec').value = pad(totalSec % 60);
   document.getElementById('timeEditOverlay').classList.add('open');
@@ -3324,10 +3265,14 @@ function saveTimeEdit() {
   var s = parseInt(document.getElementById('teSec').value) || 0;
   var ms = (m * 60 + Math.min(s, 59)) * 1000;
   if (IS_CONTROL) {
-    // Send the time value to the display
-    cmd(_teTarget === 'game' ? 'setGame' : 'setShot', {ms: ms, side: _teSide});
+    if (_teTarget === 'practice') cmd('setPracticeTime', {ms: ms});
+    else cmd(_teTarget === 'game' ? 'setGame' : 'setShot', {ms: ms, side: _teSide});
   } else {
-    if (_teSide === 'B') {
+    if (_teTarget === 'practice') {
+      practiceRemaining = ms;
+      renderPracticePanel();
+      sendState(true);
+    } else if (_teSide === 'B') {
       if (_teTarget === 'game') bGameTime = ms;
       else bShotTime = ms;
       renderSplit();
@@ -3342,7 +3287,7 @@ function saveTimeEdit() {
       renderDisplay();
       if (splitMode) renderSplit();
     }
-    sendState();
+    if (_teTarget !== 'practice') sendState();
   }
   closeTimeEdit();
 }
