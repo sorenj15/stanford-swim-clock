@@ -1444,6 +1444,35 @@ document.addEventListener('visibilitychange', function() {
   }
 });
 
+// ── Screen Wake Lock ───────────────────────────────────────────────────
+// Fire TVs / Hisense Silk browsers go idle even with the OS screensaver
+// set to Never. The Wake Lock API tells the browser "keep the screen on
+// while this page is open." Browsers release the lock when the tab is
+// hidden — we re-acquire on visibilitychange. No-op on the controller
+// (phone) and on browsers that don't support the API.
+var _wakeLock = null;
+function _requestWakeLock() {
+  if (IS_CONTROL) return;
+  if (!('wakeLock' in navigator)) return;
+  try {
+    navigator.wakeLock.request('screen').then(function(lock) {
+      _wakeLock = lock;
+      lock.addEventListener('release', function() { _wakeLock = null; });
+    }).catch(function() {});
+  } catch(e) {}
+}
+_requestWakeLock();
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible' && !_wakeLock) _requestWakeLock();
+});
+// First user gesture is a belt-and-suspenders trigger — some browsers
+// require a gesture before granting the lock.
+['click','touchstart','keydown'].forEach(function(ev) {
+  document.addEventListener(ev, function() {
+    if (!_wakeLock) _requestWakeLock();
+  }, { once: true, passive: true });
+});
+
 // Throttle sendState so we're not flooding the WebSocket at 60Hz from
 // the clock loop. The controller and TVs only need second-level
 // resolution most of the time; tenths-level updates kick in for the
