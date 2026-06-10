@@ -1858,7 +1858,22 @@ async function aiClean() {
 function startTimers() {
   if (running) return;
   running = true; paused = false;
-  TS.forEach(function(s){ if (s.phase==='ready') { s.phase='countdown'; s.elapsed=0; s.countdownDur=10000; } });
+  TS.forEach(function(s){
+    if (s.phase!=='ready') return;
+    // If this tier is sitting on an untimed section (warm-up standby),
+    // advance to the first timed section so Start actually starts —
+    // otherwise the countdown phase never ticks (the loop skips untimed
+    // sections) and the button appears to do nothing.
+    var sec = SECS[s.si];
+    if (!sec || !sec.timed) {
+      var nsi = s.si;
+      while (nsi < SECS.length && !SECS[nsi].timed) nsi++;
+      if (nsi >= SECS.length) return; // no timed sections at all
+      s.si = nsi; s.ri = 0; s.results = [];
+    }
+    s.phase='countdown'; s.elapsed=0; s.countdownDur=10000;
+  });
+  secIdx = TS[0].si;
   lastTs = null;
   raf = requestAnimationFrame(loop);
   renderAll();
@@ -1937,8 +1952,17 @@ function skipRep() {
       s.results[s.ri] = 'skip';
       s.ri++;
       if (s.ri>=sec.reps.length) {
-        s.phase = sec.restAfterSec>0 ? 'brk' : 'done';
-        s.restDur = sec.restAfterSec*1000;
+        // Same continue-don't-stop rule as the main step() path.
+        var _nsi = s.si+1;
+        while (_nsi<SECS.length && !SECS[_nsi].timed) _nsi++;
+        if (sec.restAfterSec>0) {
+          s.phase='brk'; s.restDur=sec.restAfterSec*1000;
+        } else if (_nsi<SECS.length) {
+          s.si=_nsi; s.ri=0; s.results=[];
+          s.phase='countdown'; s.countdownDur=10000;
+        } else {
+          s.phase='done';
+        }
         s.elapsed = 0;
       } else {
         s.phase='swim'; s.elapsed=0; s.swimRes=null;
@@ -2045,8 +2069,23 @@ function step(s, ti, sec, dt) {
       s.ri++;
       s.elapsed=0; s.swimRes=null;
       if (s.ri>=sec.reps.length) {
-        s.phase=sec.restAfterSec>0?'brk':'done';
-        s.restDur=sec.restAfterSec*1000;
+        // Section finished. Only go 'done' when there's nothing timed
+        // left. With an explicit set break, count it down ('brk' handler
+        // rolls into the next block). With no break line, roll straight
+        // into the next block via a 10s GET READY countdown — coaches
+        // shouldn't have to press Start between blocks.
+        var _nextSi = s.si+1;
+        while (_nextSi<SECS.length && !SECS[_nextSi].timed) _nextSi++;
+        var _hasNext = _nextSi < SECS.length;
+        if (sec.restAfterSec>0) {
+          s.phase='brk';
+          s.restDur=sec.restAfterSec*1000;
+        } else if (_hasNext) {
+          s.si=_nextSi; s.ri=0; s.results=[];
+          s.phase='countdown'; s.countdownDur=10000;
+        } else {
+          s.phase='done';
+        }
       } else {
         var prevRep=sec.reps[s.ri-1];
         // Per-rep rest: each rep carries over its rest to the break that follows.
