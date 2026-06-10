@@ -1791,8 +1791,7 @@ function launch() {
   area.classList.toggle('grid-6', TIER_COUNT >= 5);
   area.classList.toggle('compact', TIER_COUNT > 3);
 
-  TS = [];
-  for (var si2 = 0; si2 < MAX_TIERS; si2++) TS.push(mkState(secIdx));
+  TS = mkAllStates(secIdx);
   running = false; paused = false;
   renderAll();
 }
@@ -1882,9 +1881,15 @@ function resumeTimers() {
   renderAll();
 }
 
+function mkAllStates(si) {
+  var arr = [];
+  for (var i = 0; i < MAX_TIERS; i++) arr.push(mkState(si));
+  return arr;
+}
+
 function resetTimers() {
   stopLoop();
-  TS = [mkState(secIdx),mkState(secIdx),mkState(secIdx)];
+  TS = mkAllStates(secIdx);
   running = false; paused = false;
   renderAll();
 }
@@ -1947,7 +1952,7 @@ function goNextSection() {
   if (secIdx<SECS.length-1) {
     stopLoop();
     secIdx++;
-    TS = [mkState(secIdx),mkState(secIdx),mkState(secIdx)];
+    TS = mkAllStates(secIdx);
     running = false; paused = false;
     renderAll();
   }
@@ -1957,7 +1962,7 @@ function jumpSection(si) {
   if (si===secIdx) return;
   stopLoop();
   secIdx=si;
-  TS=[mkState(si),mkState(si),mkState(si)];
+  TS=mkAllStates(si);
   running=false; paused=false;
   renderAll();
 }
@@ -2443,6 +2448,20 @@ function renderClock(ti, s, sec, cb) {
   }
   if (s.phase==='ready') {
     cb.className='cbody rd';
+    if (TIER_COUNT > 3) {
+      // Compact ready card — the full set list doesn't fit half-height
+      // grid rows. Show a summary + first-rep target instead; the hero
+      // strip up top already carries the full set composition.
+      var tDist = 0; reps.forEach(function(r){ tDist += r.dist; });
+      var fRep = reps[0];
+      var fPace = getPace(ti, repZ(sec, fRep), fRep.dist);
+      cb.innerHTML=
+        '<div style="font-size:1rem;font-weight:800;color:#c0392b;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">'+sec.title+'</div>'+
+        '<div style="font-size:0.85rem;color:#d4b0b0">'+reps.length+' reps · '+tDist+'m'+(sec.restBetween?' · :'+pad(sec.restBetween)+' rest':'')+'</div>'+
+        '<div class="c-target" style="margin-top:4px">First: <b>'+fRep.dist+'m</b> · '+fmtS(fPace[0])+' – '+fmtS(fPace[1])+'</div>'+
+        '<div class="standby-msg" style="font-size:1rem;margin-top:6px">READY<span>Press Start</span></div>';
+      return;
+    }
     var setRows = buildSetList(ti, sec, reps, -1);
     // Only show section-wide "rest between reps" header if ALL reps share the
     // section default (no per-rep overrides). Otherwise the badges on each
@@ -2466,12 +2485,13 @@ function renderClock(ti, s, sec, cb) {
     var firstPace = getPace(ti, repZ(sec, firstRep), firstRep.dist);
     var firstZ = repZ(sec, firstRep);
     cb.className='cbody rd';
+    var cdFont = TIER_COUNT > 3 ? '3.5rem' : '7rem';
     cb.innerHTML=dotsH+
       '<div class="c-rep-lbl" style="letter-spacing:0.15em">GET READY</div>'+
       '<div class="c-zone-wrap"><span class="c-zone-badge z-'+firstZ+'">Zone '+firstZ.slice(1)+'</span></div>'+
-      '<div class="c-laps">'+firstRep.laps+' laps</div>'+
+      (TIER_COUNT > 3 ? '' : '<div class="c-laps">'+firstRep.laps+' laps</div>')+
       '<div class="c-dist">'+firstRep.dist+'m</div>'+
-      '<div class="c-time tw" style="font-size:7rem">'+cdRem+'</div>'+
+      '<div class="c-time tw" style="font-size:'+cdFont+'">'+cdRem+'</div>'+
       '<div class="c-badge by">STARTING IN '+cdRem+'s</div>'+
       '<div class="c-target">Target: <b>'+fmtS(firstPace[0])+' – '+fmtS(firstPace[1])+'</b></div>';
     return;
@@ -2483,7 +2503,13 @@ function renderClock(ti, s, sec, cb) {
     while(nxtSi<SECS.length && !SECS[nxtSi].timed) nxtSi++;
     var nxtSec=SECS[nxtSi]||null;
     var nxtHtml='';
-    if (nxtSec && nxtSec.reps.length) {
+    if (nxtSec && nxtSec.reps.length && TIER_COUNT > 3) {
+      // Compact set-break — one-line next-section summary instead of the
+      // full set list (doesn't fit half-height grid rows).
+      nxtHtml=
+        '<div class="c-next-lbl" style="margin-top:6px;font-size:0.65rem">Up Next</div>'+
+        '<div style="font-size:0.9rem;font-weight:800;color:#e8b830;text-align:center">'+nxtSec.title+' · '+nxtSec.reps.length+' reps</div>';
+    } else if (nxtSec && nxtSec.reps.length) {
       var nxtRows = buildSetList(ti, nxtSec, nxtSec.reps, 0);
       var nxtRestInfo = nxtSec.restBetween ? '<div style="font-size:0.65rem;color:#e8b830;font-weight:600;margin-bottom:3px">:'+pad(nxtSec.restBetween)+' rest</div>' : '';
       nxtHtml=
