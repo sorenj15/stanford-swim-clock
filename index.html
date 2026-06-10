@@ -64,6 +64,9 @@ textarea#setInput::placeholder { color: #5a2020; }
 .tdot.t1 { background: #2ecc71; }
 .tdot.t2 { background: #3498db; }
 .tdot.t3 { background: #e74c3c; }
+.tdot.t4 { background: #e67e22; }
+.tdot.t5 { background: #9b59b6; }
+.tdot.t6 { background: #1abc9c; }
 .tier-row input {
   flex: 1; min-width: 0;
   background: #110606; border: 1px solid #2e1010; border-radius: 6px;
@@ -354,12 +357,32 @@ textarea#setInput::placeholder { color: #5a2020; }
 }
 .clock-col:last-child { border-right: none; }
 
+/* 4-6 tier layouts — two rows so everything stays on one screen.
+   4 tiers → 2×2 grid, 5-6 tiers → 3×2 grid. */
+.clocks-area.grid-4, .clocks-area.grid-6 {
+  display: grid; gap: 1px; background: #1a0808;
+}
+.clocks-area.grid-4 { grid-template-columns: repeat(2, 1fr); grid-template-rows: 1fr 1fr; }
+.clocks-area.grid-6 { grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; }
+.clocks-area.grid-4 .clock-col, .clocks-area.grid-6 .clock-col {
+  border-right: none; background: #0d0505; min-height: 0;
+}
+/* Compact typography when rows are half height */
+.clocks-area.compact .c-time   { font-size: 3.6rem; }
+.clocks-area.compact .c-dist   { font-size: 1.7rem; }
+.clocks-area.compact .tier-hdr { padding: 5px 6px 4px; }
+.clocks-area.compact .tier-names { display: none; }
+.clocks-area.compact .cbody    { padding: 4px 4px; gap: 2px; }
+
 .tier-hdr { padding: 10px 8px 8px; text-align: center; flex-shrink: 0; }
 .tier-name { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.03em; }
 .tier-names { font-size: 0.65rem; color: rgba(255,255,255,0.65); margin-top: 3px; line-height: 1.4; }
 .t1 .tier-hdr { background: #163d28; }
 .t2 .tier-hdr { background: #112850; }
 .t3 .tier-hdr { background: #3a0f0f; }
+.t4 .tier-hdr { background: #45280a; }
+.t5 .tier-hdr { background: #2e1545; }
+.t6 .tier-hdr { background: #0c3a32; }
 
 .cbody {
   flex: 1; display: flex; flex-direction: column;
@@ -627,9 +650,28 @@ body.is-tv #setupView, body.is-tv #clockView { display: none !important; }
 .tv-col.tv-t1 .tv-label { background: #196f3d; }      /* deep green */
 .tv-col.tv-t2 .tv-label { background: #1e3a8a; }      /* deep navy blue */
 .tv-col.tv-t3 .tv-label { background: #8b0000; }      /* Stanford cardinal */
+.tv-col.tv-t4 .tv-label { background: #8a4a0b; }      /* burnt orange */
+.tv-col.tv-t5 .tv-label { background: #5b21b6; }      /* purple */
+.tv-col.tv-t6 .tv-label { background: #0f766e; }      /* teal */
 .tv-col.tv-t1 .tv-num-wrap { box-shadow: inset 6px 0 0 0 rgba(46,204,113,0.18); }
 .tv-col.tv-t2 .tv-num-wrap { box-shadow: inset 6px 0 0 0 rgba(75,123,245,0.18); }
 .tv-col.tv-t3 .tv-num-wrap { box-shadow: inset 6px 0 0 0 rgba(231,76,60,0.18); }
+.tv-col.tv-t4 .tv-num-wrap { box-shadow: inset 6px 0 0 0 rgba(230,126,34,0.18); }
+.tv-col.tv-t5 .tv-num-wrap { box-shadow: inset 6px 0 0 0 rgba(155,89,182,0.18); }
+.tv-col.tv-t6 .tv-num-wrap { box-shadow: inset 6px 0 0 0 rgba(26,188,156,0.18); }
+
+/* 4-6 tier TV layouts — two rows, everything on one screen.
+   4 tiers → 2×2, 5-6 tiers → 3×2. Fonts scale down to fit half-height rows. */
+#tvView.tv-grid-4, #tvView.tv-grid-6 {
+  display: grid; gap: 2px; background: #111;
+}
+#tvView.tv-grid-4 { grid-template-columns: repeat(2, 1fr); grid-template-rows: 1fr 1fr; }
+#tvView.tv-grid-6 { grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; }
+#tvView.tv-grid-4 .tv-label, #tvView.tv-grid-6 .tv-label { font-size: 3.2vh; padding: 0.8vh 0; letter-spacing: 0.18em; }
+#tvView.tv-grid-4 .tv-time  { font-size: 19vh; }
+#tvView.tv-grid-6 .tv-time  { font-size: 16vh; }
+#tvView.tv-grid-4 .tv-time.tv-done, #tvView.tv-grid-6 .tv-time.tv-done { font-size: 8vh; }
+#tvView.tv-grid-4 .tv-phase, #tvView.tv-grid-6 .tv-phase { font-size: 2vh; margin-top: 0.8vh; }
 .tv-num-wrap {
   flex: 1 1 0;
   display: flex; flex-direction: column;
@@ -718,6 +760,21 @@ body.is-tv #setupView, body.is-tv #clockView { display: none !important; }
         <label>Tier 3 — Red</label>
         <input id="t3names" value="Forer · Arakelian · Caras · Zervoudakis · Orestis">
       </div>
+      <div class="tier-row">
+        <div class="tdot t4"></div>
+        <label>Tier 4 — Orange</label>
+        <input id="t4names" value="">
+      </div>
+      <div class="tier-row">
+        <div class="tdot t5"></div>
+        <label>Tier 5 — Purple</label>
+        <input id="t5names" value="">
+      </div>
+      <div class="tier-row">
+        <div class="tdot t6"></div>
+        <label>Tier 6 — Teal</label>
+        <input id="t6names" value="">
+      </div>
     </div>
   </div>
 
@@ -729,8 +786,11 @@ body.is-tv #setupView, body.is-tv #clockView { display: none !important; }
           <button class="tc-btn" id="tc1" onclick="setTierCount(1)">1</button>
           <button class="tc-btn" id="tc2" onclick="setTierCount(2)">2</button>
           <button class="tc-btn active" id="tc3" onclick="setTierCount(3)">3</button>
+          <button class="tc-btn" id="tc4" onclick="setTierCount(4)">4</button>
+          <button class="tc-btn" id="tc5" onclick="setTierCount(5)">5</button>
+          <button class="tc-btn" id="tc6" onclick="setTierCount(6)">6</button>
         </div>
-        <span style="font-size:0.68rem;color:#446;margin-left:10px">Unused tier columns are hidden in the clock view</span>
+        <span style="font-size:0.68rem;color:#446;margin-left:10px">1-3 tiers = single row · 4-6 tiers = two rows on screen</span>
       </div>
     </div>
   </div>
@@ -765,6 +825,24 @@ body.is-tv #setupView, body.is-tv #clockView { display: none !important; }
         <div class="tdot t3"></div>
         <label>Tier 3 CSS</label>
         <input class="css-inp" id="css2" type="number" min="40" max="120" step="0.5" value="65.7">
+        <span class="css-unit">sec / 100m</span>
+      </div>
+      <div class="tier-row">
+        <div class="tdot t4"></div>
+        <label>Tier 4 CSS</label>
+        <input class="css-inp" id="css3" type="number" min="40" max="120" step="0.5" value="68.1">
+        <span class="css-unit">sec / 100m</span>
+      </div>
+      <div class="tier-row">
+        <div class="tdot t5"></div>
+        <label>Tier 5 CSS</label>
+        <input class="css-inp" id="css4" type="number" min="40" max="120" step="0.5" value="70.5">
+        <span class="css-unit">sec / 100m</span>
+      </div>
+      <div class="tier-row">
+        <div class="tdot t6"></div>
+        <label>Tier 6 CSS</label>
+        <input class="css-inp" id="css5" type="number" min="40" max="120" step="0.5" value="73.0">
         <span class="css-unit">sec / 100m</span>
       </div>
     </div>
@@ -809,6 +887,30 @@ body.is-tv #setupView, body.is-tv #clockView { display: none !important; }
       <div class="tier-btns" id="tb2"></div>
       <div class="cbody st" id="cb2"><div class="standby-msg">READY<span>press launch</span></div></div>
     </div>
+    <div class="clock-col t4">
+      <div class="tier-hdr">
+        <div class="tier-name" id="tn3">4</div>
+        <div class="tier-names" id="tns3"></div>
+      </div>
+      <div class="tier-btns" id="tb3"></div>
+      <div class="cbody st" id="cb3"><div class="standby-msg">READY<span>press launch</span></div></div>
+    </div>
+    <div class="clock-col t5">
+      <div class="tier-hdr">
+        <div class="tier-name" id="tn4">5</div>
+        <div class="tier-names" id="tns4"></div>
+      </div>
+      <div class="tier-btns" id="tb4"></div>
+      <div class="cbody st" id="cb4"><div class="standby-msg">READY<span>press launch</span></div></div>
+    </div>
+    <div class="clock-col t6">
+      <div class="tier-hdr">
+        <div class="tier-name" id="tn5">6</div>
+        <div class="tier-names" id="tns5"></div>
+      </div>
+      <div class="tier-btns" id="tb5"></div>
+      <div class="cbody st" id="cb5"><div class="standby-msg">READY<span>press launch</span></div></div>
+    </div>
   </div>
   <div class="bottom-bar" id="bottomBar"></div>
 </div>
@@ -826,6 +928,18 @@ body.is-tv #setupView, body.is-tv #clockView { display: none !important; }
   <div class="tv-col tv-t3">
     <div class="tv-label" id="tvl2">TIER 3</div>
     <div class="tv-num-wrap"><div class="tv-time" id="tvt2">—</div><div class="tv-phase" id="tvp2">READY</div></div>
+  </div>
+  <div class="tv-col tv-t4">
+    <div class="tv-label" id="tvl3">TIER 4</div>
+    <div class="tv-num-wrap"><div class="tv-time" id="tvt3">—</div><div class="tv-phase" id="tvp3">READY</div></div>
+  </div>
+  <div class="tv-col tv-t5">
+    <div class="tv-label" id="tvl4">TIER 5</div>
+    <div class="tv-num-wrap"><div class="tv-time" id="tvt4">—</div><div class="tv-phase" id="tvp4">READY</div></div>
+  </div>
+  <div class="tv-col tv-t6">
+    <div class="tv-label" id="tvl5">TIER 6</div>
+    <div class="tv-num-wrap"><div class="tv-time" id="tvt5">—</div><div class="tv-phase" id="tvp5">READY</div></div>
   </div>
   <div class="tv-conn" id="tvConn">Disconnected</div>
 </div>
@@ -981,13 +1095,19 @@ function tvBroadcast() {
 function applyTvState(msg) {
   if (!msg.tiers) return;
   // Hide unused tier columns so 1- or 2-tier setups fill the whole TV instead
-  // of leaving blank columns.
+  // of leaving blank columns. 4-6 tiers switch the TV to a two-row grid.
   var activeTiers = typeof msg.tierCount === 'number' ? msg.tierCount : 3;
-  for (var _c = 0; _c < 3; _c++) {
-    var col = document.querySelectorAll('.tv-col')[_c];
+  var tvView = document.getElementById('tvView');
+  if (tvView) {
+    tvView.classList.toggle('tv-grid-4', activeTiers === 4);
+    tvView.classList.toggle('tv-grid-6', activeTiers >= 5);
+  }
+  var cols = document.querySelectorAll('.tv-col');
+  for (var _c = 0; _c < 6; _c++) {
+    var col = cols[_c];
     if (col) col.style.display = _c < activeTiers ? 'flex' : 'none';
   }
-  for (var i = 0; i < 3; i++) {
+  for (var i = 0; i < 6; i++) {
     if (i >= activeTiers) continue;
     var t = msg.tiers[i];
     var timeEl = document.getElementById('tvt'+i);
@@ -1045,8 +1165,10 @@ tvConnect();
 // BASE_CSS pairs with the RAW pace tables. Updating the team's defaults
 // here keeps the displayed pace ranges familiar — at default CSS values
 // scale = 1.0 and getPace returns the RAW table values directly.
-var BASE_CSS = [61.1, 63.3, 65.7];
-var USER_CSS = [66, 68, 71];
+// Tiers 4-6 have no hand-tuned RAW tables — they reuse tier3's curve and
+// scale purely by CSS ratio, so their BASE_CSS entries are tier3's value.
+var BASE_CSS = [61.1, 63.3, 65.7, 65.7, 65.7, 65.7];
+var USER_CSS = [61.1, 63.3, 65.7, 68.1, 70.5, 73.0];
 var EXT = 3; // extend green window upper end by this many seconds
 var POOL_LEN = 36; // pool length in meters (used to calculate laps)
 var rangeOverrides = {}; // key: "ti:zKey:dist" → [lo, hi] in seconds
@@ -1071,7 +1193,8 @@ var RAW = {
     z5:{ 25:[13,14], 36:[20,20], 50:[27,29], 72:[43,45], 75:[45,47], 100:[61,63], 108:[67,69], 144:[90,93], 150:[94,97], 180:[114,117], 200:[126,130], 216:[138,142], 250:[161,166], 252:[163,168], 288:[188,194], 300:[196,202], 324:[213,220], 360:[239,246], 400:[266,274], 432:[292,301], 500:[366,377], 540:[367,378] },
   },
 };
-var TKEYS = ['tier1','tier2','tier3'];
+var TKEYS = ['tier1','tier2','tier3','tier4','tier5','tier6'];
+var MAX_TIERS = 6;
 var TIER_COUNT = 3; // how many columns to show
 
 var _TIER_PRESETS = {
@@ -1095,15 +1218,18 @@ var _TIER_PRESETS = {
 };
 function setTierCount(n) {
   TIER_COUNT = n;
-  [1,2,3].forEach(function(i){
-    document.getElementById('tc'+i).classList.toggle('active', i===n);
+  [1,2,3,4,5,6].forEach(function(i){
+    var btn = document.getElementById('tc'+i);
+    if (btn) btn.classList.toggle('active', i===n);
   });
-  // Auto-fill tier names for the selected count
+  // Auto-fill tier names for the selected count (presets exist for 1-3;
+  // 4-6 tier setups keep whatever names the coach typed).
   var preset = _TIER_PRESETS[n];
   if (preset) {
-    document.getElementById('t1names').value = preset[0];
-    document.getElementById('t2names').value = preset[1];
-    document.getElementById('t3names').value = preset[2];
+    for (var t = 1; t <= MAX_TIERS; t++) {
+      var inp = document.getElementById('t'+t+'names');
+      if (inp) inp.value = preset[t-1] || '';
+    }
   }
 }
 
@@ -1176,7 +1302,9 @@ function getPace(ti, zKey, dist) {
   var oKey = ti + ':' + zKey + ':' + dist;
   if (rangeOverrides[oKey]) return rangeOverrides[oKey].slice();
 
-  var tbl = RAW[TKEYS[ti]][zKey] || {};
+  // Tiers 4-6 have no RAW tables of their own — they reuse tier3's curve
+  // (BASE_CSS for those tiers is tier3's value so the CSS scaling works out).
+  var tbl = (RAW[TKEYS[ti]] || RAW.tier3)[zKey] || {};
   var scale = USER_CSS[ti] / BASE_CSS[ti];
   var lo, hi;
   if (tbl[dist]) {
@@ -1202,6 +1330,11 @@ function getPace(ti, zKey, dist) {
       }
     }
   }
+  // Tighter target windows (May 2026): shrink the range to half its
+  // original width around the midpoint, never narrower than 2s total.
+  var mid = (lo + hi) / 2;
+  var half = Math.max(1, (hi - lo) / 4);
+  lo = mid - half; hi = mid + half;
   return [Math.round(lo*scale), Math.round(hi*scale)];
 }
 
@@ -1612,7 +1745,7 @@ function mkTimed(id,title,sub,zKey,restBetween,restAfterSec,restAfterLabel) {
 // ── State ────────────────────────────────────────────────────────────────────
 var SECS = [];
 var secIdx = 0;
-var TS = [0,1,2].map(function(){
+var TS = [0,1,2,3,4,5].map(function(){
   return {ri:0,phase:'ready',elapsed:0,restDur:0,swimRes:null,results:[]};
 });
 var running = false, paused = false, lastTs = null, raf = null;
@@ -1625,9 +1758,11 @@ function launch() {
   var txt = document.getElementById('setInput').value.trim();
   if (!txt) { alert('Paste a swim set first!'); return; }
 
-  USER_CSS[0] = parseFloat(document.getElementById('css0').value)||61.1;
-  USER_CSS[1] = parseFloat(document.getElementById('css1').value)||63.3;
-  USER_CSS[2] = parseFloat(document.getElementById('css2').value)||65.7;
+  var _cssDefaults = [61.1, 63.3, 65.7, 68.1, 70.5, 73.0];
+  for (var ci = 0; ci < MAX_TIERS; ci++) {
+    var cssInp = document.getElementById('css'+ci);
+    USER_CSS[ci] = (cssInp && parseFloat(cssInp.value)) || _cssDefaults[ci];
+  }
   POOL_LEN = parseFloat(document.getElementById('poolLen').value)||36;
 
   // Use the inline-edited secs if they match the current text, otherwise
@@ -1635,24 +1770,29 @@ function launch() {
   SECS = (_EDITED_SECS && _EDITED_TEXT === txt) ? _EDITED_SECS : parseSet(txt);
   secIdx = 0;
 
-  document.getElementById('tn0').textContent = '1';
-  document.getElementById('tn1').textContent = '2';
-  document.getElementById('tn2').textContent = '3';
-  document.getElementById('tns0').textContent = document.getElementById('t1names').value;
-  document.getElementById('tns1').textContent = document.getElementById('t2names').value;
-  document.getElementById('tns2').textContent = document.getElementById('t3names').value;
+  for (var ni = 0; ni < MAX_TIERS; ni++) {
+    document.getElementById('tn'+ni).textContent = String(ni+1);
+    var nameInp = document.getElementById('t'+(ni+1)+'names');
+    document.getElementById('tns'+ni).textContent = nameInp ? nameInp.value : '';
+  }
 
   rangeOverrides = {};
 
   document.getElementById('setupView').classList.remove('active');
   document.getElementById('clockView').classList.add('active');
 
-  // Apply tier count — hide unused clock columns
+  // Apply tier count — hide unused clock columns, and switch to a
+  // two-row grid for 4-6 tiers so everything fits one screen.
   document.querySelectorAll('.clock-col').forEach(function(col, i){
     col.style.display = i < TIER_COUNT ? '' : 'none';
   });
+  var area = document.querySelector('.clocks-area');
+  area.classList.toggle('grid-4', TIER_COUNT === 4);
+  area.classList.toggle('grid-6', TIER_COUNT >= 5);
+  area.classList.toggle('compact', TIER_COUNT > 3);
 
-  TS = [mkState(secIdx),mkState(secIdx),mkState(secIdx)];
+  TS = [];
+  for (var si2 = 0; si2 < MAX_TIERS; si2++) TS.push(mkState(secIdx));
   running = false; paused = false;
   renderAll();
 }
@@ -2145,7 +2285,7 @@ function renderControls() {
 
 function renderClocks() {
   if (!IS_TV) tvBroadcast();
-  for (var ti=0;ti<3;ti++) {
+  for (var ti=0;ti<MAX_TIERS;ti++) {
     var cb=document.getElementById('cb'+ti);
     var tb=document.getElementById('tb'+ti);
     var s=TS[ti];
@@ -2479,12 +2619,11 @@ function renderPreview() {
   if (!txt) { card.style.display='none'; _EDITED_SECS = null; _EDITED_TEXT = ''; return; }
 
   // Temporarily set USER_CSS from inputs
-  var tmpCSS = [
-    parseFloat(document.getElementById('css0').value)||61.1,
-    parseFloat(document.getElementById('css1').value)||63.3,
-    parseFloat(document.getElementById('css2').value)||65.7
-  ];
-  USER_CSS[0]=tmpCSS[0]; USER_CSS[1]=tmpCSS[1]; USER_CSS[2]=tmpCSS[2];
+  var _prevDefaults = [61.1, 63.3, 65.7, 68.1, 70.5, 73.0];
+  for (var pi = 0; pi < MAX_TIERS; pi++) {
+    var pInp = document.getElementById('css'+pi);
+    USER_CSS[pi] = (pInp && parseFloat(pInp.value)) || _prevDefaults[pi];
+  }
   POOL_LEN = parseFloat(document.getElementById('poolLen').value)||36;
 
   // Only re-parse when the source text actually changed, so inline edits
