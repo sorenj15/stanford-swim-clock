@@ -2532,9 +2532,12 @@ function renderClock(ti, s, sec, cb) {
     var firstRep = reps[0];
     var firstPace = getPace(ti, repZ(sec, firstRep), firstRep.dist);
     var firstZ = repZ(sec, firstRep);
+    var cdDist = 0; reps.forEach(function(r){ cdDist += r.dist; });
     cb.className='cbody rd';
     var cdFont = TIER_COUNT > 3 ? '3.5rem' : '7rem';
     cb.innerHTML=dotsH+
+      '<div style="font-size:'+(TIER_COUNT>3?'0.85rem':'1.1rem')+';font-weight:800;color:#e8b830;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:2px">'+sec.title+'</div>'+
+      '<div style="font-size:0.75rem;color:#a08080">'+reps.length+' reps · '+cdDist+'m'+(sec.restBetween?' · :'+pad(sec.restBetween)+' rest':'')+'</div>'+
       '<div class="c-rep-lbl" style="letter-spacing:0.15em">GET READY</div>'+
       '<div class="c-zone-wrap"><span class="c-zone-badge z-'+firstZ+'">Zone '+firstZ.slice(1)+'</span></div>'+
       (TIER_COUNT > 3 ? '' : '<div class="c-laps">'+firstRep.laps+' laps</div>')+
@@ -2552,11 +2555,16 @@ function renderClock(ti, s, sec, cb) {
     var nxtSec=SECS[nxtSi]||null;
     var nxtHtml='';
     if (nxtSec && nxtSec.reps.length && TIER_COUNT > 3) {
-      // Compact set-break — one-line next-section summary instead of the
-      // full set list (doesn't fit half-height grid rows).
+      // Compact set-break — condensed next-section preview instead of the
+      // full set list (doesn't fit half-height grid rows). Still shows
+      // what's coming: title, rep count, and the first rep's target.
+      var nFr = nxtSec.reps[0];
+      var nFz = repZ(nxtSec, nFr);
+      var nFp = getPace(ti, nFz, nFr.dist);
       nxtHtml=
         '<div class="c-next-lbl" style="margin-top:6px;font-size:0.65rem">Up Next</div>'+
-        '<div style="font-size:0.9rem;font-weight:800;color:#e8b830;text-align:center">'+nxtSec.title+' · '+nxtSec.reps.length+' reps</div>';
+        '<div style="font-size:0.9rem;font-weight:800;color:#e8b830;text-align:center">'+nxtSec.title+' · '+nxtSec.reps.length+' reps</div>'+
+        '<div style="font-size:0.8rem;color:#d4b0b0;text-align:center;margin-top:2px">First: <b>'+nFr.dist+'m</b> <span class="c-zone-badge z-'+nFz+'" style="font-size:0.65rem;padding:1px 6px">Z'+nFz.slice(1)+'</span> '+fmtS(nFp[0])+' – '+fmtS(nFp[1])+'</div>';
     } else if (nxtSec && nxtSec.reps.length) {
       var nxtRows = buildSetList(ti, nxtSec, nxtSec.reps, 0);
       var nxtRestInfo = nxtSec.restBetween ? '<div style="font-size:0.65rem;color:#e8b830;font-weight:600;margin-bottom:3px">:'+pad(nxtSec.restBetween)+' rest</div>' : '';
