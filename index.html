@@ -975,6 +975,7 @@ function getAudio() {
   } catch(e) { return null; }
 }
 function _whistleBlast(startT, dur, ctx) {
+  if (!isFinite(dur) || dur <= 0) dur = 0.6; // guard — NaN here kills the RAF loop
   // Filtered noise + sine = realistic pea whistle timbre
   var bufLen = Math.ceil(ctx.sampleRate * (dur + 0.15));
   var noiseBuf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
@@ -1024,10 +1025,13 @@ function _whistleBlast(startT, dur, ctx) {
   noise.start(startT); noise.stop(end + 0.05);
 }
 // Per-tier GO whistle: ti=0 short, ti=1 medium, ti=2 long
-var _GO_DURS = [0.30, 0.60, 0.95];
+// Per-tier GO-whistle lengths so swimmers can tell whose start it is.
+// Tiers 4-6 reuse the same short/medium/long pattern — six distinct
+// durations aren't distinguishable by ear anyway.
+var _GO_DURS = [0.30, 0.60, 0.95, 0.30, 0.60, 0.95];
 function beepGo(ti) {
   var ctx = getAudio(); if (!ctx) return;
-  var dur = (ti !== undefined) ? _GO_DURS[ti] : 0.60;
+  var dur = (ti !== undefined && _GO_DURS[ti]) ? _GO_DURS[ti] : 0.60;
   _whistleBlast(ctx.currentTime, dur, ctx);
 }
 // Two short blasts for section transition
@@ -2001,11 +2005,16 @@ function loop(ts) {
   if (!running) return;
   if (lastTs!==null) {
     var dt = ts-lastTs;
-    // Each tier steps through its own current section independently
+    // Each tier steps through its own current section independently.
+    // try/catch per tier — one tier throwing (e.g. an audio glitch) must
+    // never kill the RAF loop and freeze every clock on screen.
     TS.forEach(function(s,ti){
       if (ti>=TIER_COUNT) return;
       var sec = SECS[s.si];
-      if (sec&&sec.timed) step(s,ti,sec,dt);
+      if (sec&&sec.timed) {
+        try { step(s,ti,sec,dt); }
+        catch(e) { try { console.error('tier '+ti+' step error', e); } catch(_) {} }
+      }
     });
   }
   lastTs=ts;
