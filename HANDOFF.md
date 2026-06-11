@@ -138,20 +138,20 @@ If you change the parser's grammar, **also update `AI_SYSTEM_PROMPT` in `server.
 
 ## Stanford-specific defaults (June 2026 FTP test)
 
-Six-tier roster + per-tier CSS (sec / 100m, converted from `sec/100y × 1.0936`):
+Four-tier roster (the default) + per-tier CSS (sec / 100m, converted from
+`sec/100y × 1.0936`):
 
 | Tier | Color | Swimmers | FTP (y) | CSS (m) |
 | --- | --- | --- | --- | --- |
 | 1 | Green | C. Ohl, R. Ohl, West | 54.71 | 59.8 |
 | 2 | Blue | Krilanovich, De Vecchis, Mathiopoulos, Schneider | 55.70 | 60.9 |
 | 3 | Cardinal | Gheorghe (fins), Balogh, Oerlemans, Wu (TBD) | 57.74 | 63.1 |
-| 4 | Orange | Rozolis-Hill, Zelikov, Leonardi, Austen (TBD) | ~59.2 | 64.7 |
-| 5 | Purple | Forer | 59.74 | 65.3 |
-| 6 | Teal | Arakelian, Caras, Mnatsakanian, Ben T. (TBD) | 59.89 | 65.5 |
+| 4 | Orange | Rozolis-Hill, Zelikov, Leonardi, Forer, Arakelian, Caras, Mnatsakanian, Austen (TBD), Ben T. (TBD) | 59.58 | 65.2 |
 
 (Gheorghe tested with fins — excluded from the tier-3 average. Wu, Austen,
-and Ben T. untested — placed by coach. Older 1/2/3-tier presets are still
-in `_TIER_PRESETS` but carry the April 2026 rosters.)
+and Ben T. untested — they follow their tier. A 6-tier preset from the
+same test lives in `_TIER_PRESETS` if the coach wants finer splits; the
+older 1/2/3-tier presets carry the April 2026 rosters.)
 
 Pool length default: **36 m** (Avery short-course meters).
 

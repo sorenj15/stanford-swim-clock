@@ -112,4 +112,4 @@ The AI_SYSTEM_PROMPT in `server.js` has detailed formatting rules that must stay
 
 - `DSEG7` font loaded from `jsdelivr` CDN for the water polo TV. Falls back to Arial Black if CDN fails.
 - Pool length defaults to 36 m (Avery short-course meters). Coaches change this per-session.
-- CSS defaults (June 2026 FTP test, 6 tiers): 59.8 / 60.9 / 63.1 / 64.7 / 65.3 / 65.5 s/100m. Stanford-specific (converted from sec/100y test averages × 1.0936) — don't repurpose. BASE_CSS in index.html must stay in sync with tiers 1-3 so their default scale is 1.0; tiers 4-6 have no RAW tables of their own (they reuse tier3's and scale by CSS ratio, BASE entry = tier3's value).
+- CSS defaults (June 2026 FTP test, 4 tiers default): 59.8 / 60.9 / 63.1 / 65.2 s/100m (T5 65.3 / T6 65.5 available if the coach splits finer). Stanford-specific (converted from sec/100y test averages × 1.0936) — don't repurpose. BASE_CSS in index.html must stay in sync with tiers 1-3 so their default scale is 1.0; tiers 4-6 have no RAW tables of their own (they reuse tier3's and scale by CSS ratio, BASE entry = tier3's value).

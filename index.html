@@ -763,17 +763,17 @@ body.is-tv #setupView, body.is-tv #clockView { display: none !important; }
       <div class="tier-row">
         <div class="tdot t4"></div>
         <label>Tier 4 — Orange</label>
-        <input id="t4names" value="Rozolis-Hill · Zelikov · Leonardi · Austen">
+        <input id="t4names" value="Rozolis-Hill · Zelikov · Leonardi · Forer · Arakelian · Caras · Mnatsakanian · Austen · Ben T.">
       </div>
       <div class="tier-row">
         <div class="tdot t5"></div>
         <label>Tier 5 — Purple</label>
-        <input id="t5names" value="Forer">
+        <input id="t5names" value="">
       </div>
       <div class="tier-row">
         <div class="tdot t6"></div>
         <label>Tier 6 — Teal</label>
-        <input id="t6names" value="Arakelian · Caras · Mnatsakanian · Ben T.">
+        <input id="t6names" value="">
       </div>
     </div>
   </div>
@@ -786,9 +786,9 @@ body.is-tv #setupView, body.is-tv #clockView { display: none !important; }
           <button class="tc-btn" id="tc1" onclick="setTierCount(1)">1</button>
           <button class="tc-btn" id="tc2" onclick="setTierCount(2)">2</button>
           <button class="tc-btn" id="tc3" onclick="setTierCount(3)">3</button>
-          <button class="tc-btn" id="tc4" onclick="setTierCount(4)">4</button>
+          <button class="tc-btn active" id="tc4" onclick="setTierCount(4)">4</button>
           <button class="tc-btn" id="tc5" onclick="setTierCount(5)">5</button>
-          <button class="tc-btn active" id="tc6" onclick="setTierCount(6)">6</button>
+          <button class="tc-btn" id="tc6" onclick="setTierCount(6)">6</button>
         </div>
         <span style="font-size:0.68rem;color:#446;margin-left:10px">1-3 tiers = single row · 4-6 tiers = two rows on screen</span>
       </div>
@@ -830,7 +830,7 @@ body.is-tv #setupView, body.is-tv #clockView { display: none !important; }
       <div class="tier-row">
         <div class="tdot t4"></div>
         <label>Tier 4 CSS</label>
-        <input class="css-inp" id="css3" type="number" min="40" max="120" step="0.5" value="64.7">
+        <input class="css-inp" id="css3" type="number" min="40" max="120" step="0.5" value="65.2">
         <span class="css-unit">sec / 100m</span>
       </div>
       <div class="tier-row">
@@ -1172,9 +1172,9 @@ tvConnect();
 // scale = 1.0 and getPace returns the RAW table values directly.
 // Tiers 4-6 have no hand-tuned RAW tables — they reuse tier3's curve and
 // scale purely by CSS ratio, so their BASE_CSS entries are tier3's value
-// (T4=64.7, T5=65.3, T6=65.5 defaults scale up from the tier3 base).
+// (T4=65.2 default scales up from the tier3 base; T5/T6 unused by default).
 var BASE_CSS = [59.8, 60.9, 63.1, 63.1, 63.1, 63.1];
-var USER_CSS = [59.8, 60.9, 63.1, 64.7, 65.3, 65.5];
+var USER_CSS = [59.8, 60.9, 63.1, 65.2, 65.3, 65.5];
 var EXT = 3; // extend green window upper end by this many seconds
 var POOL_LEN = 36; // pool length in meters (used to calculate laps)
 var rangeOverrides = {}; // key: "ti:zKey:dist" → [lo, hi] in seconds
@@ -1201,11 +1201,17 @@ var RAW = {
 };
 var TKEYS = ['tier1','tier2','tier3','tier4','tier5','tier6'];
 var MAX_TIERS = 6;
-var TIER_COUNT = 6; // how many columns to show — June 2026 default: 6 tiers
+var TIER_COUNT = 4; // how many columns to show — June 2026 default: 4 tiers
 
 var _TIER_PRESETS = {
   // June 2026 FTP test groupings (Gheorghe tested w/ fins — excluded from
-  // the tier avg; Wu / Austen / Ben T. untested, placed by coach).
+  // the tier avg; Wu / Austen / Ben T. untested, follow their tier).
+  4: [
+    'C. Ohl \xb7 R. Ohl \xb7 West',
+    'Krilanovich \xb7 De Vecchis \xb7 Mathiopoulos \xb7 Schneider',
+    'Gheorghe (fins) \xb7 Balogh \xb7 Oerlemans \xb7 Wu',
+    'Rozolis-Hill \xb7 Zelikov \xb7 Leonardi \xb7 Forer \xb7 Arakelian \xb7 Caras \xb7 Mnatsakanian \xb7 Austen \xb7 Ben T.'
+  ],
   6: [
     'C. Ohl \xb7 R. Ohl \xb7 West',
     'Krilanovich \xb7 De Vecchis \xb7 Mathiopoulos \xb7 Schneider',
@@ -1774,7 +1780,7 @@ function launch() {
   var txt = document.getElementById('setInput').value.trim();
   if (!txt) { alert('Paste a swim set first!'); return; }
 
-  var _cssDefaults = [59.8, 60.9, 63.1, 64.7, 65.3, 65.5];
+  var _cssDefaults = [59.8, 60.9, 63.1, 65.2, 65.3, 65.5];
   for (var ci = 0; ci < MAX_TIERS; ci++) {
     var cssInp = document.getElementById('css'+ci);
     USER_CSS[ci] = (cssInp && parseFloat(cssInp.value)) || _cssDefaults[ci];
@@ -2713,7 +2719,7 @@ function renderPreview() {
   if (!txt) { card.style.display='none'; _EDITED_SECS = null; _EDITED_TEXT = ''; return; }
 
   // Temporarily set USER_CSS from inputs
-  var _prevDefaults = [59.8, 60.9, 63.1, 64.7, 65.3, 65.5];
+  var _prevDefaults = [59.8, 60.9, 63.1, 65.2, 65.3, 65.5];
   for (var pi = 0; pi < MAX_TIERS; pi++) {
     var pInp = document.getElementById('css'+pi);
     USER_CSS[pi] = (pInp && parseFloat(pInp.value)) || _prevDefaults[pi];
