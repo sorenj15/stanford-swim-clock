@@ -646,17 +646,22 @@ body.is-shotonly .practice-main { display: none !important; }
    `background-image` line away from the real Daktronics paisley if the
    coach ever exports that asset from Content Studio. */
 .board-app { display: none; }
-body.is-board { background: #821414 !important; overflow: hidden; }
+body.is-board { background: #0a0a0b !important; overflow: hidden; }
 body.is-board:not(.is-split) .board-app {
   display: block;
   position: fixed; inset: 0;
   background:
-    radial-gradient(90vw 70vh at 50% 15%, rgba(255,255,255,0.06), transparent 60%),
-    radial-gradient(140vw 110vh at 50% 55%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.5) 100%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cg fill='%23000000' fill-opacity='0.09' fill-rule='evenodd'%3E%3Cpath d='M60,20 C95,20 115,55 105,90 C97,118 65,130 45,110 C25,90 28,50 60,20 Z M60,45 C45,60 45,85 58,95 C72,104 88,92 90,75 C92,55 78,42 60,45 Z'/%3E%3Cpath d='M180,140 C215,140 235,175 225,210 C217,238 185,250 165,230 C145,210 148,170 180,140 Z M180,165 C165,180 165,205 178,215 C192,224 208,212 210,195 C212,175 198,162 180,165 Z'/%3E%3Ccircle cx='180' cy='60' r='6'/%3E%3Ccircle cx='40' cy='190' r='6'/%3E%3C/g%3E%3C/svg%3E"),
-    #821414;
+    radial-gradient(70vw 45vh at 50% 118%, rgba(140,21,21,0.30), transparent 70%),
+    radial-gradient(55vw 32vh at 50% -10%, rgba(140,21,21,0.16), transparent 70%),
+    linear-gradient(180deg, #121214 0%, #0a0a0b 55%, #0c0a0a 100%);
   z-index: 5;
   user-select: none;
+}
+/* Cardinal brand stripe across the very top */
+.board-app::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 0.5vh;
+  background: linear-gradient(90deg, transparent, #8C1515 18%, #B1040E 50%, #8C1515 82%, transparent);
 }
 body.is-board:not(.is-split) .display-app { display: none !important; }
 body.is-board #repCounterBadge,
@@ -665,11 +670,11 @@ body.is-board #practicePanel,
 body.is-board #exclBoardW,
 body.is-board #exclBoardB { display: none !important; }
 
-/* LED sub-board panel — black with a faint bezel */
+/* Sub-board panel — near-invisible card with a hairline border */
 .board-panel {
-  background: #050505;
-  border-radius: 1.2vh;
-  box-shadow: inset 0 0 0 0.35vh rgba(255,255,255,0.07), 0 1vh 3vh rgba(0,0,0,0.45);
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 0.8vh;
 }
 
 /* Center stack — fills the full height: clock / scores / quarter+shot */
@@ -689,15 +694,16 @@ body.is-board #exclBoardB { display: none !important; }
 }
 .board-logo-l { left: 16vw; }
 .board-logo-r { right: 16vw; display: flex; align-items: center; justify-content: center; }
-.board-logo svg { width: 100%; height: auto; display: block; }
+.board-logo svg, .board-logo img { width: 100%; height: auto; display: block; }
+.board-logo-l { width: 9.5vw; }
 .board-monogram {
-  width: 11vw; height: 11vw; border-radius: 50%;
-  border: 0.55vh solid rgba(255,255,255,0.3);
+  width: 10vw; height: 10vw; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.18);
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Arial Black', sans-serif;
-  font-size: 6.5vw; font-weight: 900;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 5.4vw; font-weight: 800;
   color: rgba(255,255,255,0.92);
-  background: rgba(0,0,0,0.18);
+  background: rgba(255,255,255,0.02);
 }
 .board-clockpanel { padding: 1.6vh 3vw; }
 .board-gameclock {
@@ -710,10 +716,14 @@ body.is-board #exclBoardB { display: none !important; }
 .board-scores { display: flex; gap: 4vw; align-items: flex-end; }
 .board-scorecol { display: flex; flex-direction: column; align-items: center; gap: 1.2vh; }
 .board-score-lbl {
-  font-family: 'Arial Black', sans-serif;
-  font-size: 2.6vh; font-weight: 900; color: rgba(255,255,255,0.85);
-  letter-spacing: 0.22em; text-transform: uppercase;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 2.1vh; font-weight: 700; color: rgba(255,255,255,0.55);
+  letter-spacing: 0.4em; text-transform: uppercase;
   max-width: 18vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; flex-direction: column; align-items: center; gap: 0.8vh;
+}
+.board-score-lbl::after {
+  content: ''; width: 2.6vw; height: 0.4vh; background: #B1040E;
 }
 .board-scores .board-panel { width: 16vw; text-align: center; padding: 1.2vh 0; }
 .board-score {
@@ -726,20 +736,21 @@ body.is-board #exclBoardB { display: none !important; }
   display: flex; gap: 5vw; align-items: center;
 }
 .board-line {
-  font-family: 'Arial Black', sans-serif;
-  font-size: 4.4vh; font-weight: 900; color: #fff;
-  letter-spacing: 0.18em; text-transform: uppercase;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 3.2vh; font-weight: 700; color: rgba(255,255,255,0.55);
+  letter-spacing: 0.4em; text-transform: uppercase;
   display: flex; align-items: center; gap: 1.4vw;
 }
 .board-line .board-num {
   font-family: 'DSEG7', 'Arial Black', sans-serif;
-  background: #050505; border-radius: 1vh;
-  box-shadow: inset 0 0 0 0.3vh rgba(255,255,255,0.07);
-  padding: 1vh 1.4vw; font-size: 7vh; line-height: 1;
-  color: #fff;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 0.8vh;
+  padding: 1vh 1.4vw; font-size: 6.5vh; line-height: 1;
+  color: #fff; letter-spacing: 0;
 }
-.board-line .board-shotnum { font-size: 9vh; color: #ffd24a; cursor: pointer;
-  text-shadow: 0 0 3vh rgba(255,210,74,0.25); }
+.board-line .board-shotnum { font-size: 9vh; color: #ffb52e; cursor: pointer;
+  text-shadow: 0 0 3vh rgba(255,181,46,0.22); }
 
 /* Side boards — team name above a black roster panel, CAP TIME pinned bottom */
 .board-side {
@@ -749,14 +760,20 @@ body.is-board #exclBoardB { display: none !important; }
 .board-side-l { left: 1.4vw; }
 .board-side-r { right: 1.4vw; }
 .board-team {
-  font-family: 'Arial Black', sans-serif;
-  font-size: 4.4vh; font-weight: 900; color: #fff;
-  letter-spacing: 0.12em; text-transform: uppercase;
-  margin-bottom: 1.6vh; cursor: pointer;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 2.9vh; font-weight: 800; color: #fff;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  margin-bottom: 0.9vh; cursor: pointer;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  text-shadow: 0 0.4vh 1.5vh rgba(0,0,0,0.5);
+}
+.board-team::after {
+  content: ''; display: block;
+  width: 2.6vw; height: 0.4vh; background: #B1040E;
+  margin-top: 0.8vh;
 }
 .board-side-r .board-team { text-align: right; }
+.board-side-r .board-team::after { margin-left: auto; }
+.board-side .board-team { margin-bottom: 1.6vh; }
 .board-roster {
   flex: 1; min-height: 0;
   padding: 1.6vh 1.2vw;
@@ -765,11 +782,11 @@ body.is-board #exclBoardB { display: none !important; }
 }
 .board-roster-hdr {
   display: grid; grid-template-columns: 3vw 1fr 3vw;
-  font-family: 'Arial Black', sans-serif;
-  font-size: 1.7vh; color: rgba(255,255,255,0.55);
-  letter-spacing: 0.2em;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 1.6vh; font-weight: 700; color: rgba(255,255,255,0.4);
+  letter-spacing: 0.3em;
   padding-bottom: 1vh; margin-bottom: 0.6vh;
-  border-bottom: 1px solid rgba(255,255,255,0.12);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 .board-roster-hdr span:last-child { text-align: right; }
 .board-roster-row {
@@ -790,7 +807,7 @@ body.is-board #exclBoardB { display: none !important; }
 }
 .board-roster-row .brr-cnt {
   font-family: 'DSEG7', 'Arial Black', sans-serif;
-  font-size: 2.8vh; color: #ffd24a; text-align: right;
+  font-size: 2.8vh; color: #ffb52e; text-align: right;
 }
 .board-roster-row.is-fouledout { opacity: 0.3; }
 .board-roster-row.is-fouledout .brr-cnt { color: #ff5040; }
@@ -801,9 +818,9 @@ body.is-board #exclBoardB { display: none !important; }
 }
 .board-captime { margin-top: 1.6vh; }
 .board-captime .bct-hdr {
-  font-family: 'Arial Black', sans-serif;
-  font-size: 2.2vh; color: rgba(255,255,255,0.85);
-  letter-spacing: 0.28em; margin-bottom: 1vh;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 1.8vh; font-weight: 700; color: rgba(255,255,255,0.4);
+  letter-spacing: 0.35em; margin-bottom: 1vh;
 }
 .board-side-r .bct-hdr { text-align: right; }
 .board-captime-row {
@@ -812,15 +829,17 @@ body.is-board #exclBoardB { display: none !important; }
 .board-side-r .board-captime-row { justify-content: flex-end; }
 .board-captime-row .bctr-cap {
   font-family: 'DSEG7', 'Arial Black', sans-serif;
-  background: #050505; border-radius: 0.8vh; padding: 0.6vh 1vw;
-  box-shadow: inset 0 0 0 0.3vh rgba(255,255,255,0.07);
-  font-size: 3.6vh; color: #fff; line-height: 1;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 0.6vh; padding: 0.6vh 1vw;
+  font-size: 3.4vh; color: #fff; line-height: 1;
 }
 .board-captime-row .bctr-time {
   font-family: 'DSEG7', 'Arial Black', sans-serif;
-  background: #050505; border-radius: 0.8vh; padding: 0.6vh 1vw;
-  box-shadow: inset 0 0 0 0.3vh rgba(255,255,255,0.07);
-  font-size: 3.6vh; color: #ffd24a; line-height: 1;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,181,46,0.35);
+  border-radius: 0.6vh; padding: 0.6vh 1vw;
+  font-size: 3.4vh; color: #ffb52e; line-height: 1;
 }
 
 /* Game-day remote trim — hide drill-only sections on the controller */
@@ -1075,17 +1094,11 @@ body.is-tv-sideB .tv-side-badge { display: block; }
       <div id="bdCapTimeR"></div>
     </div>
   </div>
-  <!-- Home logo — Stanford block S + tree, drawn inline so no asset
-       fetch is needed. Visitor side gets a monogram crest from the
-       first letter of the away team name. -->
+  <!-- Home logo — official Stanford block S (served from this repo, no
+       external fetch at game time). Visitor side gets a monogram crest
+       from the first letter of the away team name. -->
   <div class="board-logo board-logo-l">
-    <svg viewBox="0 0 100 130" xmlns="http://www.w3.org/2000/svg">
-      <path d="M10,5 H90 V30 H35 V52.5 H90 V125 H10 V100 H65 V77.5 H10 Z"
-            fill="#8C1515" stroke="#ffffff" stroke-width="5" stroke-linejoin="miter"/>
-      <path d="M50,14 L63,44 L55,44 L68,74 L58,74 L72,104 H28 L42,74 L32,74 L45,44 L37,44 Z"
-            fill="#1b6b53" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="miter"/>
-      <rect x="46.5" y="104" width="7" height="16" fill="#5a3a1a" stroke="#ffffff" stroke-width="1.5"/>
-    </svg>
+    <img src="stanford-logo.svg" alt="Stanford">
   </div>
   <div class="board-logo board-logo-r">
     <div class="board-monogram" id="bdMonogram">V</div>
