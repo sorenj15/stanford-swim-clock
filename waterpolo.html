@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Stanford Water Polo</title>
+<!-- Preload the 7-segment LED font so board/TV digits never flash the
+     Arial Black fallback while the CDN fetch finishes. -->
+<link rel="preload" as="font" type="font/woff2" crossorigin
+      href="https://cdn.jsdelivr.net/gh/keshikan/DSEG@v0.46/fonts/DSEG7-Classic/DSEG7Classic-Bold.woff2">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; overflow: hidden; }
@@ -642,12 +646,15 @@ body.is-shotonly .practice-main { display: none !important; }
    `background-image` line away from the real Daktronics paisley if the
    coach ever exports that asset from Content Studio. */
 .board-app { display: none; }
+body.is-board { background: #821414 !important; overflow: hidden; }
 body.is-board:not(.is-split) .board-app {
   display: block;
   position: fixed; inset: 0;
   background:
-    radial-gradient(120vw 90vh at 50% 30%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.35) 100%),
-    #7a1212;
+    radial-gradient(90vw 70vh at 50% 15%, rgba(255,255,255,0.06), transparent 60%),
+    radial-gradient(140vw 110vh at 50% 55%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.5) 100%),
+    repeating-linear-gradient(135deg, rgba(0,0,0,0.05) 0 2px, transparent 2px 16px),
+    #821414;
   z-index: 5;
   user-select: none;
 }
@@ -658,90 +665,141 @@ body.is-board #practicePanel,
 body.is-board #exclBoardW,
 body.is-board #exclBoardB { display: none !important; }
 
-.board-center {
-  position: absolute; left: 50%; top: 4vh; transform: translateX(-50%);
-  display: flex; flex-direction: column; align-items: center; gap: 2.2vh;
-}
+/* LED sub-board panel — black with a faint bezel */
 .board-panel {
-  background: #000; border-radius: 0.8vh;
-  padding: 1vh 2.2vw;
+  background: #050505;
+  border-radius: 1.2vh;
+  box-shadow: inset 0 0 0 0.35vh rgba(255,255,255,0.07), 0 1vh 3vh rgba(0,0,0,0.45);
 }
+
+/* Center stack — fills the full height: clock / scores / quarter+shot */
+.board-center {
+  position: absolute; left: 23vw; right: 23vw; top: 4.5vh; bottom: 4.5vh;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: space-between;
+}
+.board-clockpanel { padding: 1.6vh 3vw; }
 .board-gameclock {
   font-family: 'DSEG7', 'Arial Black', sans-serif;
-  font-size: 17vh; font-weight: 700; color: #fff;
-  line-height: 1; letter-spacing: 0.02em;
+  font-size: 24vh; font-weight: 700; color: #fff;
+  line-height: 1; letter-spacing: 0.01em;
   cursor: pointer;
+  text-shadow: 0 0 4vh rgba(255,255,255,0.18);
 }
-.board-scores { display: flex; gap: 3vw; }
+.board-scores { display: flex; gap: 4vw; align-items: flex-end; }
+.board-scorecol { display: flex; flex-direction: column; align-items: center; gap: 1.2vh; }
+.board-score-lbl {
+  font-family: 'Arial Black', sans-serif;
+  font-size: 2.6vh; font-weight: 900; color: rgba(255,255,255,0.85);
+  letter-spacing: 0.22em; text-transform: uppercase;
+  max-width: 18vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.board-scores .board-panel { width: 16vw; text-align: center; padding: 1.2vh 0; }
 .board-score {
   font-family: 'DSEG7', 'Arial Black', sans-serif;
-  font-size: 12vh; font-weight: 700; color: #fff;
-  line-height: 1; min-width: 12vw; text-align: center;
+  font-size: 15vh; font-weight: 700; color: #fff;
+  line-height: 1;
+  text-shadow: 0 0 3vh rgba(255,255,255,0.15);
+}
+.board-bottomlines {
+  display: flex; gap: 5vw; align-items: center;
 }
 .board-line {
   font-family: 'Arial Black', sans-serif;
-  font-size: 4.2vh; font-weight: 900; color: #fff;
+  font-size: 4.4vh; font-weight: 900; color: #fff;
   letter-spacing: 0.18em; text-transform: uppercase;
-  display: flex; align-items: center; gap: 1.2vw;
+  display: flex; align-items: center; gap: 1.4vw;
 }
 .board-line .board-num {
   font-family: 'DSEG7', 'Arial Black', sans-serif;
-  background: #000; border-radius: 0.6vh;
-  padding: 0.5vh 1vw; font-size: 5.5vh; line-height: 1;
+  background: #050505; border-radius: 1vh;
+  box-shadow: inset 0 0 0 0.3vh rgba(255,255,255,0.07);
+  padding: 1vh 1.4vw; font-size: 7vh; line-height: 1;
+  color: #fff;
 }
-.board-line .board-shotnum { font-size: 7vh; cursor: pointer; }
+.board-line .board-shotnum { font-size: 9vh; color: #ffd24a; cursor: pointer;
+  text-shadow: 0 0 3vh rgba(255,210,74,0.25); }
 
+/* Side boards — team name above a black roster panel, CAP TIME pinned bottom */
 .board-side {
-  position: absolute; top: 4vh; width: 17vw;
+  position: absolute; top: 4.5vh; bottom: 4.5vh; width: 20.5vw;
+  display: flex; flex-direction: column;
 }
-.board-side-l { left: 1.5vw; }
-.board-side-r { right: 1.5vw; }
+.board-side-l { left: 1.4vw; }
+.board-side-r { right: 1.4vw; }
 .board-team {
   font-family: 'Arial Black', sans-serif;
-  font-size: 3.6vh; font-weight: 900; color: #fff;
-  letter-spacing: 0.14em; text-transform: uppercase;
-  margin-bottom: 1.4vh; cursor: pointer;
+  font-size: 4.4vh; font-weight: 900; color: #fff;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  margin-bottom: 1.6vh; cursor: pointer;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 0.4vh 1.5vh rgba(0,0,0,0.5);
 }
 .board-side-r .board-team { text-align: right; }
-.board-excl-hdr {
+.board-roster {
+  flex: 1; min-height: 0;
+  padding: 1.6vh 1.2vw;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.board-roster-hdr {
+  display: grid; grid-template-columns: 4.5vw 1fr 4.5vw;
   font-family: 'Arial Black', sans-serif;
-  font-size: 2vh; color: rgba(255,255,255,0.85);
-  letter-spacing: 0.3em; margin-bottom: 0.8vh;
+  font-size: 1.9vh; color: rgba(255,255,255,0.55);
+  letter-spacing: 0.25em;
+  padding-bottom: 1vh; margin-bottom: 0.6vh;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
 }
-.board-excl-row {
-  display: flex; gap: 1.2vw; align-items: center;
+.board-roster-hdr span:last-child { text-align: right; }
+.board-roster-row {
+  display: grid; grid-template-columns: 4.5vw 1fr 4.5vw;
+  align-items: baseline;
+  padding: 0.55vh 0;
+}
+.board-roster-row .brr-cap {
   font-family: 'DSEG7', 'Arial Black', sans-serif;
-  font-size: 2.4vh; color: #fff; line-height: 1.5;
+  font-size: 2.8vh; color: #fff;
 }
-.board-excl-row .ber-cap  { min-width: 3.2vw; }
-.board-excl-row .ber-name {
-  font-family: 'Arial Black', sans-serif; font-size: 1.9vh;
-  flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  color: rgba(255,255,255,0.8);
+.board-roster-row .brr-name {
+  font-family: 'Arial Black', sans-serif;
+  font-size: 2vh; color: rgba(255,255,255,0.75);
+  letter-spacing: 0.04em; text-transform: uppercase;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  padding-right: 0.6vw;
 }
-.board-excl-row.is-fouledout { opacity: 0.35; text-decoration: line-through; }
-.board-captime {
-  position: absolute; bottom: 4vh; width: 19vw;
+.board-roster-row .brr-cnt {
+  font-family: 'DSEG7', 'Arial Black', sans-serif;
+  font-size: 2.8vh; color: #ffd24a; text-align: right;
 }
-.board-captime-l { left: 1.5vw; }
-.board-captime-r { right: 1.5vw; }
+.board-roster-row.is-fouledout { opacity: 0.3; }
+.board-roster-row.is-fouledout .brr-cnt { color: #ff5040; }
+.board-roster-empty {
+  color: rgba(255,255,255,0.25); font-family: 'Arial Black', sans-serif;
+  font-size: 1.8vh; letter-spacing: 0.15em; padding-top: 1.4vh;
+  text-align: center; text-transform: uppercase;
+}
+.board-captime { margin-top: 1.6vh; }
 .board-captime .bct-hdr {
   font-family: 'Arial Black', sans-serif;
-  font-size: 2.4vh; color: #fff; letter-spacing: 0.25em;
-  margin-bottom: 0.8vh;
+  font-size: 2.2vh; color: rgba(255,255,255,0.85);
+  letter-spacing: 0.28em; margin-bottom: 1vh;
 }
+.board-side-r .bct-hdr { text-align: right; }
 .board-captime-row {
-  display: flex; gap: 1.2vw; align-items: baseline;
-  font-family: 'DSEG7', 'Arial Black', sans-serif;
-  font-size: 3.4vh; color: #fff; line-height: 1.5;
+  display: flex; gap: 1vw; align-items: center; margin-bottom: 0.8vh;
 }
+.board-side-r .board-captime-row { justify-content: flex-end; }
 .board-captime-row .bctr-cap {
-  background: #000; border-radius: 0.5vh; padding: 0.2vh 0.8vw;
+  font-family: 'DSEG7', 'Arial Black', sans-serif;
+  background: #050505; border-radius: 0.8vh; padding: 0.6vh 1vw;
+  box-shadow: inset 0 0 0 0.3vh rgba(255,255,255,0.07);
+  font-size: 3.6vh; color: #fff; line-height: 1;
 }
 .board-captime-row .bctr-time {
-  background: #000; border-radius: 0.5vh; padding: 0.2vh 0.8vw;
-  color: #ffd24a;
+  font-family: 'DSEG7', 'Arial Black', sans-serif;
+  background: #050505; border-radius: 0.8vh; padding: 0.6vh 1vw;
+  box-shadow: inset 0 0 0 0.3vh rgba(255,255,255,0.07);
+  font-size: 3.6vh; color: #ffd24a; line-height: 1;
 }
 
 /* Game-day remote trim — hide drill-only sections on the controller */
@@ -976,30 +1034,42 @@ body.is-tv-sideB .tv-side-badge { display: block; }
 <div class="board-app" id="boardApp">
   <div class="board-side board-side-l">
     <div class="board-team" id="bdTeamL" onclick="boardEditName('home')">STANFORD</div>
-    <div class="board-excl-hdr">CAP&nbsp;&nbsp;EXCL</div>
-    <div id="bdExclListL"></div>
+    <div class="board-roster board-panel">
+      <div class="board-roster-hdr"><span>CAP</span><span></span><span>EXCL</span></div>
+      <div id="bdExclListL"></div>
+    </div>
+    <div class="board-captime">
+      <div class="bct-hdr">CAP&nbsp;&nbsp;TIME</div>
+      <div id="bdCapTimeL"></div>
+    </div>
   </div>
   <div class="board-side board-side-r">
     <div class="board-team" id="bdTeamR" onclick="boardEditName('away')">VISITOR</div>
-    <div class="board-excl-hdr" style="text-align:right">CAP&nbsp;&nbsp;EXCL</div>
-    <div id="bdExclListR"></div>
+    <div class="board-roster board-panel">
+      <div class="board-roster-hdr"><span>CAP</span><span></span><span>EXCL</span></div>
+      <div id="bdExclListR"></div>
+    </div>
+    <div class="board-captime">
+      <div class="bct-hdr">CAP&nbsp;&nbsp;TIME</div>
+      <div id="bdCapTimeR"></div>
+    </div>
   </div>
   <div class="board-center">
-    <div class="board-panel"><div class="board-gameclock" id="bdGame" onclick="openTimeEdit('game')">8:00</div></div>
+    <div class="board-panel board-clockpanel"><div class="board-gameclock" id="bdGame" onclick="openTimeEdit('game')">8:00</div></div>
     <div class="board-scores">
-      <div class="board-panel"><div class="board-score" id="bdHome">0</div></div>
-      <div class="board-panel"><div class="board-score" id="bdAway">0</div></div>
+      <div class="board-scorecol">
+        <div class="board-score-lbl" id="bdScoreLblL">STANFORD</div>
+        <div class="board-panel"><div class="board-score" id="bdHome">0</div></div>
+      </div>
+      <div class="board-scorecol">
+        <div class="board-score-lbl" id="bdScoreLblR">VISITOR</div>
+        <div class="board-panel"><div class="board-score" id="bdAway">0</div></div>
+      </div>
     </div>
-    <div class="board-line">QUARTER <span class="board-num" id="bdQtr">1</span></div>
-    <div class="board-line">SHOT <span class="board-num board-shotnum" id="bdShot" onclick="openTimeEdit('shot')">30</span></div>
-  </div>
-  <div class="board-captime board-captime-l">
-    <div class="bct-hdr">CAP&nbsp;&nbsp;TIME</div>
-    <div id="bdCapTimeL"></div>
-  </div>
-  <div class="board-captime board-captime-r">
-    <div class="bct-hdr">CAP&nbsp;&nbsp;TIME</div>
-    <div id="bdCapTimeR"></div>
+    <div class="board-bottomlines">
+      <div class="board-line">QUARTER <span class="board-num" id="bdQtr">1</span></div>
+      <div class="board-line">SHOT <span class="board-num board-shotnum" id="bdShot" onclick="openTimeEdit('shot')">30</span></div>
+    </div>
   </div>
 </div>
 
@@ -2329,21 +2399,27 @@ function renderBoard() {
   document.getElementById('bdAway').textContent = awayScoreVal;
   document.getElementById('bdTeamL').textContent = boardNameHome;
   document.getElementById('bdTeamR').textContent = boardNameAway;
+  document.getElementById('bdScoreLblL').textContent = boardNameHome;
+  document.getElementById('bdScoreLblR').textContent = boardNameAway;
 
-  // CAP/EXCL columns — only when a roster is loaded
+  // CAP/EXCL roster columns
   function rows(roster) {
-    return (roster||[]).map(function(p) {
-      var cls = 'board-excl-row' + (p.count >= p.max ? ' is-fouledout' : '');
+    if (!roster || !roster.length) {
+      return '<div class="board-roster-empty">no roster loaded</div>';
+    }
+    return roster.map(function(p) {
+      var cls = 'board-roster-row' + (p.count >= p.max ? ' is-fouledout' : '');
       var cap = p.cap ? p.cap : '--';
-      return '<div class="'+cls+'"><span class="ber-cap">'+cap+'</span>'+
-        '<span class="ber-name">'+escHtml(p.name)+'</span>'+
-        '<span class="ber-cnt">'+p.count+'</span></div>';
+      return '<div class="'+cls+'"><span class="brr-cap">'+cap+'</span>'+
+        '<span class="brr-name">'+escHtml(p.name)+'</span>'+
+        '<span class="brr-cnt">'+p.count+'</span></div>';
     }).join('');
   }
   document.getElementById('bdExclListL').innerHTML = rows(rosterWhite);
   document.getElementById('bdExclListR').innerHTML = rows(rosterBlack);
 
-  // CAP TIME corners — active exclusions w/ return countdown
+  // CAP TIME — active exclusions w/ return countdown, pinned at the
+  // bottom of each side board
   function capRows(teamKey) {
     return exclusions.filter(function(e){ return e.team === teamKey; })
       .map(function(e) {
