@@ -651,8 +651,12 @@ body.is-board:not(.is-split) .board-app {
   display: block;
   position: fixed; inset: 0;
   background:
-    radial-gradient(70vw 45vh at 50% 118%, rgba(140,21,21,0.30), transparent 70%),
-    radial-gradient(55vw 32vh at 50% -10%, rgba(140,21,21,0.16), transparent 70%),
+    radial-gradient(140vw 120vh at 50% 50%, transparent 55%, rgba(0,0,0,0.55) 100%),
+    radial-gradient(70vw 45vh at 50% 118%, rgba(140,21,21,0.42), transparent 70%),
+    radial-gradient(55vw 32vh at 50% -10%, rgba(140,21,21,0.22), transparent 70%),
+    radial-gradient(46vw 34vh at 50% 18%, rgba(255,255,255,0.04), transparent 65%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.022) 0 1px, transparent 1px 64px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.022) 0 1px, transparent 1px 64px),
     linear-gradient(180deg, #121214 0%, #0a0a0b 55%, #0c0a0a 100%);
   z-index: 5;
   user-select: none;
@@ -662,6 +666,19 @@ body.is-board:not(.is-split) .board-app {
   content: '';
   position: absolute; top: 0; left: 0; right: 0; height: 0.5vh;
   background: linear-gradient(90deg, transparent, #8C1515 18%, #B1040E 50%, #8C1515 82%, transparent);
+}
+/* Giant ghosted block-S watermark behind the center stack — depth, not
+   noise. Whitened via filter so it reads as a faint emboss on the dark
+   field. Sits under all content (children are positioned later in DOM). */
+.board-app::after {
+  content: '';
+  position: absolute; left: 50%; top: 52%;
+  width: 64vh; height: 64vh;
+  transform: translate(-50%, -50%);
+  background: url('stanford-logo.svg') center / contain no-repeat;
+  opacity: 0.05;
+  filter: grayscale(1) brightness(2.6);
+  pointer-events: none;
 }
 body.is-board:not(.is-split) .display-app { display: none !important; }
 body.is-board #repCounterBadge,
