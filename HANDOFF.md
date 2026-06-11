@@ -136,25 +136,29 @@ If you change the parser's grammar, **also update `AI_SYSTEM_PROMPT` in `server.
 
 ---
 
-## Stanford-specific defaults (April 2026)
+## Stanford-specific defaults (June 2026 FTP test)
 
-Three-tier roster + per-tier CSS (sec / 100m, converted from `sec/100y × 1.0936`):
+Six-tier roster + per-tier CSS (sec / 100m, converted from `sec/100y × 1.0936`):
 
-| Tier | Color | Swimmers | CSS |
-| --- | --- | --- | --- |
-| 1 | Green | Ohl*, West, Krilanovich, Oerlemans, Balogh, Gheorghe, De Vecchis | 61.1 |
-| 2 | Blue | Mathiopoulos, Schneider, Leonardi, Zelikov, Mnatsakanian | 63.3 |
-| 3 | Cardinal | Forer, Arakelian, Caras, Zervoudakis, Orestis | 65.7 |
+| Tier | Color | Swimmers | FTP (y) | CSS (m) |
+| --- | --- | --- | --- | --- |
+| 1 | Green | C. Ohl, R. Ohl, West | 54.71 | 59.8 |
+| 2 | Blue | Krilanovich, De Vecchis, Mathiopoulos, Schneider | 55.70 | 60.9 |
+| 3 | Cardinal | Gheorghe (fins), Balogh, Oerlemans, Wu (TBD) | 57.74 | 63.1 |
+| 4 | Orange | Rozolis-Hill, Zelikov, Leonardi, Austen (TBD) | ~59.2 | 64.7 |
+| 5 | Purple | Forer | 59.74 | 65.3 |
+| 6 | Teal | Arakelian, Caras, Mnatsakanian, Ben T. (TBD) | 59.89 | 65.5 |
 
-(Orestis is on Tier 3 but his time was excluded from the 65.7 average because he's the outlier.)
-
-Two-tier preset:
-- **Group A (10):** Tier 1 + Mathiopoulos, Schneider, Leonardi
-- **Group B (6):** Zelikov, Mnatsakanian, Forer, Arakelian, Caras, Zervoudakis, Orestis
+(Gheorghe tested with fins — excluded from the tier-3 average. Wu, Austen,
+and Ben T. untested — placed by coach. Older 1/2/3-tier presets are still
+in `_TIER_PRESETS` but carry the April 2026 rosters.)
 
 Pool length default: **36 m** (Avery short-course meters).
 
-`BASE_CSS` in `index.html` must stay in sync with the input defaults so the default scale is 1.0 and pace ranges from `RAW` are absolute.
+`BASE_CSS` in `index.html` must stay in sync with the tier 1-3 input
+defaults so their default scale is 1.0 and pace ranges from `RAW` are
+absolute. Tiers 4-6 have no `RAW` tables — they reuse tier3's and scale
+by CSS ratio (their `BASE_CSS` entries are tier3's value).
 
 Zone colors: **Z1 green · Z2 blue · Z3 gold · Z4 red · Z5 purple.** Don't reassign.
 
