@@ -634,6 +634,122 @@ body.is-shotonly .practice-main { display: none !important; }
 .pm-time.is-warn   { color: #f39c12; }
 .pm-time.is-danger { color: #e74c3c; animation: pulse-c .35s ease-in-out infinite; }
 
+/* ═══ GAME BOARD MODE — Avery Aquatic Center Daktronics look ═══
+   Cardinal red field, white DSEG digits on black panels, center stack
+   (game clock → scores → quarter → shot), team names flanking, per-team
+   CAP/EXCL roster columns + CAP TIME return timers in the corners.
+   Toggled via Settings 🏟 or ?board URL param. The background is one
+   `background-image` line away from the real Daktronics paisley if the
+   coach ever exports that asset from Content Studio. */
+.board-app { display: none; }
+body.is-board:not(.is-split) .board-app {
+  display: block;
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(120vw 90vh at 50% 30%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.35) 100%),
+    #7a1212;
+  z-index: 5;
+  user-select: none;
+}
+body.is-board:not(.is-split) .display-app { display: none !important; }
+body.is-board #repCounterBadge,
+body.is-board #repCounterBadgeB,
+body.is-board #practicePanel,
+body.is-board #exclBoardW,
+body.is-board #exclBoardB { display: none !important; }
+
+.board-center {
+  position: absolute; left: 50%; top: 4vh; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 2.2vh;
+}
+.board-panel {
+  background: #000; border-radius: 0.8vh;
+  padding: 1vh 2.2vw;
+}
+.board-gameclock {
+  font-family: 'DSEG7', 'Arial Black', sans-serif;
+  font-size: 17vh; font-weight: 700; color: #fff;
+  line-height: 1; letter-spacing: 0.02em;
+  cursor: pointer;
+}
+.board-scores { display: flex; gap: 3vw; }
+.board-score {
+  font-family: 'DSEG7', 'Arial Black', sans-serif;
+  font-size: 12vh; font-weight: 700; color: #fff;
+  line-height: 1; min-width: 12vw; text-align: center;
+}
+.board-line {
+  font-family: 'Arial Black', sans-serif;
+  font-size: 4.2vh; font-weight: 900; color: #fff;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 1.2vw;
+}
+.board-line .board-num {
+  font-family: 'DSEG7', 'Arial Black', sans-serif;
+  background: #000; border-radius: 0.6vh;
+  padding: 0.5vh 1vw; font-size: 5.5vh; line-height: 1;
+}
+.board-line .board-shotnum { font-size: 7vh; cursor: pointer; }
+
+.board-side {
+  position: absolute; top: 4vh; width: 17vw;
+}
+.board-side-l { left: 1.5vw; }
+.board-side-r { right: 1.5vw; }
+.board-team {
+  font-family: 'Arial Black', sans-serif;
+  font-size: 3.6vh; font-weight: 900; color: #fff;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  margin-bottom: 1.4vh; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.board-side-r .board-team { text-align: right; }
+.board-excl-hdr {
+  font-family: 'Arial Black', sans-serif;
+  font-size: 2vh; color: rgba(255,255,255,0.85);
+  letter-spacing: 0.3em; margin-bottom: 0.8vh;
+}
+.board-excl-row {
+  display: flex; gap: 1.2vw; align-items: center;
+  font-family: 'DSEG7', 'Arial Black', sans-serif;
+  font-size: 2.4vh; color: #fff; line-height: 1.5;
+}
+.board-excl-row .ber-cap  { min-width: 3.2vw; }
+.board-excl-row .ber-name {
+  font-family: 'Arial Black', sans-serif; font-size: 1.9vh;
+  flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: rgba(255,255,255,0.8);
+}
+.board-excl-row.is-fouledout { opacity: 0.35; text-decoration: line-through; }
+.board-captime {
+  position: absolute; bottom: 4vh; width: 19vw;
+}
+.board-captime-l { left: 1.5vw; }
+.board-captime-r { right: 1.5vw; }
+.board-captime .bct-hdr {
+  font-family: 'Arial Black', sans-serif;
+  font-size: 2.4vh; color: #fff; letter-spacing: 0.25em;
+  margin-bottom: 0.8vh;
+}
+.board-captime-row {
+  display: flex; gap: 1.2vw; align-items: baseline;
+  font-family: 'DSEG7', 'Arial Black', sans-serif;
+  font-size: 3.4vh; color: #fff; line-height: 1.5;
+}
+.board-captime-row .bctr-cap {
+  background: #000; border-radius: 0.5vh; padding: 0.2vh 0.8vw;
+}
+.board-captime-row .bctr-time {
+  background: #000; border-radius: 0.5vh; padding: 0.2vh 0.8vw;
+  color: #ffd24a;
+}
+
+/* Game-day remote trim — hide drill-only sections on the controller */
+body.is-gameday #ctrlTransSec    { display: none !important; }
+body.is-gameday #ctrlPracticeSec { display: none !important; }
+#ctrlGameExclSec { display: none; }
+body.is-gameday #ctrlGameExclSec { display: block; }
+
 /* ═══════ TV VIEW (dedicated shot clock for outdoor TV) ═══════ */
 /* White-on-black by default — on a backlit LCD TV this maxes out peak
    luminance (all RGB subpixels fully on), which matters more in direct
@@ -856,6 +972,37 @@ body.is-tv-sideB .tv-side-badge { display: block; }
   </div>
 </div>
 
+<!-- ═══ GAME BOARD VIEW — Avery Daktronics look (body.is-board) ═══ -->
+<div class="board-app" id="boardApp">
+  <div class="board-side board-side-l">
+    <div class="board-team" id="bdTeamL" onclick="boardEditName('home')">STANFORD</div>
+    <div class="board-excl-hdr">CAP&nbsp;&nbsp;EXCL</div>
+    <div id="bdExclListL"></div>
+  </div>
+  <div class="board-side board-side-r">
+    <div class="board-team" id="bdTeamR" onclick="boardEditName('away')">VISITOR</div>
+    <div class="board-excl-hdr" style="text-align:right">CAP&nbsp;&nbsp;EXCL</div>
+    <div id="bdExclListR"></div>
+  </div>
+  <div class="board-center">
+    <div class="board-panel"><div class="board-gameclock" id="bdGame" onclick="openTimeEdit('game')">8:00</div></div>
+    <div class="board-scores">
+      <div class="board-panel"><div class="board-score" id="bdHome">0</div></div>
+      <div class="board-panel"><div class="board-score" id="bdAway">0</div></div>
+    </div>
+    <div class="board-line">QUARTER <span class="board-num" id="bdQtr">1</span></div>
+    <div class="board-line">SHOT <span class="board-num board-shotnum" id="bdShot" onclick="openTimeEdit('shot')">30</span></div>
+  </div>
+  <div class="board-captime board-captime-l">
+    <div class="bct-hdr">CAP&nbsp;&nbsp;TIME</div>
+    <div id="bdCapTimeL"></div>
+  </div>
+  <div class="board-captime board-captime-r">
+    <div class="bct-hdr">CAP&nbsp;&nbsp;TIME</div>
+    <div id="bdCapTimeR"></div>
+  </div>
+</div>
+
 <!-- ═══ SPLIT-SCREEN DISPLAY (two clocks on one TV) ═══ -->
 <div class="split-app" id="splitApp">
   <div class="sp-panel">
@@ -1049,6 +1196,20 @@ body.is-tv-sideB .tv-side-badge { display: block; }
       </div>
     </div>
 
+    <!-- Game-day exclusions — visible only in 🏟 game board mode. Fires
+         the standard 20s exclusion; shows on the board's CAP TIME corner.
+         For named/cap-number exclusions use the Exclusion Board roster. -->
+    <div class="ctrl-section" id="ctrlGameExclSec">
+      <div class="ctrl-section-title">Exclusions</div>
+      <div class="ctrl-grid g2">
+        <div class="rb" onclick="cmd('excl',{t:'home'})" style="background:#1a1a1a;color:#fff;border:1px solid #555">EXCL HOME</div>
+        <div class="rb" onclick="cmd('excl',{t:'away'})" style="background:#0a0a0a;color:#aaa;border:1px solid #333">EXCL AWAY</div>
+      </div>
+      <div class="ctrl-grid" style="margin-top:8px">
+        <div class="rb rb-reset" onclick="cmd('clearExcl')">✕ CLEAR EXCLUSIONS</div>
+      </div>
+    </div>
+
     <!-- Exclusion board — visible when 🎯 Random Exclusion Mode is on.
          Two random buttons at the top, then full-width per-player rows
          stacked by team. Tap a name → 20s exclusion + count up by 1. -->
@@ -1069,7 +1230,7 @@ body.is-tv-sideB .tv-side-badge { display: block; }
     </div>
 
     <!-- TRANSITION countdown — short hustle timer between drills/reps -->
-    <div class="ctrl-section">
+    <div class="ctrl-section" id="ctrlTransSec">
       <div class="ctrl-section-title">Transition Timer</div>
       <div class="ctrl-grid g4">
         <div class="rb rb-rest" onclick="cmd('transitionStart',{ms:10000})">⏱ 0:10</div>
@@ -1209,6 +1370,11 @@ body.is-tv-sideB .tv-side-badge { display: block; }
     <div class="settings-row">
       <label>Practice Clock Mode</label>
       <div class="rb rb-mode" id="rbPracticeClockToggle" onclick="ctrlTogglePracticeClockMode()">🏊 SHOW PRACTICE CLOCK<span class="rb-sub">replaces the big game clock with the drill timer</span></div>
+    </div>
+
+    <div class="settings-row">
+      <label>Game Board</label>
+      <div class="rb rb-mode" id="rbBoardModeToggle" onclick="ctrlToggleBoardMode()">🏟 GAME BOARD LOOK<span class="rb-sub">Avery big-board layout on the display + game-only remote</span></div>
     </div>
 
     <div class="settings-row">
@@ -1513,6 +1679,7 @@ function sendState(force) {
     practiceRemaining: practiceRemaining,
     practiceRunning: practiceRunning,
     practiceClockMode: practiceClockMode,
+    boardMode: boardMode,
     splitMode: splitMode,
     bGameTime: bGameTime,
     bShotTime: bShotTime,
@@ -1610,6 +1777,21 @@ function ctrlTogglePracticeClockMode() {
   var b = document.getElementById('rbPracticeClockToggle');
   if (b && b.firstChild) b.firstChild.textContent = _ctrlPracticeClock ? '✕ HIDE PRACTICE CLOCK' : '🏊 SHOW PRACTICE CLOCK';
   cmd('setPracticeClockMode', {on: _ctrlPracticeClock});
+}
+
+// Game board mode — one toggle does both ends: the display re-skins to
+// the Avery Daktronics look and the remote trims to game-only controls.
+var _ctrlBoardMode = false;
+function _applyGamedayUI() {
+  document.body.classList.toggle('is-gameday', _ctrlBoardMode);
+  var b = document.getElementById('rbBoardModeToggle');
+  if (b && b.firstChild) b.firstChild.textContent = _ctrlBoardMode ? '✕ EXIT GAME BOARD' : '🏟 GAME BOARD LOOK';
+}
+function ctrlToggleBoardMode() {
+  _ctrlBoardMode = !_ctrlBoardMode;
+  _ctrlMarkLocal('boardMode');
+  _applyGamedayUI();
+  cmd('setBoardMode', {on: _ctrlBoardMode});
 }
 
 // Random exclusion mode — toggle. When on, the controller exposes the
@@ -1927,6 +2109,11 @@ function applyState(s) {
     var pcb = document.getElementById('rbPracticeClockToggle');
     if (pcb && pcb.firstChild) pcb.firstChild.textContent = _ctrlPracticeClock ? '✕ HIDE PRACTICE CLOCK' : '🏊 SHOW PRACTICE CLOCK';
   }
+  // Game board mode — sync toggle + game-day remote trim
+  if (!_ctrlIsFreshLocal('boardMode') && typeof s.boardMode === 'boolean' && s.boardMode !== _ctrlBoardMode) {
+    _ctrlBoardMode = s.boardMode;
+    _applyGamedayUI();
+  }
   // Cache the latest roster locally so we can repopulate Settings textareas
   // and push back if the display ever loses its copy. Also drives the
   // tappable per-player rows in the controller's exclusion section.
@@ -2080,25 +2267,126 @@ function parsePracticeTable(text) {
   } catch(e) {}
 })();
 
-// Parse a roster text-area string. Each line is "Name" (default max 3)
-// or "Name N" (max N). `count` starts at 0 and climbs with each
-// exclusion; player is fouled out when count >= max.
+// ── Game Board mode — Avery Daktronics look ───────────────────────────
+// Re-skins the display to the real Avery big-board layout and trims the
+// remote to game-only controls. Toggled from Settings or forced via
+// ?board in the URL. Display-side persistence in localStorage.
+var boardMode = false;
+(function hydrateBoardMode() {
+  if (IS_CONTROL || IS_TV) return;
+  try {
+    if (/[?&]board(\b|=)/.test(location.search)) boardMode = true;
+    else if (localStorage.getItem('wpolo_board_mode') === '1') boardMode = true;
+    if (boardMode) document.body.classList.add('is-board');
+  } catch(e) {}
+})();
+
+// Board team names are display-local (not part of synced state — same as
+// the WHITE/BLACK names on the normal scoreboard). Tap to rename.
+var boardNameHome = 'STANFORD';
+var boardNameAway = 'VISITOR';
+(function hydrateBoardNames() {
+  try {
+    boardNameHome = localStorage.getItem('wpolo_board_name_home') || 'STANFORD';
+    boardNameAway = localStorage.getItem('wpolo_board_name_away') || 'VISITOR';
+  } catch(e) {}
+})();
+function boardEditName(side) {
+  if (IS_CONTROL || IS_TV) return;
+  var cur = side === 'home' ? boardNameHome : boardNameAway;
+  var name = prompt('Team name:', cur);
+  if (!name) return;
+  name = name.trim().toUpperCase().slice(0, 14);
+  if (side === 'home') boardNameHome = name; else boardNameAway = name;
+  try {
+    localStorage.setItem('wpolo_board_name_home', boardNameHome);
+    localStorage.setItem('wpolo_board_name_away', boardNameAway);
+  } catch(e) {}
+  renderBoard();
+}
+
+// Find a roster player's cap number by name (either team). Returns ''
+// when the roster has no cap for them.
+function _capFor(teamKey, name) {
+  var roster = teamKey === 'away' ? rosterBlack : rosterWhite;
+  for (var i = 0; i < (roster||[]).length; i++) {
+    if (roster[i].name === name) return roster[i].cap || '';
+  }
+  return '';
+}
+
+// Render everything on the game board from current display state.
+// Cheap enough to call every frame alongside renderDisplay.
+function renderBoard() {
+  if (IS_CONTROL || IS_TV || !boardMode) return;
+  var g = document.getElementById('bdGame');
+  if (!g) return;
+  g.textContent = fmtClock(gameTime);
+  document.getElementById('bdShot').textContent =
+    (!shotOnly && gameTime > 0 && gameTime < shotTime) ? '--' : Math.max(0, Math.ceil(shotTime/1000));
+  document.getElementById('bdQtr').textContent  = Math.min(quarter+1, 4);
+  document.getElementById('bdHome').textContent = homeScoreVal;
+  document.getElementById('bdAway').textContent = awayScoreVal;
+  document.getElementById('bdTeamL').textContent = boardNameHome;
+  document.getElementById('bdTeamR').textContent = boardNameAway;
+
+  // CAP/EXCL columns — only when a roster is loaded
+  function rows(roster) {
+    return (roster||[]).map(function(p) {
+      var cls = 'board-excl-row' + (p.count >= p.max ? ' is-fouledout' : '');
+      var cap = p.cap ? p.cap : '--';
+      return '<div class="'+cls+'"><span class="ber-cap">'+cap+'</span>'+
+        '<span class="ber-name">'+escHtml(p.name)+'</span>'+
+        '<span class="ber-cnt">'+p.count+'</span></div>';
+    }).join('');
+  }
+  document.getElementById('bdExclListL').innerHTML = rows(rosterWhite);
+  document.getElementById('bdExclListR').innerHTML = rows(rosterBlack);
+
+  // CAP TIME corners — active exclusions w/ return countdown
+  function capRows(teamKey) {
+    return exclusions.filter(function(e){ return e.team === teamKey; })
+      .map(function(e) {
+        var cap = e.name ? (_capFor(teamKey, e.name) || escHtml(e.name)) : 'EX';
+        var t = Math.max(0, e.remaining/1000);
+        var mm = Math.floor(t/60), ss = Math.ceil(t%60);
+        if (ss === 60) { mm++; ss = 0; }
+        return '<div class="board-captime-row"><span class="bctr-cap">'+cap+'</span>'+
+          '<span class="bctr-time">'+mm+':'+(ss<10?'0'+ss:ss)+'</span></div>';
+      }).join('');
+  }
+  document.getElementById('bdCapTimeL').innerHTML = capRows('home');
+  document.getElementById('bdCapTimeR').innerHTML = capRows('away');
+}
+
+// Parse a roster text-area string. Line formats:
+//   "Marcus"        → cap none, max 3
+//   "Marcus 2"      → cap none, max 2  (trailing number = max exclusions)
+//   "5 Marcus"      → cap 5,   max 3  (leading number = cap number)
+//   "5 Marcus 2"    → cap 5,   max 2
+// `count` starts at 0 and climbs with each exclusion; fouled out when
+// count >= max. Cap numbers feed the game-board CAP/EXCL columns.
 function parseRosterText(text) {
   return String(text || '').split(/\r?\n/).map(function(line) {
     line = (line||'').trim();
     if (!line) return null;
+    var cap = '';
+    var mCap = line.match(/^(\d+)\s+(.+)$/);
+    if (mCap) { cap = mCap[1]; line = mCap[2].trim(); }
     var m = line.match(/^(.+?)\s+(\d+)\s*$/);
     var name = m ? m[1].trim() : line;
     var max  = m ? Math.max(1, parseInt(m[2], 10)) : 3;
-    return { name: name, max: max, count: 0 };
+    if (!name) return null;
+    return { name: name, max: max, count: 0, cap: cap };
   }).filter(function(x){ return x; });
 }
 
 // Serialize the current roster back to a text-area-friendly string,
-// reflecting the configured max (not the live remaining).
+// reflecting cap + configured max (not the live count).
 function rosterToText(arr) {
   return (arr||[]).map(function(p){
-    return p.max === 3 ? p.name : (p.name + ' ' + p.max);
+    var s = p.cap ? (p.cap + ' ' + p.name) : p.name;
+    return p.max === 3 ? s : (s + ' ' + p.max);
   }).join('\n');
 }
 
@@ -2110,7 +2398,7 @@ function _normalizeRosterEntries(arr) {
     if (!p || typeof p !== 'object') return null;
     var max = (typeof p.max === 'number' && p.max > 0) ? p.max : 3;
     var count = (typeof p.count === 'number') ? p.count : 0;
-    return { name: String(p.name || ''), max: max, count: count };
+    return { name: String(p.name || ''), max: max, count: count, cap: String(p.cap || '') };
   }).filter(function(x){ return x && x.name; });
 }
 (function hydrateRoster() {
@@ -2393,6 +2681,7 @@ function handleCmd(action, data) {
       }
       // Mirror score changes onto the rest overlay if it's currently showing
       if (restMode) renderRest();
+      renderBoard();
       break;
     case 'excl':
       exclusions.push({team:data.t, remaining:CFG.exclLen, id:++exclCounter});
@@ -2487,6 +2776,7 @@ function handleCmd(action, data) {
       else if (Array.isArray(data.black))    rosterBlack = data.black;
       persistRoster();
       renderExclBoard();
+      renderBoard();
       break;
     case 'exclPlayer':
       // Coach tapped a specific player on the board. Decrement their
@@ -2582,6 +2872,12 @@ function handleCmd(action, data) {
       document.body.classList.toggle('is-practice-main', practiceClockMode);
       renderDisplay();
       renderPracticePanel();
+      break;
+    case 'setBoardMode':
+      boardMode = !!data.on;
+      try { localStorage.setItem('wpolo_board_mode', boardMode ? '1' : '0'); } catch(e) {}
+      document.body.classList.toggle('is-board', boardMode);
+      renderDisplay(); renderBoard();
       break;
     case 'setPracticeTime':
       // Manual override — coach types in a new duration. Stops the
@@ -3142,6 +3438,8 @@ function renderDisplay() {
 
   // Keep the exclusion board ticking — countdowns + fouled-out states.
   renderExclBoard();
+  // Game board mirrors the same state when board mode is on.
+  renderBoard();
 }
 
 function fmtClock(ms) {
@@ -3179,6 +3477,7 @@ function renderExcl() {
     return '<div class="excl-tag '+cls+'" onclick="removeExcl('+e.id+')">'+
       '<span class="excl-cap">EXCL</span> '+s+'s</div>';
   }).join('');
+  renderBoard(); // keep CAP TIME corners in sync when the clock is stopped
 }
 function removeExcl(id) {
   exclusions = exclusions.filter(function(e){ return e.id !== id; });
@@ -3370,11 +3669,12 @@ function openSettings() {
   _ctrlRandomExcl = !!_lastRemoteState.randomExclMode;
   var reb = document.getElementById('rbRandomExclToggle');
   if (reb && reb.firstChild) reb.firstChild.textContent = _ctrlRandomExcl ? '✕ HIDE EXCL BOARD' : '🎯 RANDOM EXCLUSION MODE';
-  // Build the text-area content from the live roster (max only; live
-  // `remaining` isn't shown in the editor — coach edits structure, not state)
+  // Build the text-area content from the live roster (cap + max; live
+  // count isn't shown in the editor — coach edits structure, not state)
   function _rosterToTextLocal(arr) {
     return (arr||[]).map(function(p){
-      return p.max === 3 ? p.name : (p.name + ' ' + p.max);
+      var s = p.cap ? (p.cap + ' ' + p.name) : p.name;
+      return p.max === 3 ? s : (s + ' ' + p.max);
     }).join('\n');
   }
   document.getElementById('setRosterWhite').value = _rosterToTextLocal(_lastRemoteState.rosterWhite || rosterWhite);
@@ -3391,6 +3691,9 @@ function openSettings() {
   _ctrlPracticeClock = !!_lastRemoteState.practiceClockMode;
   var pcb2 = document.getElementById('rbPracticeClockToggle');
   if (pcb2 && pcb2.firstChild) pcb2.firstChild.textContent = _ctrlPracticeClock ? '✕ HIDE PRACTICE CLOCK' : '🏊 SHOW PRACTICE CLOCK';
+  // Game board mode toggle label + game-day trim
+  _ctrlBoardMode = !!_lastRemoteState.boardMode;
+  _applyGamedayUI();
   document.getElementById('settingsOverlay').classList.add('open');
 }
 function closeSettings() {
