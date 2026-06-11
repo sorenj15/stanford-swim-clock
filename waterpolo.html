@@ -706,12 +706,15 @@ body.is-board #exclBoardB { display: none !important; }
    the Stanford block-S SVG; visitor side a monogram crest. */
 .board-logo {
   position: absolute; top: 50%; transform: translateY(-50%);
-  width: 12vw; pointer-events: none;
+  width: 12vw; cursor: pointer;
   filter: drop-shadow(0 1vh 3vh rgba(0,0,0,0.45));
 }
 .board-logo-l { left: 16vw; }
 .board-logo-r { right: 16vw; display: flex; align-items: center; justify-content: center; }
-.board-logo svg, .board-logo img { width: 100%; height: auto; display: block; }
+.board-logo svg, .board-logo img {
+  width: 100%; height: auto; max-height: 30vh;
+  object-fit: contain; display: block;
+}
 .board-logo-l { width: 9.5vw; }
 .board-monogram {
   width: 10vw; height: 10vw; border-radius: 50%;
@@ -1111,15 +1114,18 @@ body.is-tv-sideB .tv-side-badge { display: block; }
       <div id="bdCapTimeR"></div>
     </div>
   </div>
-  <!-- Home logo — official Stanford block S (served from this repo, no
-       external fetch at game time). Visitor side gets a monogram crest
-       from the first letter of the away team name. -->
-  <div class="board-logo board-logo-l">
-    <img src="stanford-logo.svg" alt="Stanford">
+  <!-- Logos — tap either to upload a custom image from this computer
+       (persists in localStorage). Right-click to reset. Home defaults
+       to the official Stanford block S; visitor falls back to a
+       monogram crest from the first letter of the away team name. -->
+  <div class="board-logo board-logo-l" onclick="boardPickLogo('home')" oncontextmenu="return boardResetLogo('home')">
+    <img id="bdLogoL" src="stanford-logo.svg" alt="Home logo">
   </div>
-  <div class="board-logo board-logo-r">
+  <div class="board-logo board-logo-r" onclick="boardPickLogo('away')" oncontextmenu="return boardResetLogo('away')">
+    <img id="bdLogoR" src="" alt="" style="display:none">
     <div class="board-monogram" id="bdMonogram">V</div>
   </div>
+  <input type="file" id="bdLogoFile" accept="image/*" style="display:none">
   <div class="board-center">
     <div class="board-panel board-clockpanel"><div class="board-gameclock" id="bdGame" onclick="openTimeEdit('game')">8:00</div></div>
     <div class="board-scores">
@@ -2441,6 +2447,73 @@ function boardEditName(side) {
   renderBoard();
 }
 
+// Custom team logos — coach taps a logo zone on the display, picks an
+// image file, we downscale it and persist as a data URI in localStorage.
+// Right-click a logo to reset (home → block S, away → monogram).
+var boardLogoHome = null;
+var boardLogoAway = null;
+(function hydrateBoardLogos() {
+  try {
+    boardLogoHome = localStorage.getItem('wpolo_board_logo_home') || null;
+    boardLogoAway = localStorage.getItem('wpolo_board_logo_away') || null;
+  } catch(e) {}
+})();
+var _logoPickSide = null;
+function boardPickLogo(side) {
+  if (IS_CONTROL || IS_TV) return;
+  _logoPickSide = side;
+  var f = document.getElementById('bdLogoFile');
+  if (f) { f.value = ''; f.click(); }
+}
+function boardResetLogo(side) {
+  if (IS_CONTROL || IS_TV) return false;
+  if (confirm('Reset ' + (side === 'home' ? 'home' : 'visitor') + ' logo to default?')) {
+    if (side === 'home') boardLogoHome = null; else boardLogoAway = null;
+    try { localStorage.removeItem('wpolo_board_logo_' + side); } catch(e) {}
+    renderBoard();
+  }
+  return false; // suppress the context menu
+}
+(function wireLogoFileInput() {
+  if (IS_CONTROL || IS_TV) return;
+  var f = document.getElementById('bdLogoFile');
+  if (!f) return;
+  f.addEventListener('change', function() {
+    var file = f.files && f.files[0];
+    if (!file || !_logoPickSide) return;
+    var side = _logoPickSide;
+    var reader = new FileReader();
+    reader.onload = function() {
+      var dataUri = reader.result;
+      // SVGs and small files store as-is; bigger rasters get downscaled
+      // to max 512px so we don't blow the localStorage quota.
+      if (file.type === 'image/svg+xml' || file.size < 400 * 1024) {
+        _storeBoardLogo(side, dataUri);
+        return;
+      }
+      var img = new Image();
+      img.onload = function() {
+        var maxDim = 512;
+        var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        var c = document.createElement('canvas');
+        c.width = Math.round(img.width * scale);
+        c.height = Math.round(img.height * scale);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        _storeBoardLogo(side, c.toDataURL('image/png'));
+      };
+      img.onerror = function() { _storeBoardLogo(side, dataUri); };
+      img.src = dataUri;
+    };
+    reader.readAsDataURL(file);
+  });
+})();
+function _storeBoardLogo(side, dataUri) {
+  if (side === 'home') boardLogoHome = dataUri; else boardLogoAway = dataUri;
+  try { localStorage.setItem('wpolo_board_logo_' + side, dataUri); }
+  catch(e) { alert('Logo too large to save — try a smaller image.'); }
+  renderBoard();
+}
+
 // Find a roster player's cap number by name (either team). Returns ''
 // when the roster has no cap for them.
 function _capFor(teamKey, name) {
@@ -2467,8 +2540,26 @@ function renderBoard() {
   document.getElementById('bdTeamR').textContent = boardNameAway;
   document.getElementById('bdScoreLblL').textContent = boardNameHome;
   document.getElementById('bdScoreLblR').textContent = boardNameAway;
+  // Logos — guard src writes (this runs every frame; re-assigning the
+  // same src can re-trigger loads in some browsers)
+  var lImg = document.getElementById('bdLogoL');
+  var wantL = boardLogoHome || 'stanford-logo.svg';
+  if (lImg && lImg.getAttribute('src') !== wantL) lImg.src = wantL;
+  var rImg = document.getElementById('bdLogoR');
   var mono = document.getElementById('bdMonogram');
-  if (mono) mono.textContent = (boardNameAway.charAt(0) || 'V').toUpperCase();
+  if (boardLogoAway) {
+    if (rImg) {
+      if (rImg.getAttribute('src') !== boardLogoAway) rImg.src = boardLogoAway;
+      if (rImg.style.display !== 'block') rImg.style.display = 'block';
+    }
+    if (mono && mono.style.display !== 'none') mono.style.display = 'none';
+  } else {
+    if (rImg && rImg.style.display !== 'none') rImg.style.display = 'none';
+    if (mono) {
+      if (mono.style.display !== 'flex') mono.style.display = 'flex';
+      mono.textContent = (boardNameAway.charAt(0) || 'V').toUpperCase();
+    }
+  }
 
   // CAP/EXCL roster columns
   function rows(roster) {
