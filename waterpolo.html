@@ -1271,9 +1271,10 @@ body.is-tv-sideB .tv-side-badge { display: block; }
         <div class="rb rb-start" id="rbStartA" onclick="cmd('toggle',{side:'A'})">▶ START</div>
         <div class="rb rb-reset" onclick="cmd('resetSide',{side:'A'})">↺ RESET</div>
       </div>
-      <div class="ctrl-grid g2" style="margin-top:8px">
+      <div class="ctrl-grid g3" style="margin-top:8px">
         <div class="rb rb-shot" id="rbShot30A" onclick="cmd('shot30',{side:'A'})">↺ 30</div>
         <div class="rb rb-shot" id="rbShot20A" onclick="cmd('shot20',{side:'A'})">↺ 20</div>
+        <div class="rb rb-shot" id="rbShot15A" onclick="cmd('shot15',{side:'A'})">↺ 15</div>
       </div>
       <div class="ctrl-grid g4" style="margin-top:8px">
         <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:1,side:'A'})">+ W</div>
@@ -1293,9 +1294,10 @@ body.is-tv-sideB .tv-side-badge { display: block; }
         <div class="rb rb-start" id="rbStartB" onclick="cmd('toggle',{side:'B'})">▶ START</div>
         <div class="rb rb-reset" onclick="cmd('resetSide',{side:'B'})">↺ RESET</div>
       </div>
-      <div class="ctrl-grid g2" style="margin-top:8px">
+      <div class="ctrl-grid g3" style="margin-top:8px">
         <div class="rb rb-shot" id="rbShot30B" onclick="cmd('shot30',{side:'B'})">↺ 30</div>
         <div class="rb rb-shot" id="rbShot20B" onclick="cmd('shot20',{side:'B'})">↺ 20</div>
+        <div class="rb rb-shot" id="rbShot15B" onclick="cmd('shot15',{side:'B'})">↺ 15</div>
       </div>
       <div class="ctrl-grid g4" style="margin-top:8px">
         <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:1,side:'B'})">+ W</div>
@@ -1317,9 +1319,10 @@ body.is-tv-sideB .tv-side-badge { display: block; }
       <div class="ctrl-grid">
         <div class="rb rb-start rb-huge" id="rbStartStop" onclick="cmd('toggle')">▶ START</div>
       </div>
-      <div class="ctrl-grid g2" style="margin-top:10px">
+      <div class="ctrl-grid g3" style="margin-top:10px">
         <div class="rb rb-shot rb-big" id="rbShot30" onclick="cmd('shot30')">↺ 30</div>
         <div class="rb rb-shot rb-big" id="rbShot20" onclick="cmd('shot20')">↺ 20</div>
+        <div class="rb rb-shot rb-big" id="rbShot15" onclick="cmd('shot15')">↺ 15</div>
       </div>
       <div class="ctrl-grid" style="margin-top:8px">
         <div class="rb rb-reset" onclick="cmd('resetSide')">↺ RESET<span class="rb-sub">to current default · keeps running</span></div>
@@ -2857,6 +2860,11 @@ function handleCmd(action, data) {
     case 'shot20':
       if (side === 'B') { bShotTime = CFG.shotShort; bShotAltPhase = 'work'; renderSplit(); }
       else { shotTime = CFG.shotShort; shotAltPhase = 'work'; renderDisplay(); }
+      break;
+    case 'shot15':
+      // ↺ 15 — always exactly 15 seconds, same convention as ↺ 30 / ↺ 20.
+      if (side === 'B') { bShotTime = 15000; bShotAltPhase = 'work'; renderSplit(); }
+      else { shotTime = 15000; shotAltPhase = 'work'; renderDisplay(); }
       break;
     case 'resetSide':
       // Shot-clock-only reset to the sticky default (CFG.shotLen). Does
