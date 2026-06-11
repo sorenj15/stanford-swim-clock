@@ -2477,6 +2477,38 @@ function boardResetLogo(side) {
   }
   return false; // suppress the context menu
 }
+// Knock out a white background: flood-fill near-white pixels connected
+// to the canvas border and make them transparent. Interior whites (like
+// the white outline inside the block S) are NOT touched — only white
+// that reaches the edges. Lets the coach use any logo grabbed off the
+// web, even on a white card.
+function _stripWhiteBg(c) {
+  var ctx = c.getContext('2d');
+  var w = c.width, h = c.height;
+  var im = ctx.getImageData(0, 0, w, h);
+  var d = im.data;
+  var TH = 235;
+  var visited = new Uint8Array(w * h);
+  var stack = [];
+  function tryPush(x, y) {
+    if (x < 0 || y < 0 || x >= w || y >= h) return;
+    var i = y * w + x;
+    if (visited[i]) return;
+    var p = i * 4;
+    if (d[p] > TH && d[p+1] > TH && d[p+2] > TH) { visited[i] = 1; stack.push(i); }
+  }
+  for (var x = 0; x < w; x++) { tryPush(x, 0); tryPush(x, h - 1); }
+  for (var y = 0; y < h; y++) { tryPush(0, y); tryPush(w - 1, y); }
+  while (stack.length) {
+    var i = stack.pop();
+    d[i * 4 + 3] = 0;
+    var cx = i % w, cy = (i / w) | 0;
+    tryPush(cx + 1, cy); tryPush(cx - 1, cy);
+    tryPush(cx, cy + 1); tryPush(cx, cy - 1);
+  }
+  ctx.putImageData(im, 0, 0);
+}
+
 (function wireLogoFileInput() {
   if (IS_CONTROL || IS_TV) return;
   var f = document.getElementById('bdLogoFile');
@@ -2485,23 +2517,28 @@ function boardResetLogo(side) {
     var file = f.files && f.files[0];
     if (!file || !_logoPickSide) return;
     var side = _logoPickSide;
+    var isSvg = file.type === 'image/svg+xml';
+    // Most logos grabbed off the web sit on a white card — offer to
+    // knock the background out before storing.
+    var stripWhite = !isSvg && confirm('Remove white background from this logo?\n\n(OK = make white edges transparent · Cancel = keep as-is)');
     var reader = new FileReader();
     reader.onload = function() {
       var dataUri = reader.result;
-      // SVGs and small files store as-is; bigger rasters get downscaled
-      // to max 512px so we don't blow the localStorage quota.
-      if (file.type === 'image/svg+xml' || file.size < 400 * 1024) {
+      // SVGs and small untouched files store as-is; everything else goes
+      // through canvas (downscale + optional white removal).
+      if (isSvg || (!stripWhite && file.size < 400 * 1024)) {
         _storeBoardLogo(side, dataUri);
         return;
       }
       var img = new Image();
       img.onload = function() {
-        var maxDim = 512;
+        var maxDim = stripWhite ? 1024 : 512;
         var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
         var c = document.createElement('canvas');
         c.width = Math.round(img.width * scale);
         c.height = Math.round(img.height * scale);
         c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        if (stripWhite) _stripWhiteBg(c);
         _storeBoardLogo(side, c.toDataURL('image/png'));
       };
       img.onerror = function() { _storeBoardLogo(side, dataUri); };
