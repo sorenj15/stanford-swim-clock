@@ -2433,11 +2433,12 @@ function parsePracticeTable(text) {
     if (practiceSchedule.length > 0) {
       practiceRemaining = practiceSchedule[0].durationMs;
     }
-    var lsM = localStorage.getItem('wpolo_practice_clock_mode');
-    if (lsM === '1') {
-      practiceClockMode = true;
-      if (!IS_CONTROL && !IS_TV) document.body.classList.add('is-practice-main');
-    }
+    // Practice clock mode is intentionally NOT persisted — a fresh open
+    // must always be the normal scoreboard. (It used to persist, which
+    // left displays booting with the game clock invisibly replaced by a
+    // frozen practice timer — "START does nothing".) Clear any stale key
+    // so previously-stuck displays self-heal.
+    localStorage.removeItem('wpolo_practice_clock_mode');
   } catch(e) {}
 })();
 
@@ -3190,11 +3191,20 @@ function handleCmd(action, data) {
       renderPracticePanel();
       break;
     case 'setPracticeClockMode':
+      // Session-only — deliberately not persisted (see hydratePractice).
       practiceClockMode = !!data.on;
-      try { localStorage.setItem('wpolo_practice_clock_mode', practiceClockMode ? '1' : '0'); } catch(e) {}
       document.body.classList.toggle('is-practice-main', practiceClockMode);
       renderDisplay();
       renderPracticePanel();
+      break;
+    case 'practicePause':
+      // Pause-only (no blind toggle) — used when opening the time editor
+      // so SET TIME can never accidentally START a stopped practice clock.
+      if (practiceRunning) {
+        practiceRunning = false;
+        if (_practiceRaf) { cancelAnimationFrame(_practiceRaf); _practiceRaf = null; }
+        renderPracticePanel();
+      }
       break;
     case 'setBoardMode':
       boardMode = !!data.on;
@@ -3880,7 +3890,7 @@ function openTimeEdit(target, side) {
   side = side || 'A';
   // Stop the relevant clock while editing
   if (IS_CONTROL) {
-    if (target === 'practice') cmd('practiceToggle'); // pause only if running — handled on display side
+    if (target === 'practice') cmd('practicePause'); // pause-only; a toggle here would START a stopped clock
     else cmd('stop', {side: side});
   } else {
     if (target === 'practice') {
