@@ -368,11 +368,16 @@ textarea#setInput::placeholder { color: #5a2020; }
   border-right: none; background: #0d0505; min-height: 0;
 }
 /* Compact typography when rows are half height */
-.clocks-area.compact .c-time   { font-size: 3.6rem; }
-.clocks-area.compact .c-dist   { font-size: 1.7rem; }
+.clocks-area.compact .c-time   { font-size: 3.2rem; }
+.clocks-area.compact .c-dist   { font-size: 1.5rem; }
 .clocks-area.compact .tier-hdr { padding: 5px 6px 4px; }
 .clocks-area.compact .tier-names { display: none; }
 .clocks-area.compact .cbody    { padding: 4px 4px; gap: 2px; }
+/* Target on ONE line — the block-level 1.6rem value was a whole extra
+   row that pushed itself half out of the cell */
+.clocks-area.compact .c-target   { font-size: 0.8rem; }
+.clocks-area.compact .c-target b { display: inline; font-size: 1.05rem; margin-top: 0; }
+.clocks-area.compact .c-zone-badge { padding: 2px 9px; font-size: 0.8rem; margin: 1px auto 2px; }
 
 .tier-hdr { padding: 10px 8px 8px; text-align: center; flex-shrink: 0; }
 .tier-name { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.03em; }
@@ -2551,8 +2556,9 @@ function renderClock(ti, s, sec, cb) {
       var targetRowR = fRep.easy
         ? '<div class="c-target" style="color:#7a7a7a">no target · swim easy</div>'
         : '<div class="c-target">Target: <b>'+fmtS(fPace[0])+' – '+fmtS(fPace[1])+'</b></div>';
+      // No section title in the cell — the hero strip right above the
+      // grid already names the section. Every saved row counts here.
       cb.innerHTML=
-        '<div style="font-size:1rem;font-weight:800;color:#c0392b;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">'+sec.title+'</div>'+
         '<div class="c-rep-lbl" style="letter-spacing:0.15em">UP NEXT</div>'+
         zoneRowR+
         '<div class="c-dist">'+fRep.dist+'m</div>'+
@@ -2583,13 +2589,13 @@ function renderClock(ti, s, sec, cb) {
     var firstZ = repZ(sec, firstRep);
     var cdDist = 0; reps.forEach(function(r){ cdDist += r.dist; });
     cb.className='cbody rd';
-    var cdFont = _compactTiers() ? '3.5rem' : '7rem';
-    // Compact mode mirrors the minimal ready card: title, GET READY,
-    // zone, distance, the countdown digit, target. No set summary, no
-    // redundant STARTING-IN badge (the big digit IS the countdown) —
-    // those two lines were pushing the target off half-height cells.
+    var cdFont = _compactTiers() ? '3rem' : '7rem';
+    // Compact mode mirrors the minimal ready card: GET READY, zone,
+    // distance, the countdown digit, target — no section title (the
+    // hero strip above already names it), no set summary, no redundant
+    // STARTING-IN badge (the big digit IS the countdown).
     cb.innerHTML=dotsH+
-      '<div style="font-size:'+(_compactTiers()?'0.85rem':'1.1rem')+';font-weight:800;color:#e8b830;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:2px">'+sec.title+'</div>'+
+      (_compactTiers() ? '' : '<div style="font-size:1.1rem;font-weight:800;color:#e8b830;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:2px">'+sec.title+'</div>')+
       (_compactTiers() ? '' : '<div style="font-size:0.75rem;color:#a08080">'+reps.length+' reps · '+cdDist+'m'+(sec.restBetween?' · :'+pad(sec.restBetween)+' rest':'')+'</div>')+
       '<div class="c-rep-lbl" style="letter-spacing:0.15em">GET READY</div>'+
       '<div class="c-zone-wrap"><span class="c-zone-badge z-'+firstZ+'">Zone '+firstZ.slice(1)+'</span></div>'+
