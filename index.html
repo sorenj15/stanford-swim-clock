@@ -2539,15 +2539,24 @@ function renderClock(ti, s, sec, cb) {
     cb.className='cbody rd';
     if (_compactTiers()) {
       // Compact ready card — the full set list doesn't fit half-height
-      // grid rows. Show a summary + first-rep target instead; the hero
-      // strip up top already carries the full set composition.
-      var tDist = 0; reps.forEach(function(r){ tDist += r.dist; });
+      // grid rows. Show what swimmers actually need on the blocks: the
+      // first rep's zone, distance, and target range. The hero strip up
+      // top already carries the full set composition.
       var fRep = reps[0];
-      var fPace = getPace(ti, repZ(sec, fRep), fRep.dist);
+      var fz = repZ(sec, fRep);
+      var fPace = getPace(ti, fz, fRep.dist);
+      var zoneRowR = fRep.easy
+        ? '<div class="c-zone-wrap"><span class="c-zone-badge" style="background:#2a2a2a;color:#a0a0a0">EASY</span></div>'
+        : '<div class="c-zone-wrap"><span class="c-zone-badge z-'+fz+'">Zone '+fz.slice(1)+'</span></div>';
+      var targetRowR = fRep.easy
+        ? '<div class="c-target" style="color:#7a7a7a">no target · swim easy</div>'
+        : '<div class="c-target">Target: <b>'+fmtS(fPace[0])+' – '+fmtS(fPace[1])+'</b></div>';
       cb.innerHTML=
         '<div style="font-size:1rem;font-weight:800;color:#c0392b;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">'+sec.title+'</div>'+
-        '<div style="font-size:0.85rem;color:#d4b0b0">'+reps.length+' reps · '+tDist+'m'+(sec.restBetween?' · :'+pad(sec.restBetween)+' rest':'')+'</div>'+
-        '<div class="c-target" style="margin-top:4px">First: <b>'+fRep.dist+'m</b> · '+fmtS(fPace[0])+' – '+fmtS(fPace[1])+'</div>'+
+        '<div class="c-rep-lbl" style="letter-spacing:0.15em">UP NEXT</div>'+
+        zoneRowR+
+        '<div class="c-dist">'+fRep.dist+'m</div>'+
+        targetRowR+
         '<div class="standby-msg" style="font-size:1rem;margin-top:6px">READY<span>Press Start</span></div>';
       return;
     }
