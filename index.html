@@ -2584,15 +2584,19 @@ function renderClock(ti, s, sec, cb) {
     var cdDist = 0; reps.forEach(function(r){ cdDist += r.dist; });
     cb.className='cbody rd';
     var cdFont = _compactTiers() ? '3.5rem' : '7rem';
+    // Compact mode mirrors the minimal ready card: title, GET READY,
+    // zone, distance, the countdown digit, target. No set summary, no
+    // redundant STARTING-IN badge (the big digit IS the countdown) —
+    // those two lines were pushing the target off half-height cells.
     cb.innerHTML=dotsH+
-      '<div style="font-size:'+(TIER_COUNT>3?'0.85rem':'1.1rem')+';font-weight:800;color:#e8b830;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:2px">'+sec.title+'</div>'+
-      '<div style="font-size:0.75rem;color:#a08080">'+reps.length+' reps · '+cdDist+'m'+(sec.restBetween?' · :'+pad(sec.restBetween)+' rest':'')+'</div>'+
+      '<div style="font-size:'+(_compactTiers()?'0.85rem':'1.1rem')+';font-weight:800;color:#e8b830;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:2px">'+sec.title+'</div>'+
+      (_compactTiers() ? '' : '<div style="font-size:0.75rem;color:#a08080">'+reps.length+' reps · '+cdDist+'m'+(sec.restBetween?' · :'+pad(sec.restBetween)+' rest':'')+'</div>')+
       '<div class="c-rep-lbl" style="letter-spacing:0.15em">GET READY</div>'+
       '<div class="c-zone-wrap"><span class="c-zone-badge z-'+firstZ+'">Zone '+firstZ.slice(1)+'</span></div>'+
       (_compactTiers() ? '' : '<div class="c-laps">'+firstRep.laps+' laps</div>')+
       '<div class="c-dist">'+firstRep.dist+'m</div>'+
       '<div class="c-time tw" style="font-size:'+cdFont+'">'+cdRem+'</div>'+
-      '<div class="c-badge by">STARTING IN '+cdRem+'s</div>'+
+      (_compactTiers() ? '' : '<div class="c-badge by">STARTING IN '+cdRem+'s</div>')+
       '<div class="c-target">Target: <b>'+fmtS(firstPace[0])+' – '+fmtS(firstPace[1])+'</b></div>';
     return;
   }
