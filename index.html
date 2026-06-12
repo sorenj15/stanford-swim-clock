@@ -379,6 +379,29 @@ textarea#setInput::placeholder { color: #5a2020; }
 .clocks-area.compact .c-target b { display: inline; font-size: 1.05rem; margin-top: 0; }
 .clocks-area.compact .c-zone-badge { padding: 2px 9px; font-size: 0.8rem; margin: 1px auto 2px; }
 
+/* Dense set list — one line per rep group: "2× 75m Z2 :15 0:53–0:56" */
+.set-list-d { display: flex; flex-direction: column; gap: 3px; margin: 6px auto; }
+.srd {
+  display: flex; align-items: baseline; justify-content: center; gap: 0.55em;
+  font-size: 1.15rem; line-height: 1.35; white-space: nowrap;
+}
+.srd-count { color: #fff; font-weight: 800; min-width: 1.6em; text-align: right; }
+.srd-dist  { color: #fff; font-weight: 800; }
+.srd-zone  {
+  font-size: 0.72em; font-weight: 800; padding: 1px 7px; border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+.srd-zone.z-z1 { background: #1a3a2a; color: #8ae0b0; }
+.srd-zone.z-z2 { background: #1a3050; color: #a8c4e8; }
+.srd-zone.z-z3 { background: #4a3810; color: #f0c860; }
+.srd-zone.z-z4 { background: #4a1820; color: #f08090; }
+.srd-zone.z-z5 { background: #4a1050; color: #e080f0; }
+.srd-easy  { font-size: 0.72em; font-weight: 800; padding: 1px 7px; border-radius: 4px; background: #2a2a2a; color: #a0a0a0; }
+.srd-rest  { color: #e8b830; font-size: 0.78em; font-weight: 700; min-width: 2em; }
+.srd-target { font-family: 'SF Mono', monospace; color: #2ecc71; font-weight: 700; }
+.srd-cur .srd-dist, .srd-cur .srd-count { color: #f1c40f; }
+.clocks-area.compact .srd { font-size: 0.92rem; gap: 0.45em; }
+
 .tier-hdr { padding: 10px 8px 8px; text-align: center; flex-shrink: 0; }
 .tier-name { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.03em; }
 .tier-names { font-size: 0.65rem; color: rgba(255,255,255,0.65); margin-top: 3px; line-height: 1.4; }
@@ -2457,6 +2480,46 @@ document.addEventListener('touchstart', function(e) {
 }, {passive: false});
 
 // Build a vertical set list. highlightIdx = which rep to highlight (-1 = none, 0 = first, etc.)
+// Dense one-line variant of the set list: each group of identical reps
+// collapses to a single row — "2× 75m  Z2  :15  0:53–0:56". Swimmers
+// liked seeing the whole set grouped this way; the old card-style rows
+// just took too much vertical space per group.
+function buildSetListDense(ti, sec, reps, highlightIdx) {
+  var groups = [], prev = null;
+  reps.forEach(function(r, i) {
+    var rz = r.zKey || null, rr = r.rest != null ? r.rest : null;
+    if (prev && prev.dist === r.dist && prev.z === rz && prev.r === rr) {
+      prev.count++;
+      prev.indices.push(i);
+    } else {
+      prev = {dist: r.dist, laps: r.laps, count: 1, indices: [i], z: rz, r: rr};
+      groups.push(prev);
+    }
+  });
+  return groups.map(function(g) {
+    var gRep = sec.reps[g.indices[0]];
+    var isCur = g.indices.indexOf(highlightIdx) >= 0;
+    var effRest = (gRep && gRep.rest != null) ? gRep.rest : sec.restBetween;
+    var countCell = g.count > 1 ? g.count + '×' : '';
+    var zCell, tCell;
+    if (gRep && gRep.easy) {
+      zCell = '<span class="srd-easy">EASY</span>';
+      tCell = '<span class="srd-target" style="color:#7a7a7a">—</span>';
+    } else {
+      var effZ = repZ(sec, gRep);
+      var pace = getPace(ti, effZ, g.dist);
+      zCell = '<span class="srd-zone z-'+effZ+'">Z'+effZ.slice(1)+'</span>';
+      tCell = '<span class="srd-target">'+fmtS(pace[0])+'–'+fmtS(pace[1])+'</span>';
+    }
+    var rCell = effRest ? '<span class="srd-rest">:'+pad(effRest)+'</span>' : '<span class="srd-rest"></span>';
+    return '<div class="srd'+(isCur?' srd-cur':'')+'">'+
+      '<span class="srd-count">'+countCell+'</span>'+
+      '<span class="srd-dist">'+g.dist+'m</span>'+
+      zCell + rCell + tCell +
+    '</div>';
+  }).join('');
+}
+
 function buildSetList(ti, sec, reps, highlightIdx) {
   // Detect whether rests vary across reps — if so, show rest on every row
   var anyRestOverride = false;
@@ -2545,44 +2608,10 @@ function renderClock(ti, s, sec, cb) {
   }
   if (s.phase==='ready') {
     cb.className='cbody rd';
-    if (_compactTiers()) {
-      // Compact ready card — the full set list doesn't fit half-height
-      // grid rows. Show what swimmers actually need on the blocks: the
-      // first rep's zone, distance, and target range. The hero strip up
-      // top already carries the full set composition.
-      var fRep = reps[0];
-      var fz = repZ(sec, fRep);
-      var fPace = getPace(ti, fz, fRep.dist);
-      var zoneRowR = fRep.easy
-        ? '<div class="c-zone-wrap"><span class="c-zone-badge" style="background:#2a2a2a;color:#a0a0a0">EASY</span></div>'
-        : '<div class="c-zone-wrap"><span class="c-zone-badge z-'+fz+'">Zone '+fz.slice(1)+'</span></div>';
-      var targetRowR = fRep.easy
-        ? '<div class="c-target" style="color:#7a7a7a">no target · swim easy</div>'
-        : '<div class="c-target">Target: <b>'+fmtS(fPace[0])+' – '+fmtS(fPace[1])+'</b></div>';
-      // No section title in the cell — the hero strip right above the
-      // grid already names the section. Every saved row counts here.
-      cb.innerHTML=
-        '<div class="c-rep-lbl" style="letter-spacing:0.15em">UP NEXT</div>'+
-        zoneRowR+
-        '<div class="c-dist">'+fRep.dist+'m</div>'+
-        targetRowR;
-      return;
-    }
-    var setRows = buildSetList(ti, sec, reps, -1);
-    // Only show section-wide "rest between reps" header if ALL reps share the
-    // section default (no per-rep overrides). Otherwise the badges on each
-    // row tell the real story and a single header is misleading.
-    var anyOverride = false;
-    for (var _ri = 0; _ri < sec.reps.length; _ri++) {
-      if (sec.reps[_ri].rest != null && sec.reps[_ri].rest !== sec.restBetween) { anyOverride = true; break; }
-    }
-    var restInfo = (sec.restBetween && !anyOverride) ? '<div style="font-size:1.1rem;color:#e8b830;font-weight:700;margin:6px 0">:'+pad(sec.restBetween)+' rest between reps</div>' : '';
-    var eqInfo = sec.equipment ? '<div style="font-size:1rem;color:#a06060;font-style:italic">'+sec.equipment+'</div>' : '';
-    cb.innerHTML=
-      '<div style="font-size:1.4rem;font-weight:800;color:#c0392b;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px">'+sec.title+'</div>'+
-      restInfo + eqInfo +
-      '<div class="set-list" style="margin:10px 0">'+setRows+'</div>'+
-      '<div class="standby-msg" style="font-size:1.2rem;margin-top:8px">READY<span>Press Start</span></div>';
+    // Grouped one-line set list for every layout — the guys like seeing
+    // the whole set as "2× 75m" rows; each row carries zone, rest, and
+    // this tier's target without the old card-per-group bulk.
+    cb.innerHTML='<div class="set-list-d">'+buildSetListDense(ti, sec, reps, -1)+'</div>';
     return;
   }
   if (s.phase==='countdown') {
@@ -2590,22 +2619,15 @@ function renderClock(ti, s, sec, cb) {
     var firstRep = reps[0];
     var firstPace = getPace(ti, repZ(sec, firstRep), firstRep.dist);
     var firstZ = repZ(sec, firstRep);
-    var cdDist = 0; reps.forEach(function(r){ cdDist += r.dist; });
     cb.className='cbody rd';
-    var cdFont = _compactTiers() ? '3rem' : '7rem';
-    // Compact mode mirrors the minimal ready card: GET READY, zone,
-    // distance, the countdown digit, target — no section title (the
-    // hero strip above already names it), no set summary, no redundant
-    // STARTING-IN badge (the big digit IS the countdown).
+    var cdFont = _compactTiers() ? '3rem' : '6rem';
+    // ONE minimal countdown card for every layout — mirrors the ready
+    // card: GET READY, zone, distance, the countdown digit, target.
     cb.innerHTML=dotsH+
-      (_compactTiers() ? '' : '<div style="font-size:1.1rem;font-weight:800;color:#e8b830;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:2px">'+sec.title+'</div>')+
-      (_compactTiers() ? '' : '<div style="font-size:0.75rem;color:#a08080">'+reps.length+' reps · '+cdDist+'m'+(sec.restBetween?' · :'+pad(sec.restBetween)+' rest':'')+'</div>')+
       '<div class="c-rep-lbl" style="letter-spacing:0.15em">GET READY</div>'+
       '<div class="c-zone-wrap"><span class="c-zone-badge z-'+firstZ+'">Zone '+firstZ.slice(1)+'</span></div>'+
-      (_compactTiers() ? '' : '<div class="c-laps">'+firstRep.laps+' laps</div>')+
       '<div class="c-dist">'+firstRep.dist+'m</div>'+
       '<div class="c-time tw" style="font-size:'+cdFont+'">'+cdRem+'</div>'+
-      (_compactTiers() ? '' : '<div class="c-badge by">STARTING IN '+cdRem+'s</div>')+
       '<div class="c-target">Target: <b>'+fmtS(firstPace[0])+' – '+fmtS(firstPace[1])+'</b></div>';
     return;
   }
@@ -2616,25 +2638,14 @@ function renderClock(ti, s, sec, cb) {
     while(nxtSi<SECS.length && !SECS[nxtSi].timed) nxtSi++;
     var nxtSec=SECS[nxtSi]||null;
     var nxtHtml='';
-    if (nxtSec && nxtSec.reps.length && _compactTiers()) {
-      // Compact set-break — condensed next-section preview instead of the
-      // full set list (doesn't fit half-height grid rows). Still shows
-      // what's coming: title, rep count, and the first rep's target.
-      var nFr = nxtSec.reps[0];
-      var nFz = repZ(nxtSec, nFr);
-      var nFp = getPace(ti, nFz, nFr.dist);
+    if (nxtSec && nxtSec.reps.length) {
+      // Next-set preview during the break — title + the grouped one-line
+      // list (first group highlighted), same dense format as the ready
+      // view. Works at every layout size.
       nxtHtml=
         '<div class="c-next-lbl" style="margin-top:6px;font-size:0.65rem">Up Next</div>'+
-        '<div style="font-size:0.9rem;font-weight:800;color:#e8b830;text-align:center">'+nxtSec.title+' · '+nxtSec.reps.length+' reps</div>'+
-        '<div style="font-size:0.8rem;color:#d4b0b0;text-align:center;margin-top:2px">First: <b>'+nFr.dist+'m</b> <span class="c-zone-badge z-'+nFz+'" style="font-size:0.65rem;padding:1px 6px">Z'+nFz.slice(1)+'</span> '+fmtS(nFp[0])+' – '+fmtS(nFp[1])+'</div>';
-    } else if (nxtSec && nxtSec.reps.length) {
-      var nxtRows = buildSetList(ti, nxtSec, nxtSec.reps, 0);
-      var nxtRestInfo = nxtSec.restBetween ? '<div style="font-size:0.65rem;color:#e8b830;font-weight:600;margin-bottom:3px">:'+pad(nxtSec.restBetween)+' rest</div>' : '';
-      nxtHtml=
-        '<div class="c-next-lbl" style="margin-top:8px;font-size:0.65rem">Up Next</div>'+
-        '<div style="font-size:0.95rem;font-weight:800;color:#e8b830;text-align:center;margin-bottom:4px">'+nxtSec.title+'</div>'+
-        nxtRestInfo +
-        '<div class="set-list" style="margin:3px 0">'+nxtRows+'</div>';
+        '<div style="font-size:0.95rem;font-weight:800;color:#e8b830;text-align:center;margin-bottom:2px">'+nxtSec.title+'</div>'+
+        '<div class="set-list-d">'+buildSetListDense(ti, nxtSec, nxtSec.reps, 0)+'</div>';
     } else {
       // No more timed sections — show cool-down if it exists
       var _cdSec2 = null;
