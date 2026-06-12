@@ -1251,6 +1251,9 @@ var _TIER_PRESETS = {
 // Compact mode squeezed cell height in half, which clipped the target
 // ranges out of the ready/rest/set-break previews on the big board.
 function _wideBoard() {
+  // ?wide forces the single-row layout regardless of measured aspect —
+  // bookmark index.html?wide on the jumbotron computer for certainty.
+  if (/[?&]wide(\b|=)/.test(location.search)) return true;
   return (window.innerWidth / Math.max(1, window.innerHeight)) >= 2.2;
 }
 function _compactTiers() { return TIER_COUNT > 3 && !_wideBoard(); }
