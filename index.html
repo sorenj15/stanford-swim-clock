@@ -2556,8 +2556,7 @@ function renderClock(ti, s, sec, cb) {
         '<div class="c-rep-lbl" style="letter-spacing:0.15em">UP NEXT</div>'+
         zoneRowR+
         '<div class="c-dist">'+fRep.dist+'m</div>'+
-        targetRowR+
-        '<div class="standby-msg" style="font-size:1rem;margin-top:6px">READY<span>Press Start</span></div>';
+        targetRowR;
       return;
     }
     var setRows = buildSetList(ti, sec, reps, -1);
