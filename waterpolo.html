@@ -1282,6 +1282,12 @@ body.is-tv-sideB .tv-side-badge { display: block; }
         <div class="rb rb-score-a" onclick="cmd('score',{t:'away',d:1,side:'A'})">+ B</div>
         <div class="rb rb-score-a" onclick="cmd('score',{t:'away',d:-1,side:'A'})">− B</div>
       </div>
+      <div class="ctrl-grid g4" style="margin-top:8px">
+        <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:0.5,side:'A'})">+½ W</div>
+        <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:-0.5,side:'A'})">−½ W</div>
+        <div class="rb rb-score-a" onclick="cmd('score',{t:'away',d:0.5,side:'A'})">+½ B</div>
+        <div class="rb rb-score-a" onclick="cmd('score',{t:'away',d:-0.5,side:'A'})">−½ B</div>
+      </div>
       <div class="ctrl-grid g2" style="margin-top:8px">
         <div class="rb rb-time" onclick="openTimeEdit('game','A')">SET GAME<span class="rb-sub" id="csGameA">8:00</span></div>
         <div class="rb rb-time" onclick="openTimeEdit('shot','A')">SET SHOT<span class="rb-sub" id="csShotA">30</span></div>
@@ -1304,6 +1310,12 @@ body.is-tv-sideB .tv-side-badge { display: block; }
         <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:-1,side:'B'})">− W</div>
         <div class="rb rb-score-a" onclick="cmd('score',{t:'away',d:1,side:'B'})">+ B</div>
         <div class="rb rb-score-a" onclick="cmd('score',{t:'away',d:-1,side:'B'})">− B</div>
+      </div>
+      <div class="ctrl-grid g4" style="margin-top:8px">
+        <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:0.5,side:'B'})">+½ W</div>
+        <div class="rb rb-score-h" onclick="cmd('score',{t:'home',d:-0.5,side:'B'})">−½ W</div>
+        <div class="rb rb-score-a" onclick="cmd('score',{t:'away',d:0.5,side:'B'})">+½ B</div>
+        <div class="rb rb-score-a" onclick="cmd('score',{t:'away',d:-0.5,side:'B'})">−½ B</div>
       </div>
       <div class="ctrl-grid g2" style="margin-top:8px">
         <div class="rb rb-time" onclick="openTimeEdit('game','B')">SET GAME<span class="rb-sub" id="csGameB">8:00</span></div>
@@ -1338,6 +1350,12 @@ body.is-tv-sideB .tv-side-badge { display: block; }
         <div class="rb rb-score-h rb-compact" onclick="cmd('score',{t:'home',d:-1})">− W</div>
         <div class="rb rb-score-a rb-compact" onclick="cmd('score',{t:'away',d:1})">+ B</div>
         <div class="rb rb-score-a rb-compact" onclick="cmd('score',{t:'away',d:-1})">− B</div>
+      </div>
+      <div class="ctrl-grid g4" style="margin-top:8px">
+        <div class="rb rb-score-h rb-compact" onclick="cmd('score',{t:'home',d:0.5})">+½ W</div>
+        <div class="rb rb-score-h rb-compact" onclick="cmd('score',{t:'home',d:-0.5})">−½ W</div>
+        <div class="rb rb-score-a rb-compact" onclick="cmd('score',{t:'away',d:0.5})">+½ B</div>
+        <div class="rb rb-score-a rb-compact" onclick="cmd('score',{t:'away',d:-0.5})">−½ B</div>
       </div>
     </div>
 
