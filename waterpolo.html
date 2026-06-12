@@ -3319,11 +3319,18 @@ function handleCmd(action, data) {
 function _start() {
   if (IS_TV) return; // TV is receive-only, never runs its own clock
   if (running) return;
-  if (gameTime <= 0 && !shotOnly) return;
-  if (shotTime <= 0 && shotOnly) return;
+  // START on an expired clock used to silently do nothing — the #1
+  // "start button is broken" report (you could still set the shot
+  // clock, but START refused because gameTime was 0 from an earlier
+  // run). Re-arm instead: expired game → fresh quarter; expired shot
+  // → fresh shot length.
+  if (!shotOnly && gameTime <= 0) { gameTime = CFG.qtrLen; shotTime = CFG.shotLen; }
+  if (shotTime <= 0) shotTime = _pickShotLen();
   running = true; lastTs = null;
   raf = requestAnimationFrame(loop);
   renderStartBtn();
+  renderDisplay();
+  if (splitMode) renderSplit();
   sendState(true); // force immediate broadcast so the controller reflects the new state at once
 }
 
@@ -3340,10 +3347,12 @@ function _stop() {
 function _startB() {
   if (IS_TV) return;
   if (bRunning) return;
-  if (bGameTime <= 0 && !bShotOnly) return;
-  if (bShotTime <= 0 && bShotOnly) return;
+  // Same re-arm rule as _start(): never refuse a START silently.
+  if (!bShotOnly && bGameTime <= 0) { bGameTime = CFG.qtrLen; bShotTime = CFG.shotLen; }
+  if (bShotTime <= 0) bShotTime = _pickShotLen();
   bRunning = true; bLastTs = null;
   bRaf = requestAnimationFrame(loopB);
+  if (splitMode) renderSplit();
   sendState(true);
 }
 function _stopB() {
