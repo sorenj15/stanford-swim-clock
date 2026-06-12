@@ -1808,6 +1808,13 @@ document.addEventListener('visibilitychange', function() {
 // last minute of the game and the last 5 seconds of the shot clock,
 // which is when the higher rate actually matters.
 var _lastSendTs = 0;
+// Heavy payload fields (rosters, practice schedule) used to ride on every
+// state message — at 30 Hz with two TVs + a remote that saturated pool
+// wifi and made start/stop feel laggy. They now go out only when their
+// contents change (_heavyRev bumps) plus a 3s heartbeat so late-joining
+// clients still sync. Receivers already guard with Array.isArray and
+// keep their cached copy when the fields are absent.
+var _heavyRev = 1, _heavySentRev = 0, _heavySentTs = 0;
 function sendState(force) {
   if (_displayDeposed) return;
   var now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -1822,7 +1829,7 @@ function sendState(force) {
     if (now - _lastSendTs < minGap) return;
   }
   _lastSendTs = now;
-  wsSend({
+  var payload = {
     type: 'state',
     displayId: DISPLAY_ID,
     displayBorn: DISPLAY_BORN,
@@ -1835,9 +1842,6 @@ function sendState(force) {
     shotOnly: shotOnly,
     exclusions: exclusions.map(function(e){ return {team:e.team, remaining:e.remaining, id:e.id, name:e.name}; }),
     randomExclMode: randomExclMode,
-    rosterWhite: rosterWhite,
-    rosterBlack: rosterBlack,
-    practiceSchedule: practiceSchedule,
     practiceIdx: practiceIdx,
     practiceRemaining: practiceRemaining,
     practiceRunning: practiceRunning,
@@ -1867,7 +1871,14 @@ function sendState(force) {
     shotRandMax: CFG.shotRandMax,
     transitionMode: transitionMode,
     transitionTime: transitionTime
-  });
+  };
+  if (_heavyRev !== _heavySentRev || now - _heavySentTs > 3000) {
+    payload.rosterWhite = rosterWhite;
+    payload.rosterBlack = rosterBlack;
+    payload.practiceSchedule = practiceSchedule;
+    _heavySentRev = _heavyRev; _heavySentTs = now;
+  }
+  wsSend(payload);
 }
 
 // Controller receives state
@@ -2632,8 +2643,8 @@ function renderBoard() {
         '<span class="brr-cnt">'+p.count+'</span></div>';
     }).join('');
   }
-  document.getElementById('bdExclListL').innerHTML = rows(rosterWhite);
-  document.getElementById('bdExclListR').innerHTML = rows(rosterBlack);
+  _bdSetHtml('bdExclListL', rows(rosterWhite));
+  _bdSetHtml('bdExclListR', rows(rosterBlack));
 
   // CAP TIME — active exclusions w/ return countdown, pinned at the
   // bottom of each side board
@@ -2648,8 +2659,19 @@ function renderBoard() {
           '<span class="bctr-time">'+mm+':'+(ss<10?'0'+ss:ss)+'</span></div>';
       }).join('');
   }
-  document.getElementById('bdCapTimeL').innerHTML = capRows('home');
-  document.getElementById('bdCapTimeR').innerHTML = capRows('away');
+  _bdSetHtml('bdCapTimeL', capRows('home'));
+  _bdSetHtml('bdCapTimeR', capRows('away'));
+}
+
+// Diff-aware innerHTML — renderBoard runs every frame; rebuilding the
+// roster/CAP TIME DOM 60×/sec causes layout churn on the jumbotron.
+var _bdHtmlCache = {};
+function _bdSetHtml(id, html) {
+  if (_bdHtmlCache[id] === html) return;
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = html;
+  _bdHtmlCache[id] = html;
 }
 
 // Parse a roster text-area string. Line formats:
@@ -3072,6 +3094,7 @@ function handleCmd(action, data) {
       else if (Array.isArray(data.white))    rosterWhite = data.white;
       if (typeof data.blackText === 'string') rosterBlack = parseRosterText(data.blackText);
       else if (Array.isArray(data.black))    rosterBlack = data.black;
+      _heavyRev++;
       persistRoster();
       renderExclBoard();
       renderBoard();
@@ -3103,6 +3126,7 @@ function handleCmd(action, data) {
       (rosterBlack||[]).forEach(function(p) { p.count = 0; });
       // Also clear any currently-active exclusions.
       exclusions = [];
+      _heavyRev++;
       persistRoster();
       renderExcl(); renderExclBoard();
       break;
@@ -3112,6 +3136,7 @@ function handleCmd(action, data) {
       } else if (Array.isArray(data.schedule)) {
         practiceSchedule = data.schedule;
       }
+      _heavyRev++;
       practiceIdx = 0;
       practiceRunning = false;
       if (_practiceRaf) { cancelAnimationFrame(_practiceRaf); _practiceRaf = null; }
@@ -3802,6 +3827,7 @@ function _excludePlayer(team, name) {
     if (exclusions[j].team === teamKey && exclusions[j].name === name) return;
   }
   player.count = (player.count || 0) + 1;
+  _heavyRev++; // roster counts changed — next state msg carries rosters
   exclusions.push({
     team: teamKey,
     remaining: CFG.exclLen,  // 20s, matches real water polo rule
